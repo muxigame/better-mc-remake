@@ -1,0 +1,155 @@
+<#
+.SYNOPSIS
+    构建 Tauri 客户端、.NET sidecar 和 Python 官网后端。
+
+.EXAMPLE
+    .\build.ps1                      # 构建客户端和更新服务器
+    .\build.ps1 -Target client       # 只构建 Tauri 客户端
+    .\build.ps1 -Target server       # 只构建更新服务器
+    .\build.ps1 -SelfTest            # 构建后跑核心逻辑自检
+#>
+[CmdletBinding()]
+param(
+    [ValidateSet('all', 'client', 'server')]
+    [string]$Target = 'all',
+
+    [string]$OutDir,
+
+    [switch]$SelfTest
+)
+
+$ErrorActionPreference = 'Stop'
+$workspaceRoot = Split-Path $PSScriptRoot -Parent
+if (-not $OutDir) { $OutDir = Join-Path $workspaceRoot 'artifacts' }
+Set-Location $workspaceRoot
+[xml]$clientBuildProps = Get-Content (Join-Path $workspaceRoot 'client\Directory.Build.props')
+$clientVersion = [string]$clientBuildProps.Project.PropertyGroup.Version
+if (-not $clientVersion) { throw 'client/Directory.Build.props 缺少 Version' }
+
+function Step($text) { Write-Host "`n=== $text ===" -ForegroundColor Cyan }
+
+if ($Target -in 'all', 'client') {
+    Step '还原客户端 .NET 依赖'
+    dotnet restore client\BatterMC.Client.sln
+    if ($LASTEXITCODE -ne 0) { throw '客户端 .NET 依赖还原失败' }
+
+    $cargoBin = Join-Path $env:USERPROFILE '.cargo\bin'
+    if (Test-Path $cargoBin) { $env:Path = "$cargoBin;$env:Path" }
+    if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+        throw '找不到 Cargo。请先安装 Rust MSVC 工具链：https://tauri.app/start/prerequisites/'
+    }
+
+    Step '安装 Tauri 前端依赖'
+    Push-Location client\tauri
+    try { npm ci }
+    finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { throw 'npm ci 失败' }
+
+    Step '构建 .NET 游戏引擎 sidecar（win-x64）'
+    $backendOut = Join-Path $OutDir 'intermediate\sidecar'
+    dotnet publish client\sidecar\BatterMC.Launcher.csproj `
+        -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true --nologo -o $backendOut
+    if ($LASTEXITCODE -ne 0) { throw 'sidecar 构建失败' }
+
+    $backend = Join-Path $backendOut 'battermc-backend.exe'
+    $tauriBinaries = Join-Path $workspaceRoot 'client\tauri\src-tauri\binaries'
+    New-Item -ItemType Directory -Path $tauriBinaries -Force | Out-Null
+    Copy-Item -LiteralPath $backend `
+        -Destination (Join-Path $tauriBinaries 'battermc-backend-x86_64-pc-windows-msvc.exe') -Force
+
+    if ($SelfTest) {
+        Step '核心逻辑自检'
+        & $backend --selftest
+        if ($LASTEXITCODE -ne 0) { throw '自检失败' }
+    }
+
+    Step '构建 Tauri 2 客户端和 NSIS 安装包'
+    Push-Location client\tauri
+    try { npm run tauri -- build }
+    finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { throw 'Tauri 构建失败' }
+
+    $tauriTarget = Join-Path $workspaceRoot 'client\tauri\src-tauri\target\release'
+    $clientOut = Join-Path $OutDir 'client'
+    New-Item -ItemType Directory -Path $clientOut -Force | Out-Null
+
+    $launcherExe = Join-Path $clientOut 'BatterMC5Remake.exe'
+    $portableBackend = Join-Path $clientOut 'battermc-backend.exe'
+    Copy-Item -LiteralPath (Join-Path $tauriTarget 'battermc5remake.exe') -Destination $launcherExe -Force
+    Copy-Item -LiteralPath (Join-Path $tauriTarget 'battermc-backend.exe') -Destination $portableBackend -Force
+
+    $builtInstaller = Get-ChildItem (Join-Path $tauriTarget 'bundle\nsis') -Filter '*-setup.exe' |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $installer = Join-Path $clientOut 'BatterMC5Remake-setup.exe'
+    if ($builtInstaller) { Copy-Item -LiteralPath $builtInstaller.FullName -Destination $installer -Force }
+
+    $sha = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+    $size = (Get-Item $installer).Length
+    $release = [ordered]@{
+        version      = $clientVersion
+        architecture = 'tauri-2-with-dotnet-sidecar'
+        installer    = 'BatterMC5Remake-setup.exe'
+        sha256       = $sha
+        size         = $size
+    }
+    $release | ConvertTo-Json | Set-Content (Join-Path $clientOut 'launcher-release.json') -Encoding utf8
+
+    Write-Host ("  Tauri EXE  {0:N1} MB" -f ((Get-Item $launcherExe).Length / 1MB)) -ForegroundColor Green
+    Write-Host ("  .NET sidecar {0:N1} MB" -f ((Get-Item $portableBackend).Length / 1MB)) -ForegroundColor Green
+    Write-Host ("  NSIS 安装包 {0:N1} MB" -f ($size / 1MB)) -ForegroundColor Green
+    Write-Host "  SHA-256 $sha" -ForegroundColor DarkGray
+
+    Step '校验干净整合包源'
+    $bundleGame = Join-Path $workspaceRoot 'Better MC Remake [FORGE]'
+    if (-not (Test-Path -LiteralPath (Join-Path $bundleGame 'versions\BatterMC5Remake\BatterMC5Remake.json'))) {
+        throw "干净整合包不存在或不完整：$bundleGame"
+    }
+    foreach ($runtimeName in @('logs', 'saves', 'crash-reports', 'local', 'libraries', 'assets')) {
+        if (Test-Path -LiteralPath (Join-Path $bundleGame $runtimeName)) {
+            throw "游戏源目录不是干净状态，发现运行产物：$runtimeName"
+        }
+    }
+
+    Write-Host '  整合包不再生成 ZIP；由客户端从 OSS 按需下载' -ForegroundColor Green
+}
+
+if ($Target -in 'all', 'server') {
+    $python = Join-Path $workspaceRoot 'server\.venv\Scripts\python.exe'
+    if (-not (Test-Path -LiteralPath $python)) {
+        $command = Get-Command py -ErrorAction SilentlyContinue
+        if (-not $command) { throw '找不到 Python 3' }
+        $python = $command.Source
+    }
+    $env:PYTHONUTF8 = '1'
+
+    Step '测试 Python 官网和发布工具'
+    Push-Location server
+    try { & $python -m unittest discover -s tests -v }
+    finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { throw 'Python 服务端测试失败' }
+
+    Step '组装 Python 官网后端'
+    $serverOut = Join-Path $OutDir 'server'
+    if (Test-Path -LiteralPath $serverOut) { Remove-Item -LiteralPath $serverOut -Recurse -Force }
+    New-Item -ItemType Directory -Path $serverOut -Force | Out-Null
+    $serverAppOut = Join-Path $serverOut 'app'
+    New-Item -ItemType Directory -Path $serverAppOut -Force | Out-Null
+    Get-ChildItem -LiteralPath server\app -Filter '*.py' -File |
+        Copy-Item -Destination $serverAppOut -Force
+    Copy-Item -LiteralPath server\web -Destination $serverOut -Recurse -Force
+    Copy-Item -LiteralPath server\requirements.txt -Destination $serverOut -Force
+    Copy-Item -LiteralPath server\site.json -Destination $serverOut -Force
+    $publishedRelease = if (Test-Path -LiteralPath artifacts\client\launcher-release.json) {
+        'artifacts\client\launcher-release.json'
+    } else {
+        'server\launcher-release.json'
+    }
+    Copy-Item -LiteralPath $publishedRelease -Destination $serverOut -Force
+    New-Item -ItemType Directory -Path (Join-Path $serverOut 'publish') -Force | Out-Null
+    Copy-Item -LiteralPath server\publish\manifest.json -Destination (Join-Path $serverOut 'publish\manifest.json') -Force
+    Write-Host '  FastAPI 官网 + API；整合包下载直连 OSS' -ForegroundColor Green
+    Write-Host "  $serverOut\app\main.py" -ForegroundColor DarkGray
+}
+
+Step '完成'
+Write-Host "输出目录 $OutDir"

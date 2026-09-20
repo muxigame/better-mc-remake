@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Product>BatterMC5Remake</Product>
+    <Company>Batter MC</Company>
+    <Copyright>Batter MC</Copyright>
+    <Version>1.1.0</Version>
+
+    <!-- 调试符号内嵌到 dll 里，发布目录就不会散落一堆 .pdb -->
+    <DebugType>embedded</DebugType>
+    <!-- 不要把依赖包的 .xml 文档抄到发布目录 -->
+    <AllowedReferenceRelatedFileExtensions>none</AllowedReferenceRelatedFileExtensions>
+  </PropertyGroup>
+</Project>

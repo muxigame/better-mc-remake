@@ -1,0 +1,11 @@
+mc.muxigame.com {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8099
+
+    log {
+        output file /var/log/caddy/muxigame-access.log {
+            roll_size 20MiB
+            roll_keep 10
+        }
+    }
+}

@@ -1,0 +1,29 @@
+# Local credentials
+/.env
+*.local
+
+# Local game/server payloads are distributed through OSS, not Git
+/Better MC Remake*/
+/BMC5Pack/
+/BMC5Server/
+/server/publish/*
+!/server/publish/manifest.json
+/server/data/
+/server/.venv/
+/server/.hashcache-*.json
+
+# Generated release artifacts and caches
+/artifacts/
+**/__pycache__/
+**/*.py[cod]
+**/node_modules/
+**/bin/
+**/obj/
+/client/tauri/src-tauri/target/
+/client/tauri/src-tauri/binaries/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

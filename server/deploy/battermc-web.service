@@ -1,0 +1,23 @@
+[Unit]
+Description=Batter MC Remake website and account API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=battermc
+Group=battermc
+WorkingDirectory=/opt/battermc/server
+EnvironmentFile=/opt/battermc/.env
+ExecStart=/opt/battermc/server/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8099 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/battermc/server/data
+
+[Install]
+WantedBy=multi-user.target

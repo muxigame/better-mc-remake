@@ -1,0 +1,7 @@
+{
+  "version": "1.0.0",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BatterMC5Remake-setup.exe",
+  "sha256": "2c11a00a7ef234618fceadb21a180677518bcc1be8655e7ce76e89acb82fc7cf",
+  "size": 31707171
+}

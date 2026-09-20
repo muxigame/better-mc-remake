@@ -1,0 +1,9 @@
+{
+  "name": "Batter MC Remake",
+  "edition": "BMC5 / NeoForge",
+  "ossBaseUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/release/latest",
+  "launcherObject": "BatterMC5Remake-setup.exe",
+  "manifestObject": "manifest.json",
+  "filesPrefix": "files",
+  "serverAddress": "110.42.51.3:25565"
+}

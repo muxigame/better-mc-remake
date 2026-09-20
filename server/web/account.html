@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0b0d">
+  <title>玩家账号 · Batter MC Remake</title>
+  <link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/auth.css">
+</head>
+<body class="auth-page">
+  <header class="site-nav"><a class="brand" href="/"><span class="brand-pixel">B</span><span>BATTER MC</span></a><nav><a href="/">返回官网</a></nav><a class="nav-cta" href="/#download">下载客户端</a></header>
+  <main class="auth-shell">
+    <section class="auth-intro">
+      <p class="eyebrow">PLAYER ACCOUNT</p>
+      <h1>一个身份，<br>进入我们的世界。</h1>
+      <p>完成邮箱验证后，账号可以用于官网和客户端。客户端不会保存你的明文密码。</p>
+      <div class="auth-features"><span>邮箱验证</span><span>安全密码哈希</span><span>统一登录</span></div>
+    </section>
+
+    <section class="auth-card" id="guest-card">
+      <div class="auth-tabs"><button class="active" data-tab="login">登录</button><button data-tab="register">注册</button></div>
+      <div class="form-message" id="form-message" hidden></div>
+      <form id="login-form">
+        <label><span>邮箱或玩家名</span><input name="identity" autocomplete="username" required></label>
+        <label><span>密码</span><input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="button button-primary" type="submit">登录账号</button>
+      </form>
+      <form id="register-form" hidden>
+        <label><span>邮箱</span><input name="email" type="email" autocomplete="email" required></label>
+        <label><span>玩家名</span><input name="username" minlength="3" maxlength="16" pattern="[A-Za-z0-9_]+" autocomplete="username" required><small>3–16 位字母、数字或下划线，也是游戏中的名字。</small></label>
+        <label><span>密码</span><input name="password" type="password" minlength="10" autocomplete="new-password" required><small>至少 10 位，建议使用密码管理器生成。</small></label>
+        <button class="button button-primary" type="submit">创建账号</button>
+      </form>
+    </section>
+
+    <section class="profile-card" id="profile-card" hidden>
+      <p class="eyebrow">WELCOME BACK</p><h2 id="profile-name">—</h2><p id="profile-email">—</p>
+      <dl><div><dt>邮箱状态</dt><dd>已验证</dd></div><div><dt>账号角色</dt><dd id="profile-role">玩家</dd></div><div><dt>创建时间</dt><dd id="profile-created">—</dd></div></dl>
+      <div class="profile-actions"><a class="button button-primary" href="/#download">下载客户端</a><a class="button button-outline" id="admin-link" href="/admin.html" hidden>管理后台</a><button class="text-button" id="logout-button">退出登录</button></div>
+    </section>
+  </main>
+  <script src="/account.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+tauri/node_modules/
+tauri/src-tauri/target/
+tauri/src-tauri/binaries/*.exe
+.vs/
+*.user

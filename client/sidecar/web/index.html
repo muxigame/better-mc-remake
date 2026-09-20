@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BatterMC5Remake</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- ───────────────────────── 标题栏 ───────────────────────── -->
+<header class="titlebar" id="titlebar">
+  <div class="titlebar-brand">
+    <span class="brand-mark"></span>
+    <span class="brand-text">BatterMC5Remake</span>
+  </div>
+  <div class="titlebar-actions">
+    <button class="win-btn" id="btn-min" title="最小化" aria-label="最小化">
+      <svg viewBox="0 0 10 10"><path d="M1 5h8" /></svg>
+    </button>
+    <button class="win-btn win-btn-close" id="btn-close" title="关闭" aria-label="关闭">
+      <svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1l-8 8" /></svg>
+    </button>
+  </div>
+</header>
+
+<!-- ───────────────────────── 主界面 ───────────────────────── -->
+<main class="stage" id="stage">
+
+  <div class="hero">
+    <h1 class="wordmark">
+      <span>B</span><span>A</span><span>T</span><span>T</span><span>E</span><span>R</span><span>M</span><span>C</span><span class="gold">5</span>
+    </h1>
+    <div class="wordmark-sub">R E M A K E</div>
+    <div class="hero-meta" id="hero-meta">正在连接更新服务器…</div>
+  </div>
+
+  <div class="console">
+
+    <!-- 待机：账号登录 / 开始 -->
+    <div class="idle" id="idle">
+      <div class="account-login" id="account-login">
+        <label class="field"><span class="field-label">邮箱或玩家名</span><input id="account-identity" type="text" autocomplete="username" placeholder="你的 Batter MC 账号"></label>
+        <label class="field"><span class="field-label">密码</span><input id="account-password" type="password" autocomplete="current-password" placeholder="账号密码"></label>
+        <button class="mc-btn mc-btn-primary" id="btn-account-login">登录</button>
+        <a class="account-register" href="http://110.42.51.3:8099/account.html" target="_blank">还没有账号？前往官网注册</a>
+      </div>
+      <div class="account-ready" id="account-ready" hidden>
+        <div><span class="account-kicker">已登录</span><strong id="account-name">—</strong></div>
+        <button class="mc-btn mc-btn-primary" id="btn-play">开始游戏</button>
+        <button class="link-btn" id="btn-account-logout">退出账号</button>
+      </div>
+      <div class="field-error" id="account-error" hidden></div>
+    </div>
+
+    <!-- 工作中：进度 -->
+    <div class="working" id="working" hidden>
+      <div class="progress-head">
+        <span class="progress-phase" id="progress-phase">准备中</span>
+        <span class="progress-detail" id="progress-detail"></span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <button class="mc-btn mc-btn-ghost" id="btn-cancel">取消</button>
+    </div>
+
+  </div>
+
+  <!-- 日志抽屉。放在状态栏之前，展开时挤压上面的内容而不是盖住进度条。 -->
+  <section class="logdrawer" id="logdrawer" hidden>
+    <div class="logdrawer-head">
+      <span>运行日志</span>
+      <button class="link-btn" id="btn-log-close">收起</button>
+    </div>
+    <div class="logdrawer-body" id="logbody"></div>
+  </section>
+
+  <footer class="statusbar">
+    <div class="status-left">
+      <span id="status-pack">—</span>
+      <span class="dot">·</span>
+      <span id="status-sync">—</span>
+    </div>
+    <div class="status-right">
+      <button class="link-btn" id="btn-download-page">下载</button>
+      <button class="link-btn" id="btn-log">日志</button>
+      <button class="link-btn" id="btn-settings" title="设置">
+        <svg viewBox="0 0 16 16" class="gear"><path d="M8 5.5A2.5 2.5 0 108 10.5 2.5 2.5 0 008 5.5z"/><path d="M13.3 8c0-.4 0-.7-.1-1l1.4-1.1-1.4-2.4-1.7.6a5 5 0 00-1.7-1L9.4 1.3H6.6l-.4 1.8c-.6.2-1.2.6-1.7 1l-1.7-.6L1.4 5.9 2.8 7c0 .3-.1.6-.1 1s0 .7.1 1L1.4 10.1l1.4 2.4 1.7-.6c.5.4 1 .8 1.7 1l.4 1.8h2.8l.4-1.8c.6-.2 1.2-.6 1.7-1l1.7.6 1.4-2.4L13.2 9c.1-.3.1-.6.1-1z"/></svg>
+        <span>设置</span>
+      </button>
+    </div>
+  </footer>
+</main>
+
+<!-- ───────────────────────── 设置 ───────────────────────── -->
+<div class="overlay" id="settings" hidden>
+  <div class="panel">
+    <header class="panel-head">
+      <h2>设置</h2>
+      <button class="win-btn" id="btn-settings-close" aria-label="关闭设置">
+        <svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1l-8 8"/></svg>
+      </button>
+    </header>
+
+    <div class="panel-body">
+      <nav class="panel-nav" id="panel-nav">
+        <button class="nav-item is-active" data-tab="game">游戏</button>
+        <button class="nav-item" data-tab="java">Java</button>
+        <button class="nav-item" data-tab="update">更新</button>
+        <button class="nav-item" data-tab="optional">可选内容</button>
+        <button class="nav-item" data-tab="advanced">高级</button>
+        <button class="nav-item" data-tab="about">关于</button>
+      </nav>
+
+      <div class="panel-content">
+
+        <!-- 游戏 -->
+        <section class="tab is-active" data-tab="game">
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">内存上限</div>
+              <div class="row-desc" id="memory-desc">自动</div>
+            </div>
+            <div class="row-control memory-control">
+              <input type="range" id="memory-range" min="0" max="16384" step="512">
+              <input type="number" id="memory-input" min="0" max="65536" step="512" placeholder="自动">
+              <span class="unit">MB</span>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">窗口尺寸</div>
+              <div class="row-desc">游戏启动时的分辨率</div>
+            </div>
+            <div class="row-control">
+              <input type="number" id="win-w" min="640" max="7680" step="1" class="num">
+              <span class="times">×</span>
+              <input type="number" id="win-h" min="480" max="4320" step="1" class="num">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">全屏启动</div>
+              <div class="row-desc">忽略上面的窗口尺寸</div>
+            </div>
+            <div class="row-control"><label class="switch"><input type="checkbox" id="fullscreen"><span></span></label></div>
+          </div>
+
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">自动进入服务器</div>
+              <div class="row-desc" id="autojoin-desc">跳过多人列表，直连主服务器</div>
+            </div>
+            <div class="row-control"><label class="switch"><input type="checkbox" id="autojoin"><span></span></label></div>
+          </div>
+
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">游戏启动后保留启动器</div>
+              <div class="row-desc">默认会最小化到任务栏</div>
+            </div>
+            <div class="row-control"><label class="switch"><input type="checkbox" id="keepopen"><span></span></label></div>
+          </div>
+        </section>
+
+        <!-- Java -->
+        <section class="tab" data-tab="java">
+          <div class="hint" id="java-hint">本整合包需要 Java 21。找不到会自动下载一份，不影响你机器上原有的 Java。</div>
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">当前使用</div>
+              <div class="row-desc mono" id="java-current">自动选择</div>
+            </div>
+            <div class="row-control">
+              <button class="mc-btn mc-btn-small" id="btn-java-browse">浏览…</button>
+              <button class="mc-btn mc-btn-small" id="btn-java-auto">自动</button>
+            </div>
+          </div>
+          <div class="list-head">
+            <span>已检测到的 Java</span>
+            <button class="link-btn" id="btn-java-scan">重新扫描</button>
+          </div>
+          <div class="list" id="java-list"><div class="list-empty">点「重新扫描」开始</div></div>
+        </section>
+
+        <!-- 更新 -->
+        <section class="tab" data-tab="update">
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">更新服务器</div>
+              <div class="row-desc">整合包文件和版本信息的来源</div>
+            </div>
+            <div class="row-control wide"><input type="text" id="update-url" spellcheck="false" class="text"></div>
+          </div>
+
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">强制全量校验</div>
+              <div class="row-desc">清空本地校验缓存，下次启动逐个文件重新核对。文件被改坏时用这个。</div>
+            </div>
+            <div class="row-control"><button class="mc-btn mc-btn-small" id="btn-reverify">清空缓存</button></div>
+          </div>
+
+          <div class="row danger">
+            <div class="row-text">
+              <div class="row-title">跳过文件校验</div>
+              <div class="row-desc">启动时不检查整合包文件。只在应急时开，开着很容易和服务器对不上。</div>
+            </div>
+            <div class="row-control"><label class="switch"><input type="checkbox" id="skipverify"><span></span></label></div>
+          </div>
+
+          <div class="update-box" id="launcher-update" hidden>
+            <div class="update-title">启动器有新版本 <span id="lu-version"></span></div>
+            <div class="update-notes" id="lu-notes"></div>
+            <button class="mc-btn mc-btn-small mc-btn-primary" id="btn-launcher-update">立即更新</button>
+          </div>
+        </section>
+
+        <!-- 可选内容 -->
+        <section class="tab" data-tab="optional">
+          <div class="hint">这些内容由服务器提供但不强制安装。取消勾选会把已装的文件删掉。</div>
+          <div class="list" id="optional-list"><div class="list-empty">启动一次后才能看到可选内容</div></div>
+        </section>
+
+        <!-- 高级 -->
+        <section class="tab" data-tab="advanced">
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">额外 JVM 参数</div>
+              <div class="row-desc">空格分隔。出问题先清空这里。</div>
+            </div>
+            <div class="row-control wide"><input type="text" id="jvmargs" spellcheck="false" class="text mono" placeholder="例如 -Dxxx=yyy"></div>
+          </div>
+
+          <div class="list-head"><span>打开文件夹</span></div>
+          <div class="folder-grid">
+            <button class="mc-btn mc-btn-small" data-open="root">启动器根目录</button>
+            <button class="mc-btn mc-btn-small" data-open="game">游戏目录</button>
+            <button class="mc-btn mc-btn-small" data-open="mods">模组</button>
+            <button class="mc-btn mc-btn-small" data-open="config">配置</button>
+            <button class="mc-btn mc-btn-small" data-open="saves">存档</button>
+            <button class="mc-btn mc-btn-small" data-open="logs">日志</button>
+            <button class="mc-btn mc-btn-small" data-open="crash">崩溃报告</button>
+            <button class="mc-btn mc-btn-small" data-open="runtime">Java 运行时</button>
+          </div>
+
+          <div class="hint warn">
+            这个启动器不做任何「内存优化」「进程加速」。
+            游戏加载期间去清空 Java 进程的工作集，是随机崩溃最常见的来源。
+          </div>
+        </section>
+
+        <!-- 关于 -->
+        <section class="tab" data-tab="about">
+          <dl class="about">
+            <dt>启动器</dt><dd class="mono" id="about-launcher">—</dd>
+            <dt>整合包</dt><dd class="mono" id="about-pack">—</dd>
+            <dt>Minecraft</dt><dd class="mono" id="about-mc">—</dd>
+            <dt>加载器</dt><dd class="mono" id="about-loader">—</dd>
+            <dt>文件数</dt><dd class="mono" id="about-files">—</dd>
+            <dt>强制配置</dt><dd class="mono" id="about-overlays">—</dd>
+            <dt>根目录</dt><dd class="mono breakable" id="about-root">—</dd>
+            <dt>游戏目录</dt><dd class="mono breakable" id="about-gamedir">—</dd>
+            <dt>物理内存</dt><dd class="mono" id="about-ram">—</dd>
+          </dl>
+          <div class="notice" id="about-notice" hidden></div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 整合包下载 ───────────────────────── -->
+<div class="overlay" id="downloads" hidden>
+  <div class="panel download-panel">
+    <header class="panel-head">
+      <div>
+        <div class="panel-kicker">PACK DELIVERY</div>
+        <h2>下载整合包</h2>
+      </div>
+      <button class="win-btn" id="btn-download-close" aria-label="关闭下载页面">
+        <svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1l-8 8"/></svg>
+      </button>
+    </header>
+
+    <div class="download-content">
+      <div class="download-hero">
+        <div>
+          <span class="download-state" id="download-state">正在读取版本…</span>
+          <h3 id="download-pack-name">BatterMC5Remake</h3>
+          <p>由客户端从 OSS 下载、校验和更新。中途关闭后可以继续，不需要手工解压。</p>
+        </div>
+        <div class="download-version"><span>最新版本</span><strong id="download-version">—</strong></div>
+      </div>
+
+      <div class="download-facts">
+        <div><span>内容规模</span><strong id="download-size">—</strong></div>
+        <div><span>文件数量</span><strong id="download-files">—</strong></div>
+        <div><span>本地版本</span><strong id="download-installed">未安装</strong></div>
+      </div>
+
+      <div class="download-progress" id="download-progress" hidden>
+        <div class="progress-head">
+          <span class="progress-phase" id="download-progress-phase">准备中</span>
+          <span class="progress-detail" id="download-progress-detail"></span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="download-progress-fill"></div></div>
+      </div>
+
+      <div class="download-actions">
+        <button class="mc-btn mc-btn-primary" id="btn-install-pack">下载并安装</button>
+        <button class="mc-btn mc-btn-ghost" id="btn-download-cancel" hidden>取消</button>
+        <button class="link-btn" data-open="game">打开游戏目录</button>
+      </div>
+      <div class="hint">Minecraft 本体与运行库来自官方 CDN；整合包模组和配置从项目 OSS 下载。首次安装完成后，后续只下载有变化的文件。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 提示条 ───────────────────────── -->
+<div class="toast" id="toast" hidden><span id="toast-text"></span></div>
+
+<script src="app.js"></script>
+</body>
+</html>

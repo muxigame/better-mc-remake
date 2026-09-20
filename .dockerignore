@@ -1,0 +1,19 @@
+.git
+.github
+.env
+artifacts
+BMC5Pack
+BMC5Server
+Better MC Remake*
+client
+docs
+scripts
+server/.venv
+server/data
+server/tests
+server/deploy
+server/publish/*
+!server/publish/manifest.json
+**/__pycache__
+**/*.py[cod]
+**/.DS_Store

@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0b0d"><title>管理后台 · Batter MC Remake</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/auth.css"></head>
+<body class="auth-page admin-page">
+  <header class="site-nav"><a class="brand" href="/"><span class="brand-pixel">B</span><span>BATTER MC</span></a><nav><a href="/account.html">账号中心</a><a href="/">返回官网</a></nav><span class="admin-badge">ADMIN</span></header>
+  <main class="admin-shell">
+    <div class="admin-heading"><div><p class="eyebrow">CONTROL ROOM</p><h1>管理后台</h1><p>账号管理与运营信息都在官网内部，不单独维护另一套前端。</p></div><button class="button button-outline" id="refresh-users">刷新数据</button></div>
+    <section class="admin-panel"><div class="admin-panel-head"><h2>玩家账号</h2><span id="user-count">—</span></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>玩家名</th><th>邮箱</th><th>状态</th><th>角色</th><th>最后登录</th></tr></thead><tbody id="user-rows"><tr><td colspan="6">正在读取…</td></tr></tbody></table></div></section>
+  </main>
+  <script src="/admin.js" defer></script>
+</body>
+</html>

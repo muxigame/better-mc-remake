@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- 客户端专用：需要注册表扫描 Java、需要 Windows 进程控制。 -->
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\protocol\BatterMC.Protocol.csproj" />
+  </ItemGroup>
+</Project>
