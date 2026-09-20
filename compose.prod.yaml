@@ -9,7 +9,7 @@ services:
       BMC_DATABASE_PATH: /app/server/data/battermc.db
       BMC_SERVE_WEB: "0"
     volumes:
-      - ./data:/app/server/data
+      - server-data:/app/server/data
     expose:
       - "8099"
     healthcheck:
@@ -34,3 +34,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+volumes:
+  server-data:
