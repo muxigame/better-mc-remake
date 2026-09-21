@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     将 BatterMC 客户端安装包、清单和整合包文件发布到阿里云 OSS。
 
@@ -13,7 +13,9 @@ param(
     [string]$Bucket,
     [string]$Prefix,
     [string]$Region,
-    [string]$OutDir
+    [string]$OutDir,
+
+    [switch]$LauncherOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -65,10 +67,12 @@ $ossutil = Get-Command ossutil -ErrorAction SilentlyContinue
 if (-not $ossutil) {
     $installed = Join-Path $env:LOCALAPPDATA 'Programs\ossutil\ossutil-2.4.0-windows-amd64\ossutil.exe'
     if (Test-Path -LiteralPath $installed) {
-        $ossutil = Get-Item -LiteralPath $installed
+        $ossutilPath = $installed
     } else {
         throw '找不到 ossutil。请先安装阿里云官方 ossutil 2.x。'
     }
+} else {
+    $ossutilPath = $ossutil.Path
 }
 
 $installer = Join-Path $OutDir 'client\BatterMC5Remake-setup.exe'
@@ -80,13 +84,15 @@ $files = @(
         Path = $installer
         Object = $Prefix + 'BatterMC5Remake-setup.exe'
         ContentType = 'application/vnd.microsoft.portable-executable'
-    },
-    [pscustomobject]@{
+    }
+)
+if (-not $LauncherOnly) {
+    $files += [pscustomobject]@{
         Path = $manifest
         Object = $Prefix + 'manifest.json'
         ContentType = 'application/json; charset=utf-8'
     }
-)
+}
 
 foreach ($file in $files) {
     if (-not (Test-Path -LiteralPath $file.Path -PathType Leaf)) {
@@ -96,7 +102,7 @@ foreach ($file in $files) {
 if (-not (Test-Path -LiteralPath $releaseMetadata -PathType Leaf)) {
     throw "客户端发布元数据不存在：$releaseMetadata"
 }
-if (-not (Test-Path -LiteralPath $packFiles -PathType Container)) {
+if (-not $LauncherOnly -and -not (Test-Path -LiteralPath $packFiles -PathType Container)) {
     throw "整合包发布目录不存在：$packFiles"
 }
 
@@ -110,19 +116,15 @@ foreach ($file in $files) {
     $sha256 = (Get-FileHash -LiteralPath $file.Path -Algorithm SHA256).Hash.ToLowerInvariant()
     Write-Host ("  {0}  {1:N1} MB  SHA-256 {2}" -f $item.Name, ($item.Length / 1MB), $sha256)
 }
-$packFileCount = (Get-ChildItem -LiteralPath $packFiles -File -Recurse | Measure-Object).Count
-Write-Host "  整合包文件 $packFileCount 个 -> $($Prefix)files/" -ForegroundColor DarkGray
-
-if (-not $PSCmdlet.ShouldProcess($destination, '上传客户端、清单和整合包文件')) { return }
-
-# OSS 的“目录”是以 / 结尾的零字节对象；若目录已存在，mkdir 会返回非零。
-& $ossutil.FullName mkdir $destination @common 2>$null
-if ($LASTEXITCODE -ne 0) {
-    & $ossutil.FullName stat $destination @common *> $null
-    if ($LASTEXITCODE -ne 0) {
-        throw "无法创建或访问 OSS 前缀：$destination"
-    }
+$action = if ($LauncherOnly) { '上传客户端安装包' } else { '上传客户端、清单和整合包文件' }
+if ($LauncherOnly) {
+    Write-Host '  本次仅发布启动器；整合包 manifest 与游戏文件保持不变' -ForegroundColor DarkGray
+} else {
+    $packFileCount = (Get-ChildItem -LiteralPath $packFiles -File -Recurse | Measure-Object).Count
+    Write-Host "  整合包文件 $packFileCount 个 -> $($Prefix)files/" -ForegroundColor DarkGray
 }
+
+if (-not $PSCmdlet.ShouldProcess($destination, $action)) { return }
 
 $checkpoint = Join-Path $OutDir '.ossutil-checkpoint'
 New-Item -ItemType Directory -Path $checkpoint -Force | Out-Null
@@ -130,24 +132,26 @@ New-Item -ItemType Directory -Path $checkpoint -Force | Out-Null
 foreach ($file in $files) {
     $target = "oss://$Bucket/$($file.Object)"
     Write-Host "上传 $($file.Path) -> $target" -ForegroundColor Cyan
-    & $ossutil.FullName cp $file.Path $target -f `
+    & $ossutilPath cp $file.Path $target -f `
         --checkpoint-dir $checkpoint `
         --content-type $file.ContentType `
         --cache-control 'no-cache, no-store, must-revalidate' `
         @common
     if ($LASTEXITCODE -ne 0) { throw "上传失败：$target" }
 
-    & $ossutil.FullName stat $target --human-readable @common
+    & $ossutilPath stat $target --human-readable @common
     if ($LASTEXITCODE -ne 0) { throw "上传后校验失败：$target" }
 }
 
-$packTarget = "oss://$Bucket/$($Prefix)files/"
-Write-Host "同步整合包 $packFiles -> $packTarget" -ForegroundColor Cyan
-& $ossutil.FullName cp $packFiles $packTarget -r -f `
-    --checkpoint-dir $checkpoint `
-    --cache-control 'public, max-age=31536000, immutable' `
-    @common
-if ($LASTEXITCODE -ne 0) { throw "整合包文件上传失败：$packTarget" }
+if (-not $LauncherOnly) {
+    $packTarget = "oss://$Bucket/$($Prefix)files/"
+    Write-Host "同步整合包 $packFiles -> $packTarget" -ForegroundColor Cyan
+    & $ossutilPath cp $packFiles $packTarget -r -f `
+        --checkpoint-dir $checkpoint `
+        --cache-control 'public, max-age=31536000, immutable' `
+        @common
+    if ($LASTEXITCODE -ne 0) { throw "整合包文件上传失败：$packTarget" }
+}
 
 Write-Host "发布完成：$destination" -ForegroundColor Green
 Copy-Item -LiteralPath $releaseMetadata -Destination (Join-Path $workspaceRoot 'server\launcher-release.json') -Force

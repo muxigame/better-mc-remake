@@ -1,35 +1,36 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0b0d">
-  <title>玩家账号 · Batter MC Remake</title>
+  <title>玩家资料 · Batter MC Remake</title>
   <link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/auth.css">
 </head>
 <body class="auth-page">
   <header class="site-nav"><a class="brand" href="/"><span class="brand-pixel">B</span><span>BATTER MC</span></a><nav><a href="/">返回官网</a></nav><a class="nav-cta" href="/#download">下载客户端</a></header>
   <main class="auth-shell">
     <section class="auth-intro">
-      <p class="eyebrow">PLAYER ACCOUNT</p>
-      <h1>一个身份，<br>进入我们的世界。</h1>
-      <p>完成邮箱验证后，账号可以用于官网和客户端。客户端不会保存你的明文密码。</p>
-      <div class="auth-features"><span>邮箱验证</span><span>安全密码哈希</span><span>统一登录</span></div>
+      <p class="eyebrow">PLAYER PROFILE</p>
+      <h1 id="profile-nickname">—</h1>
+      <p><span id="profile-username">—</span> · UID <span id="profile-uid">—</span></p>
+      <div class="auth-features"><span>Muxi Account</span><span>OpenID Connect</span><span>统一身份</span></div>
     </section>
 
-    <section class="auth-card" id="guest-card">
-      <p class="eyebrow">MUXI ACCOUNT</p>
-      <h2>使用统一账户继续</h2>
-      <p>登录与注册由 Muxi Account 完成。Batter MC 官网不会接收或保存你的账户密码。</p>
-      <div class="form-message" id="form-message" hidden></div>
+    <section class="profile-card" id="profile-card">
+      <p class="eyebrow">BETTER MC</p><h2>玩家资料</h2>
+      <p>身份由 Muxi Account 提供；Better MC 只保存本站会话和业务数据，不保存账户密码。</p>
+      <dl>
+        <div><dt>Minecraft 游戏名</dt><dd id="profile-game-name">—</dd></div>
+        <div><dt>邮箱</dt><dd id="profile-email">—</dd></div>
+        <div><dt>邮箱状态</dt><dd id="profile-email-status">—</dd></div>
+        <div><dt>账号角色</dt><dd id="profile-role">玩家</dd></div>
+        <div><dt>创建时间</dt><dd id="profile-created">—</dd></div>
+      </dl>
       <div class="profile-actions">
-        <a class="button button-primary" href="/api/v1/auth/login?return_to=%2Faccount.html">使用 Muxi Account 登录</a>
-        <a class="button button-outline" href="/api/v1/auth/register">创建统一账户</a>
+        <a class="button button-primary" href="/#download">下载客户端</a>
+        <a class="button button-outline" href="https://account.muxigame.com/account">管理 Muxi Account</a>
+        <a class="button button-outline" id="admin-link" href="/admin.html" hidden>管理后台</a>
+        <button class="text-button" id="logout-button">退出 Better MC</button>
       </div>
-    </section>
-
-    <section class="profile-card" id="profile-card" hidden>
-      <p class="eyebrow">WELCOME BACK</p><h2 id="profile-name">—</h2><p id="profile-email">—</p>
-      <dl><div><dt>邮箱状态</dt><dd>已验证</dd></div><div><dt>账号角色</dt><dd id="profile-role">玩家</dd></div><div><dt>创建时间</dt><dd id="profile-created">—</dd></div></dl>
-      <div class="profile-actions"><a class="button button-primary" href="/#download">下载客户端</a><a class="button button-outline" id="admin-link" href="/admin.html" hidden>管理后台</a><button class="text-button" id="logout-button">退出登录</button></div>
     </section>
   </main>
   <script src="/account.js" defer></script>

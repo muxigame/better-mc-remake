@@ -201,31 +201,33 @@ def manifest() -> JSONResponse:
     return JSONResponse(payload, headers={"Cache-Control": "public, max-age=60"})
 
 
+@app.get("/account.html", include_in_schema=False)
+def account_page(request: Request):
+    account = web_auth_store.session(request.cookies.get("bmc_session"))
+    if account is None:
+        return RedirectResponse("/api/v1/auth/login?return_to=%2Faccount.html", status_code=303)
+    return FileResponse(WEB_ROOT / "account.html")
+
+
 @app.get("/api/v1/auth/login")
 def login(return_to: str = "/account.html") -> RedirectResponse:
     state, _verifier, challenge = web_auth_store.create_login(safe_return_to(return_to))
     return RedirectResponse(oidc_client.authorize_url(state, challenge), status_code=303)
 
 
-@app.get("/api/v1/auth/register")
-def register(return_to: str = "/account.html") -> RedirectResponse:
-    destination = f"{oidc_issuer}/register"
-    return RedirectResponse(destination, status_code=303)
-
-
 @app.get("/api/v1/auth/callback")
 def auth_callback(code: str = "", state: str = "", error: str = "", error_description: str = "") -> RedirectResponse:
     login_state = web_auth_store.consume_login(state) if state else None
     if login_state is None:
-        return RedirectResponse("/account.html?auth=invalid_state", status_code=303)
+        return RedirectResponse("/?auth=invalid_state", status_code=303)
     verifier, return_to = login_state
     if error or not code:
-        return RedirectResponse(f"/account.html?auth={quote(error or 'missing_code', safe='')}", status_code=303)
+        return RedirectResponse(f"/?auth={quote(error or 'missing_code', safe='')}", status_code=303)
     try:
         tokens = oidc_client.exchange_code(code, verifier)
         account = oidc_client.userinfo(str(tokens.get("access_token", "")))
     except (RuntimeError, ValueError):
-        return RedirectResponse("/account.html?auth=failed", status_code=303)
+        return RedirectResponse("/?auth=failed", status_code=303)
     token = web_auth_store.create_session(account)
     response = RedirectResponse(return_to, status_code=303)
     response.set_cookie(

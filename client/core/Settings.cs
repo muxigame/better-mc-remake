@@ -6,6 +6,8 @@ namespace BatterMC.Core;
 /// <summary>玩家可以改的东西。服务器不碰这个文件。</summary>
 public sealed class LauncherSettings
 {
+    public const string OfficialUpdateBaseUrl = "https://mc.muxigame.com";
+
     public string Username { get; set; } = "";
 
     /// <summary>手动指定的 java 可执行文件。留空则自动探测 / 自动下载。</summary>
@@ -25,7 +27,7 @@ public sealed class LauncherSettings
     public bool AutoJoinServer { get; set; } = true;
 
     /// <summary>更新服务器根地址。</summary>
-    public string UpdateBaseUrl { get; set; } = "https://mc.muxigame.com";
+    public string UpdateBaseUrl { get; set; } = OfficialUpdateBaseUrl;
 
     /// <summary>Muxi Account 的 OAuth/OIDC 服务根地址。与整合包更新服务解耦。</summary>
     public string AuthBaseUrl { get; set; } = "https://account.muxigame.com";

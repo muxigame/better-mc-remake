@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     构建 Tauri 客户端、.NET sidecar 和 Python 官网后端。
 
@@ -99,18 +99,7 @@ if ($Target -in 'all', 'client') {
     Write-Host ("  NSIS 安装包 {0:N1} MB" -f ($size / 1MB)) -ForegroundColor Green
     Write-Host "  SHA-256 $sha" -ForegroundColor DarkGray
 
-    Step '校验干净整合包源'
-    $bundleGame = Join-Path $workspaceRoot 'Better MC Remake [FORGE]'
-    if (-not (Test-Path -LiteralPath (Join-Path $bundleGame 'versions\BatterMC5Remake\BatterMC5Remake.json'))) {
-        throw "干净整合包不存在或不完整：$bundleGame"
-    }
-    foreach ($runtimeName in @('logs', 'saves', 'crash-reports', 'local', 'libraries', 'assets')) {
-        if (Test-Path -LiteralPath (Join-Path $bundleGame $runtimeName)) {
-            throw "游戏源目录不是干净状态，发现运行产物：$runtimeName"
-        }
-    }
-
-    Write-Host '  整合包不再生成 ZIP；由客户端从 OSS 按需下载' -ForegroundColor Green
+    Write-Host '  启动器构建完成；整合包内容由独立的 manifest/OSS 发布流程维护' -ForegroundColor Green
 }
 
 if ($Target -in 'all', 'server') {

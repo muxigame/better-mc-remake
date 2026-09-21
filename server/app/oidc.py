@@ -45,8 +45,12 @@ def safe_return_to(value: str | None) -> str:
 @dataclass(frozen=True)
 class WebsiteAccount:
     subject: str
+    uid: int
     username: str
-    email: str
+    nickname: str
+    game_name: str
+    email: str | None
+    email_verified: bool
     role: str
     created_at: str | None = None
     last_login_at: str | None = None
@@ -55,13 +59,24 @@ class WebsiteAccount:
     def from_userinfo(cls, data: dict) -> "WebsiteAccount":
         subject = str(data.get("sub", ""))
         username = str(data.get("username") or data.get("preferred_username") or "")
-        email = str(data.get("email", ""))
-        if not subject or not username or not email:
+        nickname = str(data.get("nickname") or data.get("name") or username)
+        game_name = str(data.get("game_name") or "")
+        try:
+            uid = int(data.get("muxi_uid"))
+        except (TypeError, ValueError):
+            uid = 0
+        email = str(data.get("email")) if data.get("email") else None
+        email_verified = bool(data.get("email_verified")) if email else False
+        if not subject or not username or not game_name or uid < 10000:
             raise ValueError("统一账户返回的用户信息不完整")
         return cls(
             subject=subject,
+            uid=uid,
             username=username,
+            nickname=nickname,
+            game_name=game_name,
             email=email,
+            email_verified=email_verified,
             role=str(data.get("role", "player")),
             created_at=data.get("created_at"),
             last_login_at=data.get("last_login_at"),
@@ -70,10 +85,14 @@ class WebsiteAccount:
     def public(self) -> dict:
         return {
             "id": self.subject,
+            "uid": self.uid,
             "username": self.username,
+            "nickname": self.nickname,
+            "gameName": self.game_name,
             "email": self.email,
+            "emailVerified": self.email_verified,
             "role": self.role,
-            "verified": True,
+            "verified": self.email_verified,
             "createdAt": self.created_at,
             "lastLoginAt": self.last_login_at,
         }
@@ -98,6 +117,9 @@ class WebsiteAuthStore:
 
     def _init_schema(self) -> None:
         with self._lock, self.connect() as db:
+            columns = {str(row["name"]) for row in db.execute("PRAGMA table_info(oidc_web_sessions)").fetchall()}
+            if columns and not {"uid", "nickname", "game_name", "email_verified"}.issubset(columns):
+                db.execute("DROP TABLE oidc_web_sessions")
             db.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS oidc_login_states (
@@ -109,8 +131,12 @@ class WebsiteAuthStore:
                 CREATE TABLE IF NOT EXISTS oidc_web_sessions (
                     token_hash TEXT PRIMARY KEY,
                     subject TEXT NOT NULL,
+                    uid INTEGER NOT NULL,
                     username TEXT NOT NULL,
-                    email TEXT NOT NULL,
+                    nickname TEXT NOT NULL,
+                    game_name TEXT NOT NULL,
+                    email TEXT,
+                    email_verified INTEGER NOT NULL DEFAULT 0,
                     role TEXT NOT NULL,
                     created_at_claim TEXT,
                     last_login_at_claim TEXT,
@@ -147,10 +173,12 @@ class WebsiteAuthStore:
         with self._lock, self.connect() as db:
             db.execute(
                 """INSERT INTO oidc_web_sessions
-                   (token_hash,subject,username,email,role,created_at_claim,last_login_at_claim,expires_at)
-                   VALUES(?,?,?,?,?,?,?,?)""",
+                   (token_hash,subject,uid,username,nickname,game_name,email,email_verified,role,
+                    created_at_claim,last_login_at_claim,expires_at)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
-                    token_hash(raw), account.subject, account.username, account.email, account.role,
+                    token_hash(raw), account.subject, account.uid, account.username, account.nickname,
+                    account.game_name, account.email, 1 if account.email_verified else 0, account.role,
                     account.created_at, account.last_login_at, iso(utc_now() + timedelta(days=days)),
                 ),
             )
@@ -167,7 +195,10 @@ class WebsiteAuthStore:
         if row is None:
             return None
         return WebsiteAccount(
-            subject=str(row["subject"]), username=str(row["username"]), email=str(row["email"]),
+            subject=str(row["subject"]), uid=int(row["uid"]), username=str(row["username"]),
+            nickname=str(row["nickname"]), game_name=str(row["game_name"]),
+            email=str(row["email"]) if row["email"] is not None else None,
+            email_verified=bool(row["email_verified"]),
             role=str(row["role"]), created_at=row["created_at_claim"], last_login_at=row["last_login_at_claim"],
         )
 

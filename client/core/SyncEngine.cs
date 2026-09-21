@@ -37,6 +37,9 @@ public sealed class SyncEngine
     private readonly LauncherSettings _settings;
     private readonly Downloader _downloader;
 
+    public string? LastManifestUrl { get; private set; }
+    public string? LastManifestError { get; private set; }
+
     public SyncEngine(LauncherPaths paths, LocalState state, LauncherSettings settings, Downloader downloader)
     {
         _paths = paths;
@@ -47,31 +50,68 @@ public sealed class SyncEngine
 
     public async Task<PackManifest> FetchManifestAsync(string baseUrl, CancellationToken ct)
     {
-        var url = baseUrl.TrimEnd('/') + "/api/v1/manifest";
-        Log.Info($"拉取清单：{url}");
-        try
+        var urls = ManifestCandidates(baseUrl).ToArray();
+        Exception? lastError = null;
+
+        foreach (var url in urls)
         {
-            var json = await _downloader.GetStringAsync(url, ct).ConfigureAwait(false);
-            var manifest = PackManifest.FromJson(json)
-                ?? throw new InvalidOperationException("清单内容为空");
-            AtomicFile.WriteAllText(_paths.ManifestCacheFile, json);
-            Log.Info($"清单版本 {manifest.Pack.Version}，{manifest.Files.Count} 个文件");
-            return manifest;
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            Log.Warn($"拉取清单失败（{ex.Message}），尝试使用上次缓存");
-            if (File.Exists(_paths.ManifestCacheFile))
+            Log.Info($"拉取清单：{url}");
+            try
             {
-                var cached = PackManifest.FromJson(File.ReadAllText(_paths.ManifestCacheFile));
-                if (cached is not null)
-                {
-                    Log.Warn($"离线模式：使用缓存的清单 {cached.Pack.Version}");
-                    return cached;
-                }
+                var json = await _downloader.GetStringAsync(url, ct).ConfigureAwait(false);
+                var manifest = PackManifest.FromJson(json)
+                    ?? throw new InvalidOperationException("清单内容为空");
+                AtomicFile.WriteAllText(_paths.ManifestCacheFile, json);
+                LastManifestUrl = url;
+                LastManifestError = null;
+                Log.Info($"清单版本 {manifest.Pack.Version}，{manifest.Files.Count} 个文件；来源 {url}");
+                return manifest;
             }
-            throw;
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                lastError = ex;
+                LastManifestError = ex.Message;
+                Log.Warn($"更新源失败 {url}：{ex.Message}");
+            }
         }
+
+        if (lastError is null)
+            lastError = new InvalidOperationException("没有可用的更新清单地址");
+
+        Log.Warn($"所有在线更新源均失败（{lastError.Message}），尝试使用上次缓存");
+        if (File.Exists(_paths.ManifestCacheFile))
+        {
+            var cached = PackManifest.FromJson(File.ReadAllText(_paths.ManifestCacheFile));
+            if (cached is not null)
+            {
+                LastManifestUrl = "cache";
+                Log.Warn($"离线模式：使用缓存的清单 {cached.Pack.Version}");
+                return cached;
+            }
+        }
+        throw lastError;
+    }
+
+    private static IEnumerable<string> ManifestCandidates(string configured)
+    {
+        static string ManifestUrl(string value)
+        {
+            var trimmed = value.Trim().TrimEnd('/');
+            if (trimmed.EndsWith("/api/v1/manifest", StringComparison.OrdinalIgnoreCase))
+                return trimmed;
+            if (trimmed.EndsWith("/api/v1", StringComparison.OrdinalIgnoreCase))
+                return trimmed + "/manifest";
+            return trimmed + "/api/v1/manifest";
+        }
+
+        var primary = ManifestUrl(string.IsNullOrWhiteSpace(configured)
+            ? LauncherSettings.OfficialUpdateBaseUrl
+            : configured);
+        yield return primary;
+
+        var official = ManifestUrl(LauncherSettings.OfficialUpdateBaseUrl);
+        if (!primary.Equals(official, StringComparison.OrdinalIgnoreCase))
+            yield return official;
     }
 
     /// <summary>

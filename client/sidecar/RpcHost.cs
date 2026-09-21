@@ -32,6 +32,8 @@ internal sealed class RpcHost : IDisposable
     private string? _accountToken;
     private string? _accountRefreshToken;
     private JsonObject? _account;
+    private string? _activeUpdateSource;
+    private string? _updateError;
 
     public RpcHost(LauncherPaths paths, LauncherSettings settings, LocalState state)
     {
@@ -138,10 +140,13 @@ internal sealed class RpcHost : IDisposable
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(12));
             var sync = new SyncEngine(_paths, _state, _settings, _downloader);
             _manifest = await sync.FetchManifestAsync(_settings.UpdateBaseUrl, timeout.Token).ConfigureAwait(false);
+            _activeUpdateSource = sync.LastManifestUrl;
+            _updateError = null;
             CheckLauncherUpdate();
         }
         catch (Exception ex)
         {
+            _updateError = ex.Message;
             Log.Warn($"启动时获取更新信息失败：{ex.Message}");
         }
         return BuildState();
@@ -179,6 +184,13 @@ internal sealed class RpcHost : IDisposable
             ["autoMemoryMb"] = _settings.EffectiveMaxMemoryMb(),
             ["totalMemoryMb"] = TotalMemoryMb(),
             ["account"] = _account?.DeepClone(),
+            ["updateServer"] = new JsonObject
+            {
+                ["configured"] = _settings.UpdateBaseUrl,
+                ["active"] = _activeUpdateSource,
+                ["connected"] = _manifest is not null,
+                ["error"] = _updateError,
+            },
         };
 
         if (_manifest is not null)
@@ -599,10 +611,10 @@ internal sealed class RpcHost : IDisposable
             listener.Stop();
         }
 
-        var username = _account?["username"]?.GetValue<string>() ?? "";
-        if (!OfflineAuth.IsValidUsername(username))
-            throw new InvalidOperationException("统一账户用户名不符合 Minecraft 玩家名规则");
-        _settings.Username = username;
+        var gameName = _account?["game_name"]?.GetValue<string>() ?? "";
+        if (!OfflineAuth.IsValidUsername(gameName))
+            throw new InvalidOperationException("统一账户游戏名不符合 Minecraft 玩家名规则");
+        _settings.Username = gameName;
         _settings.Save(_paths.SettingsFile);
         Emit("state", BuildState());
         return BuildState();
@@ -619,8 +631,8 @@ internal sealed class RpcHost : IDisposable
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(json?["error_description"]?.GetValue<string>() ?? "统一账户会话无效");
         _account = json;
-        var username = _account?["username"]?.GetValue<string>() ?? "";
-        if (!OfflineAuth.IsValidUsername(username))
+        var gameName = _account?["game_name"]?.GetValue<string>() ?? "";
+        if (!OfflineAuth.IsValidUsername(gameName))
         {
             _account = null;
             throw new InvalidOperationException("登录服务器返回了无效账号信息");
@@ -687,10 +699,10 @@ internal sealed class RpcHost : IDisposable
             }
             await LoadAccountAsync().ConfigureAwait(false);
         }
-        var username = _account?["username"]?.GetValue<string>() ?? "";
-        if (!OfflineAuth.IsValidUsername(username))
+        var gameName = _account?["game_name"]?.GetValue<string>() ?? "";
+        if (!OfflineAuth.IsValidUsername(gameName))
             throw new InvalidOperationException("账号玩家名无效，请联系管理员");
-        _settings.Username = username;
+        _settings.Username = gameName;
     }
 
     private JsonNode DetectJava()

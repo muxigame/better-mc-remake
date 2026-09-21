@@ -201,7 +201,7 @@ function render(s) {
   const account = state.account;
   $('account-login').hidden = !!account;
   $('account-ready').hidden = !account;
-  $('account-name').textContent = account ? account.username : '—';
+  $('account-name').textContent = account ? (account.nickname || account.username) : '—';
   $('win-w').value = st.windowWidth || 1280;
   $('win-h').value = st.windowHeight || 720;
   $('fullscreen').checked = !!st.fullscreen;
@@ -235,6 +235,15 @@ function render(s) {
     $('download-files').textContent = pack.fileCount + ' 个';
 
     if (pack.notice) { $('about-notice').textContent = pack.notice; $('about-notice').hidden = false; }
+  } else {
+    const update = state.updateServer || {};
+    if (update.error) {
+      $('hero-meta').textContent = '更新服务器连接失败';
+      $('status-pack').textContent = '无法获取整合包信息';
+      $('download-state').textContent = '无法读取在线版本';
+    } else {
+      $('hero-meta').textContent = '正在连接更新服务器…';
+    }
   }
 
   const installed = state.installedVersion;
