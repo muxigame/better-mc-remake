@@ -40,10 +40,9 @@
     <!-- 待机：账号登录 / 开始 -->
     <div class="idle" id="idle">
       <div class="account-login" id="account-login">
-        <label class="field"><span class="field-label">邮箱或玩家名</span><input id="account-identity" type="text" autocomplete="username" placeholder="你的 Batter MC 账号"></label>
-        <label class="field"><span class="field-label">密码</span><input id="account-password" type="password" autocomplete="current-password" placeholder="账号密码"></label>
-        <button class="mc-btn mc-btn-primary" id="btn-account-login">登录</button>
-        <a class="account-register" href="http://110.42.51.3:8099/account.html" target="_blank">还没有账号？前往官网注册</a>
+        <div class="account-oauth-note">统一使用 Muxi Account。登录和注册都会在系统浏览器中安全完成，启动器不会接收你的密码。</div>
+        <button class="mc-btn mc-btn-primary" id="btn-account-login">登录 Muxi Account</button>
+        <button class="mc-btn mc-btn-secondary" id="btn-account-register">创建 Muxi Account</button>
       </div>
       <div class="account-ready" id="account-ready" hidden>
         <div><span class="account-kicker">已登录</span><strong id="account-name">—</strong></div>
@@ -192,6 +191,13 @@
               <div class="row-desc">整合包文件和版本信息的来源</div>
             </div>
             <div class="row-control wide"><input type="text" id="update-url" spellcheck="false" class="text"></div>
+          </div>
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">统一账户服务器</div>
+              <div class="row-desc">Muxi Account OAuth / OpenID Connect 服务</div>
+            </div>
+            <div class="row-control wide"><input type="text" id="auth-url" spellcheck="false" class="text"></div>
           </div>
 
           <div class="row">

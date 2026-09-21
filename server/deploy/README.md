@@ -26,20 +26,17 @@
     └── data/battermc.db
 ```
 
-FastAPI 只监听 `127.0.0.1:8099`。当前香港生产机使用宝塔自带 Nginx，配置模板为 `nginx-muxigame.conf`；`Caddyfile` 仅保留给不运行现有 Web 服务的新机器。账号数据库目录需要持久化并每天备份。
+FastAPI 只监听 `127.0.0.1:8099`。当前香港生产机使用宝塔自带 Nginx，配置模板为 `nginx-muxigame.conf`；`Caddyfile` 仅保留给不运行现有 Web 服务的新机器。Better MC 自己不再保存统一账户密码；账户数据库在独立 `muxi-auth` 服务中持久化和备份。
 
 生产 `.env` 至少配置：
 
 ```dotenv
 BMC_PUBLIC_URL=https://mc.muxigame.com
 BMC_DATABASE_PATH=server/data/battermc.db
-BMC_AUTH_DEV_VERIFY=0
-BMC_SMTP_HOST=smtpdm.aliyun.com
-BMC_SMTP_PORT=465
-BMC_SMTP_SSL=1
-BMC_SMTP_USERNAME=no-reply@muxigame.com
-BMC_SMTP_PASSWORD=
-BMC_SMTP_FROM="Batter MC Remake <no-reply@muxigame.com>"
+BMC_AUTH_ISSUER=https://account.muxigame.com
+BMC_AUTH_CLIENT_ID=better-mc-web
+BMC_AUTH_CLIENT_SECRET=<与 muxi-auth 相同的高熵 secret>
+BMC_AUTH_REDIRECT_URI=https://mc.muxigame.com/api/v1/auth/callback
 ```
 
-账号功能必须在 HTTPS 生效、SMTP 测试邮件投递成功后才开放注册。
+`account.muxigame.com` 的 SMTP、邮箱验证和 OAuth/OIDC 配置见独立 `muxi-auth` 仓库。

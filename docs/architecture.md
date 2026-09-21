@@ -277,12 +277,16 @@ FML 不从 classpath 找它们，而是靠 `-DlibraryDirectory` 加上
 
 ### 账号登录与游戏 UUID
 
-玩家先在官网用邮箱注册并完成验证，客户端通过 `/api/v1/auth/launcher-login`
-取得独立会话令牌。下载和启动前都会用 `/api/v1/auth/me` 校验令牌；令牌只保存在
-当前客户端进程内，关闭后需要重新登录。公网登录只允许 HTTPS。
+账号系统已经从 Better MC 拆到独立 `muxi-auth`。`account.muxigame.com` 是统一的
+OAuth 2.0 / OpenID Connect Provider，负责注册、邮箱验证、密码、角色和统一身份。
 
-网站会话使用 HttpOnly、SameSite=Strict Cookie；密码使用 Argon2id，邮箱验证令牌和
-登录令牌在 SQLite 中只保存 SHA-256 摘要。管理后台复用官网账号和权限，不另建服务。
+Better MC 官网是 confidential OIDC client，使用 Authorization Code + PKCE；回调完成后
+只保存本站 HttpOnly Session。Better MC Launcher 是 public native client，不内置
+`client_secret`，使用系统浏览器、Authorization Code + PKCE，并监听 `127.0.0.1` 随机端口
+接收回调。启动器只在内存中保存 Access/Refresh Token，不接触用户密码。
+
+游戏本体暂时不接 OAuth。启动器从 UserInfo 取得统一账户用户名后仍调用
+`GameSession.Offline(username)`，因此 Minecraft 和服务器侧认证逻辑保持简单。
 
 游戏服目前仍是离线模式，因此验证通过的账号玩家名会固定映射到离线 UUID。
 

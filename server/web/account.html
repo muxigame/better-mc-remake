@@ -16,19 +16,14 @@
     </section>
 
     <section class="auth-card" id="guest-card">
-      <div class="auth-tabs"><button class="active" data-tab="login">登录</button><button data-tab="register">注册</button></div>
+      <p class="eyebrow">MUXI ACCOUNT</p>
+      <h2>使用统一账户继续</h2>
+      <p>登录与注册由 Muxi Account 完成。Batter MC 官网不会接收或保存你的账户密码。</p>
       <div class="form-message" id="form-message" hidden></div>
-      <form id="login-form">
-        <label><span>邮箱或玩家名</span><input name="identity" autocomplete="username" required></label>
-        <label><span>密码</span><input name="password" type="password" autocomplete="current-password" required></label>
-        <button class="button button-primary" type="submit">登录账号</button>
-      </form>
-      <form id="register-form" hidden>
-        <label><span>邮箱</span><input name="email" type="email" autocomplete="email" required></label>
-        <label><span>玩家名</span><input name="username" minlength="3" maxlength="16" pattern="[A-Za-z0-9_]+" autocomplete="username" required><small>3–16 位字母、数字或下划线，也是游戏中的名字。</small></label>
-        <label><span>密码</span><input name="password" type="password" minlength="10" autocomplete="new-password" required><small>至少 10 位，建议使用密码管理器生成。</small></label>
-        <button class="button button-primary" type="submit">创建账号</button>
-      </form>
+      <div class="profile-actions">
+        <a class="button button-primary" href="/api/v1/auth/login?return_to=%2Faccount.html">使用 Muxi Account 登录</a>
+        <a class="button button-outline" href="/api/v1/auth/register">创建统一账户</a>
+      </div>
     </section>
 
     <section class="profile-card" id="profile-card" hidden>

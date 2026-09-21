@@ -3,17 +3,16 @@ from __future__ import annotations
 import copy
 import json
 import os
-import re
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel
 
-from .auth import AuthStore, SlidingWindowLimiter, send_verification_email
+from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
 
 
 SERVER_ROOT = Path(__file__).resolve().parent.parent
@@ -67,9 +66,14 @@ database_setting = os.getenv("BMC_DATABASE_PATH", "server/data/battermc.db")
 database_path = Path(database_setting)
 if not database_path.is_absolute():
     database_path = WORKSPACE_ROOT / database_path
-auth_store = AuthStore(database_path)
-login_limiter = SlidingWindowLimiter(attempts=10, seconds=300)
-register_limiter = SlidingWindowLimiter(attempts=5, seconds=3600)
+web_auth_store = WebsiteAuthStore(database_path)
+oidc_issuer = os.getenv("BMC_AUTH_ISSUER", "https://account.muxigame.com").rstrip("/")
+oidc_client = OidcClient(
+    oidc_issuer,
+    os.getenv("BMC_AUTH_CLIENT_ID", "better-mc-web"),
+    os.getenv("BMC_AUTH_CLIENT_SECRET", ""),
+    os.getenv("BMC_AUTH_REDIRECT_URI", "https://mc.muxigame.com/api/v1/auth/callback"),
+)
 
 app = FastAPI(
     title="Batter MC Remake",
@@ -98,31 +102,8 @@ async def security_headers(request: Request, call_next):
     return response
 
 
-class RegisterRequest(BaseModel):
-    email: EmailStr
-    username: str = Field(min_length=3, max_length=16)
-    password: str = Field(min_length=10, max_length=128)
-
-
-class LoginRequest(BaseModel):
-    identity: str = Field(min_length=3, max_length=254)
-    password: str = Field(min_length=1, max_length=128)
-
-
-def client_key(request: Request, purpose: str) -> str:
-    host = request.client.host if request.client else "unknown"
-    return f"{purpose}:{host}"
-
-
-def bearer_token(request: Request) -> str | None:
-    authorization = request.headers.get("authorization", "")
-    if authorization.lower().startswith("bearer "):
-        return authorization[7:].strip()
-    return request.cookies.get("bmc_session")
-
-
 def current_account(request: Request):
-    account = auth_store.session(bearer_token(request))
+    account = web_auth_store.session(request.cookies.get("bmc_session"))
     if account is None:
         raise HTTPException(status_code=401, detail="请先登录")
     return account
@@ -220,71 +201,43 @@ def manifest() -> JSONResponse:
     return JSONResponse(payload, headers={"Cache-Control": "public, max-age=60"})
 
 
-@app.post("/api/v1/auth/register", status_code=201)
-def register(payload: RegisterRequest, request: Request, background: BackgroundTasks) -> dict:
-    if not register_limiter.allow(client_key(request, "register")):
-        raise HTTPException(status_code=429, detail="注册请求过于频繁，请稍后再试")
-    username = payload.username.strip()
-    if not re.fullmatch(r"[A-Za-z0-9_]{3,16}", username):
-        raise HTTPException(status_code=422, detail="玩家名只能使用 3–16 位字母、数字和下划线")
-    if not os.getenv("BMC_SMTP_HOST") and os.getenv("BMC_AUTH_DEV_VERIFY") != "1":
-        raise HTTPException(status_code=503, detail="邮件验证服务尚未启用")
+@app.get("/api/v1/auth/login")
+def login(return_to: str = "/account.html") -> RedirectResponse:
+    state, _verifier, challenge = web_auth_store.create_login(safe_return_to(return_to))
+    return RedirectResponse(oidc_client.authorize_url(state, challenge), status_code=303)
+
+
+@app.get("/api/v1/auth/register")
+def register(return_to: str = "/account.html") -> RedirectResponse:
+    destination = f"{oidc_issuer}/register"
+    return RedirectResponse(destination, status_code=303)
+
+
+@app.get("/api/v1/auth/callback")
+def auth_callback(code: str = "", state: str = "", error: str = "", error_description: str = "") -> RedirectResponse:
+    login_state = web_auth_store.consume_login(state) if state else None
+    if login_state is None:
+        return RedirectResponse("/account.html?auth=invalid_state", status_code=303)
+    verifier, return_to = login_state
+    if error or not code:
+        return RedirectResponse(f"/account.html?auth={quote(error or 'missing_code', safe='')}", status_code=303)
     try:
-        account, raw_token = auth_store.register(str(payload.email), username, payload.password)
-    except ValueError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    public_url = os.getenv("BMC_PUBLIC_URL", str(request.base_url).rstrip("/")).rstrip("/")
-    verify_url = f"{public_url}/api/v1/auth/verify?token={quote(raw_token)}"
-    background.add_task(send_verification_email, account.email, account.username, verify_url)
-    result = {"ok": True, "message": "验证邮件已发送，请在 24 小时内完成验证"}
-    if os.getenv("BMC_AUTH_DEV_VERIFY") == "1":
-        result["verificationUrl"] = verify_url
-    return result
-
-
-@app.get("/api/v1/auth/verify")
-def verify_email(token: str = "") -> RedirectResponse:
-    if not token or auth_store.verify_email(token) is None:
-        return RedirectResponse("/account.html?verified=0", status_code=303)
-    return RedirectResponse("/account.html?verified=1", status_code=303)
-
-
-@app.post("/api/v1/auth/login")
-def login(payload: LoginRequest, request: Request, response: Response) -> dict:
-    if not login_limiter.allow(client_key(request, "login")):
-        raise HTTPException(status_code=429, detail="登录尝试过于频繁，请稍后再试")
-    try:
-        result = auth_store.login(payload.identity.strip(), payload.password, "web")
-    except PermissionError as error:
-        raise HTTPException(status_code=403, detail=str(error)) from error
-    if result is None:
-        raise HTTPException(status_code=401, detail="账号或密码不正确")
-    account, token = result
-    secure = os.getenv("BMC_PUBLIC_URL", "").lower().startswith("https://")
+        tokens = oidc_client.exchange_code(code, verifier)
+        account = oidc_client.userinfo(str(tokens.get("access_token", "")))
+    except (RuntimeError, ValueError):
+        return RedirectResponse("/account.html?auth=failed", status_code=303)
+    token = web_auth_store.create_session(account)
+    response = RedirectResponse(return_to, status_code=303)
     response.set_cookie(
         "bmc_session",
         token,
         max_age=14 * 24 * 3600,
         httponly=True,
-        secure=secure,
-        samesite="strict",
+        secure=os.getenv("BMC_PUBLIC_URL", "").lower().startswith("https://"),
+        samesite="lax",
         path="/",
     )
-    return {"user": account.public()}
-
-
-@app.post("/api/v1/auth/launcher-login")
-def launcher_login(payload: LoginRequest, request: Request) -> dict:
-    if not login_limiter.allow(client_key(request, "launcher-login")):
-        raise HTTPException(status_code=429, detail="登录尝试过于频繁，请稍后再试")
-    try:
-        result = auth_store.login(payload.identity.strip(), payload.password, "launcher")
-    except PermissionError as error:
-        raise HTTPException(status_code=403, detail=str(error)) from error
-    if result is None:
-        raise HTTPException(status_code=401, detail="账号或密码不正确")
-    account, token = result
-    return {"token": token, "expiresIn": 14 * 24 * 3600, "user": account.public()}
+    return response
 
 
 @app.get("/api/v1/auth/me")
@@ -294,14 +247,19 @@ def me(account=Depends(current_account)) -> dict:
 
 @app.post("/api/v1/auth/logout")
 def logout(request: Request, response: Response) -> dict:
-    auth_store.logout(bearer_token(request))
+    web_auth_store.logout(request.cookies.get("bmc_session"))
     response.delete_cookie("bmc_session", path="/")
     return {"ok": True}
 
 
 @app.get("/api/v1/admin/users")
 def admin_users(limit: int = 200, _account=Depends(admin_account)) -> dict:
-    return {"users": auth_store.list_accounts(limit)}
+    if not oidc_client.client_secret:
+        raise HTTPException(status_code=503, detail="统一账户管理凭据尚未配置")
+    try:
+        return {"users": oidc_client.list_users(limit)}
+    except RuntimeError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
 
 
 @app.get("/download")

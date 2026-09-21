@@ -139,6 +139,7 @@ function setBusy(value) {
   $('working').hidden = !value;
   $('btn-play').disabled = value;
   $('btn-account-login').disabled = value;
+  $('btn-account-register').disabled = value;
   $('btn-install-pack').disabled = value;
   $('btn-download-cancel').hidden = !value;
   $('download-progress').hidden = !value;
@@ -201,11 +202,6 @@ function render(s) {
   $('account-login').hidden = !!account;
   $('account-ready').hidden = !account;
   $('account-name').textContent = account ? account.username : '—';
-  if (st.updateBaseUrl) {
-    const register = document.querySelector('.account-register');
-    register.href = st.updateBaseUrl.replace(/\/$/, '') + '/account.html';
-  }
-
   $('win-w').value = st.windowWidth || 1280;
   $('win-h').value = st.windowHeight || 720;
   $('fullscreen').checked = !!st.fullscreen;
@@ -213,6 +209,7 @@ function render(s) {
   $('keepopen').checked = !!st.keepLauncherOpen;
   $('skipverify').checked = !!st.skipVerify;
   $('update-url').value = st.updateBaseUrl || '';
+  $('auth-url').value = st.authBaseUrl || '';
   $('jvmargs').value = st.extraJvmArgs || '';
 
   const mem = st.maxMemoryMb || 0;
@@ -396,26 +393,34 @@ async function play() {
 }
 
 async function accountLogin() {
-  const identity = $('account-identity').value.trim();
-  const password = $('account-password').value;
   const error = $('account-error');
-  if (!identity || !password) {
-    error.textContent = '请输入邮箱（或玩家名）和密码';
-    error.hidden = false;
-    return;
-  }
   try {
     $('btn-account-login').disabled = true;
-    const result = await rpc('accountLogin', { identity, password });
-    $('account-password').value = '';
+    const result = await rpc('accountLogin', {});
     error.hidden = true;
     render(result);
-    toast('登录成功', 'good');
+    toast('Muxi Account 登录成功', 'good');
   } catch (e) {
     error.textContent = e.message;
     error.hidden = false;
   } finally {
     $('btn-account-login').disabled = false;
+  }
+}
+
+async function accountRegister() {
+  const error = $('account-error');
+  try {
+    $('btn-account-register').disabled = true;
+    const result = await rpc('accountRegister', {});
+    error.hidden = true;
+    render(result);
+    toast('Muxi Account 注册并登录成功', 'good');
+  } catch (e) {
+    error.textContent = e.message;
+    error.hidden = false;
+  } finally {
+    $('btn-account-register').disabled = false;
   }
 }
 
@@ -448,7 +453,7 @@ function bind() {
 
   $('btn-play').onclick = play;
   $('btn-account-login').onclick = accountLogin;
-  $('account-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') accountLogin(); });
+  $('btn-account-register').onclick = accountRegister;
   $('btn-account-logout').onclick = () => rpc('accountLogout').then(render).catch((e) => toast(e.message, 'error'));
 
   $('btn-cancel').onclick = () => rpc('cancel').catch(() => {});
@@ -522,6 +527,7 @@ function bind() {
 
   // ── 更新 ──
   $('update-url').addEventListener('change', () => save({ updateBaseUrl: $('update-url').value.trim() }));
+  $('auth-url').addEventListener('change', () => save({ authBaseUrl: $('auth-url').value.trim() }));
   $('skipverify').addEventListener('change', () => save({ skipVerify: $('skipverify').checked }));
   $('btn-reverify').onclick = () =>
     rpc('resetVerification')
@@ -596,7 +602,7 @@ bind();
 rpc('init')
   .then((s) => {
     render(s);
-    if (!s.account) $('account-identity').focus();
+    if (!s.account) $('btn-account-login').focus();
   })
   .catch((e) => {
     $('hero-meta').textContent = '初始化失败';

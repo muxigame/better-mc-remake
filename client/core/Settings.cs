@@ -27,6 +27,9 @@ public sealed class LauncherSettings
     /// <summary>更新服务器根地址。</summary>
     public string UpdateBaseUrl { get; set; } = "https://mc.muxigame.com";
 
+    /// <summary>Muxi Account 的 OAuth/OIDC 服务根地址。与整合包更新服务解耦。</summary>
+    public string AuthBaseUrl { get; set; } = "https://account.muxigame.com";
+
     /// <summary>游戏启动后是否保留启动器窗口。</summary>
     public bool KeepLauncherOpen { get; set; }
 

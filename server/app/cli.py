@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 
 import uvicorn
 
 from .manifest_builder import build_manifest, read_json, save_json
-from .auth import AuthStore
 
 
 SERVER_ROOT = Path(__file__).resolve().parent.parent
@@ -34,23 +32,10 @@ def main() -> None:
     serve.add_argument("--host", default="0.0.0.0")
     serve.add_argument("--port", type=int, default=8099)
     serve.add_argument("--reload", action="store_true")
-    promote = commands.add_parser("promote-admin", help="把已验证账号提升为站点管理员")
-    promote.add_argument("email")
-    promote.add_argument("--database", type=Path)
     args = parser.parse_args()
 
     if args.command == "serve":
         uvicorn.run("app.main:app", app_dir=str(SERVER_ROOT), host=args.host, port=args.port, reload=args.reload)
-        return
-
-    if args.command == "promote-admin":
-        database = args.database or Path(os.getenv("BMC_DATABASE_PATH", "server/data/battermc.db"))
-        if not database.is_absolute():
-            database = SERVER_ROOT.parent / database
-        account = AuthStore(database).promote_admin(args.email)
-        if account is None:
-            raise SystemExit("没有找到这个账号，请先完成注册")
-        print(f"已将 {account.email} 提升为管理员")
         return
 
     spec_path = args.spec.resolve()

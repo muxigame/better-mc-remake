@@ -1,5 +1,8 @@
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -27,6 +30,7 @@ internal sealed class RpcHost : IDisposable
     private bool _busy;
     private bool _shutdown;
     private string? _accountToken;
+    private string? _accountRefreshToken;
     private JsonObject? _account;
 
     public RpcHost(LauncherPaths paths, LauncherSettings settings, LocalState state)
@@ -93,8 +97,9 @@ internal sealed class RpcHost : IDisposable
         "init" => await InitializeAsync().ConfigureAwait(false),
         "getState" => BuildState(),
         "saveSettings" => SaveSettings(p),
-        "accountLogin" => await AccountLoginAsync(p).ConfigureAwait(false),
-        "accountLogout" => AccountLogout(),
+        "accountLogin" => await AccountLoginAsync(register: false).ConfigureAwait(false),
+        "accountRegister" => await AccountLoginAsync(register: true).ConfigureAwait(false),
+        "accountLogout" => await AccountLogoutAsync().ConfigureAwait(false),
         "install" => await InstallAsync(p["forceVerify"]?.GetValue<bool>() ?? false).ConfigureAwait(false),
         "launch" => await LaunchAsync(p["forceVerify"]?.GetValue<bool>() ?? false).ConfigureAwait(false),
         "cancel" => Cancel(),
@@ -251,6 +256,7 @@ internal sealed class RpcHost : IDisposable
         ["fullscreen"] = _settings.Fullscreen,
         ["autoJoinServer"] = _settings.AutoJoinServer,
         ["updateBaseUrl"] = _settings.UpdateBaseUrl,
+        ["authBaseUrl"] = _settings.AuthBaseUrl,
         ["keepLauncherOpen"] = _settings.KeepLauncherOpen,
         ["skipVerify"] = _settings.SkipVerify,
         ["enabledOptional"] = new JsonArray(_settings.EnabledOptional.Select(x => (JsonNode)x).ToArray()),
@@ -271,6 +277,7 @@ internal sealed class RpcHost : IDisposable
         if (Bool("fullscreen") is { } fs) _settings.Fullscreen = fs;
         if (Bool("autoJoinServer") is { } aj) _settings.AutoJoinServer = aj;
         if (Str("updateBaseUrl") is { } url && !string.IsNullOrWhiteSpace(url)) _settings.UpdateBaseUrl = url.Trim().TrimEnd('/');
+        if (Str("authBaseUrl") is { } auth && !string.IsNullOrWhiteSpace(auth)) _settings.AuthBaseUrl = auth.Trim().TrimEnd('/');
         if (Bool("keepLauncherOpen") is { } ko) _settings.KeepLauncherOpen = ko;
         if (Bool("skipVerify") is { } sv) _settings.SkipVerify = sv;
         if (p["enabledOptional"] is JsonArray arr)
@@ -462,7 +469,7 @@ internal sealed class RpcHost : IDisposable
 
     private string AccountApi(string path)
     {
-        var baseUrl = _settings.UpdateBaseUrl.TrimEnd('/');
+        var baseUrl = _settings.AuthBaseUrl.TrimEnd('/');
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
             throw new InvalidOperationException("账号服务器地址无效");
         var local = uri.IsLoopback || uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase);
@@ -471,62 +478,215 @@ internal sealed class RpcHost : IDisposable
         return $"{baseUrl}{path}";
     }
 
-    private async Task<JsonNode> AccountLoginAsync(JsonObject p)
+    private static string Base64Url(byte[] bytes)
+        => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+    private static Dictionary<string, string> ParseQuery(string query)
     {
-        var identity = p["identity"]?.GetValue<string>()?.Trim() ?? "";
-        var password = p["password"]?.GetValue<string>() ?? "";
-        if (string.IsNullOrWhiteSpace(identity) || string.IsNullOrEmpty(password))
-            throw new InvalidOperationException("请输入邮箱（或玩家名）和密码");
-
-        var payload = new JsonObject { ["identity"] = identity, ["password"] = password };
-        using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
-        using var response = await _accountHttp.PostAsync(AccountApi("/api/v1/auth/launcher-login"), content).ConfigureAwait(false);
-        var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        var json = JsonNode.Parse(text)?.AsObject();
-        if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException(json?["detail"]?.GetValue<string>() ?? $"登录失败（HTTP {(int)response.StatusCode}）");
-
-        _accountToken = json?["token"]?.GetValue<string>();
-        _account = json?["user"]?.AsObject();
-        var username = _account?["username"]?.GetValue<string>() ?? "";
-        if (string.IsNullOrEmpty(_accountToken) || !OfflineAuth.IsValidUsername(username))
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var item in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
-            _accountToken = null;
-            _account = null;
-            throw new InvalidOperationException("登录服务器返回了无效账号信息");
+            var pair = item.Split('=', 2);
+            var key = Uri.UnescapeDataString(pair[0].Replace('+', ' '));
+            var value = pair.Length == 2 ? Uri.UnescapeDataString(pair[1].Replace('+', ' ')) : "";
+            result[key] = value;
         }
+        return result;
+    }
+
+    private static async Task WriteBrowserResultAsync(NetworkStream stream, bool ok)
+    {
+        var title = ok ? "登录成功" : "登录失败";
+        var body = ok ? "已完成 Muxi Account 授权，可以关闭这个页面并返回 Better MC。" : "授权没有完成，请返回 Better MC 重试。";
+        var html = $"<!doctype html><meta charset=\"utf-8\"><title>{title}</title><style>body{{font:16px system-ui;background:#0b0d12;color:#f5f7fb;display:grid;place-items:center;min-height:100vh;margin:0}}main{{max-width:560px;padding:40px;border:1px solid #303746;background:#151922}}h1{{margin-top:0}}p{{color:#9aa4b5}}</style><main><h1>{title}</h1><p>{body}</p></main>";
+        var bytes = Encoding.UTF8.GetBytes(html);
+        var header = Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {bytes.Length}\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n");
+        await stream.WriteAsync(header).ConfigureAwait(false);
+        await stream.WriteAsync(bytes).ConfigureAwait(false);
+    }
+
+    private async Task<JsonNode> AccountLoginAsync(bool register)
+    {
+        const string clientId = "better-mc-launcher";
+        var verifier = Base64Url(RandomNumberGenerator.GetBytes(48));
+        var challenge = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
+        var state = Base64Url(RandomNumberGenerator.GetBytes(24));
+        var nonce = Base64Url(RandomNumberGenerator.GetBytes(24));
+
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start(1);
+        try
+        {
+            var endpoint = (IPEndPoint)listener.LocalEndpoint;
+            var redirectUri = $"http://127.0.0.1:{endpoint.Port}/oauth/callback";
+            var authorizePath = "/oauth/authorize" +
+                $"?client_id={Uri.EscapeDataString(clientId)}" +
+                $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
+                "&response_type=code" +
+                $"&scope={Uri.EscapeDataString("openid profile email")}" +
+                $"&state={Uri.EscapeDataString(state)}" +
+                $"&nonce={Uri.EscapeDataString(nonce)}" +
+                $"&code_challenge={Uri.EscapeDataString(challenge)}" +
+                "&code_challenge_method=S256";
+
+            var browserUrl = register
+                ? AccountApi("/register") + $"?continue={Uri.EscapeDataString(authorizePath)}"
+                : AccountApi(authorizePath);
+
+            Process.Start(new ProcessStartInfo(browserUrl) { UseShellExecute = true });
+            Emit("status", new JsonObject
+            {
+                ["phase"] = register ? "等待注册" : "等待登录",
+                ["detail"] = register
+                    ? "请在浏览器中创建并验证 Muxi Account，完成后会自动返回启动器"
+                    : "请在浏览器中完成 Muxi Account 登录",
+                ["fraction"] = -1,
+            });
+
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(register ? 15 : 5));
+            using var client = await listener.AcceptTcpClientAsync(timeout.Token).ConfigureAwait(false);
+            await using var stream = client.GetStream();
+            using var reader = new StreamReader(stream, Encoding.ASCII, false, 4096, leaveOpen: true);
+            var requestLine = await reader.ReadLineAsync(timeout.Token).ConfigureAwait(false) ?? "";
+            while (!string.IsNullOrEmpty(await reader.ReadLineAsync(timeout.Token).ConfigureAwait(false))) { }
+            var parts = requestLine.Split(' ');
+            if (parts.Length < 2 || !Uri.TryCreate("http://127.0.0.1" + parts[1], UriKind.Absolute, out var callback))
+            {
+                await WriteBrowserResultAsync(stream, false).ConfigureAwait(false);
+                throw new InvalidOperationException("Muxi Account 返回了无效的登录回调");
+            }
+            var query = ParseQuery(callback.Query);
+            if (!query.TryGetValue("state", out var returnedState) || !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(state), Encoding.UTF8.GetBytes(returnedState)))
+            {
+                await WriteBrowserResultAsync(stream, false).ConfigureAwait(false);
+                throw new InvalidOperationException("Muxi Account 登录状态校验失败");
+            }
+            if (!query.TryGetValue("code", out var code) || string.IsNullOrWhiteSpace(code))
+            {
+                await WriteBrowserResultAsync(stream, false).ConfigureAwait(false);
+                throw new InvalidOperationException(query.GetValueOrDefault("error_description") ?? query.GetValueOrDefault("error") ?? "Muxi Account 未返回授权码");
+            }
+
+            using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code",
+                ["client_id"] = clientId,
+                ["code"] = code,
+                ["redirect_uri"] = redirectUri,
+                ["code_verifier"] = verifier,
+            });
+            using var response = await _accountHttp.PostAsync(AccountApi("/oauth/token"), content).ConfigureAwait(false);
+            var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var json = JsonNode.Parse(text)?.AsObject();
+            if (!response.IsSuccessStatusCode)
+            {
+                await WriteBrowserResultAsync(stream, false).ConfigureAwait(false);
+                throw new InvalidOperationException(json?["error_description"]?.GetValue<string>() ?? $"登录失败（HTTP {(int)response.StatusCode}）");
+            }
+
+            _accountToken = json?["access_token"]?.GetValue<string>();
+            _accountRefreshToken = json?["refresh_token"]?.GetValue<string>();
+            if (string.IsNullOrEmpty(_accountToken))
+            {
+                await WriteBrowserResultAsync(stream, false).ConfigureAwait(false);
+                throw new InvalidOperationException("Muxi Account 没有返回访问令牌");
+            }
+            await LoadAccountAsync().ConfigureAwait(false);
+            await WriteBrowserResultAsync(stream, true).ConfigureAwait(false);
+        }
+        finally
+        {
+            listener.Stop();
+        }
+
+        var username = _account?["username"]?.GetValue<string>() ?? "";
+        if (!OfflineAuth.IsValidUsername(username))
+            throw new InvalidOperationException("统一账户用户名不符合 Minecraft 玩家名规则");
         _settings.Username = username;
         _settings.Save(_paths.SettingsFile);
         Emit("state", BuildState());
         return BuildState();
     }
 
-    private JsonNode AccountLogout()
+    private async Task LoadAccountAsync()
     {
-        _accountToken = null;
-        _account = null;
-        Emit("state", BuildState());
-        return BuildState();
-    }
-
-    private async Task RequireAccountAsync()
-    {
-        if (string.IsNullOrEmpty(_accountToken) || _account is null)
-            throw new InvalidOperationException("请先登录 Batter MC 账号");
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, AccountApi("/api/v1/auth/me"));
+        if (string.IsNullOrEmpty(_accountToken)) throw new InvalidOperationException("请先登录 Muxi Account");
+        using var request = new HttpRequestMessage(HttpMethod.Get, AccountApi("/oauth/userinfo"));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
         using var response = await _accountHttp.SendAsync(request).ConfigureAwait(false);
         var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var json = JsonNode.Parse(text)?.AsObject();
         if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException(json?["error_description"]?.GetValue<string>() ?? "统一账户会话无效");
+        _account = json;
+        var username = _account?["username"]?.GetValue<string>() ?? "";
+        if (!OfflineAuth.IsValidUsername(username))
         {
-            _accountToken = null;
             _account = null;
-            Emit("state", BuildState());
-            throw new InvalidOperationException(json?["detail"]?.GetValue<string>() ?? "登录已过期，请重新登录");
+            throw new InvalidOperationException("登录服务器返回了无效账号信息");
         }
-        _account = json?["user"]?.AsObject();
+    }
+
+    private async Task<JsonNode> AccountLogoutAsync()
+    {
+        var revoke = _accountRefreshToken ?? _accountToken;
+        if (!string.IsNullOrEmpty(revoke))
+        {
+            try
+            {
+                using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["client_id"] = "better-mc-launcher",
+                    ["token"] = revoke,
+                });
+                using var _ = await _accountHttp.PostAsync(AccountApi("/oauth/revoke"), content).ConfigureAwait(false);
+            }
+            catch { }
+        }
+        _accountToken = null;
+        _accountRefreshToken = null;
+        _account = null;
+        Emit("state", BuildState());
+        return BuildState();
+    }
+
+    private async Task<bool> RefreshAccountAsync()
+    {
+        if (string.IsNullOrEmpty(_accountRefreshToken)) return false;
+        using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["client_id"] = "better-mc-launcher",
+            ["refresh_token"] = _accountRefreshToken,
+        });
+        using var response = await _accountHttp.PostAsync(AccountApi("/oauth/token"), content).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode) return false;
+        var json = JsonNode.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false))?.AsObject();
+        _accountToken = json?["access_token"]?.GetValue<string>();
+        _accountRefreshToken = json?["refresh_token"]?.GetValue<string>();
+        return !string.IsNullOrEmpty(_accountToken) && !string.IsNullOrEmpty(_accountRefreshToken);
+    }
+
+    private async Task RequireAccountAsync()
+    {
+        if (string.IsNullOrEmpty(_accountToken) || _account is null)
+            throw new InvalidOperationException("请先登录 Muxi Account");
+        try
+        {
+            await LoadAccountAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            if (!await RefreshAccountAsync().ConfigureAwait(false))
+            {
+                _accountToken = null;
+                _accountRefreshToken = null;
+                _account = null;
+                Emit("state", BuildState());
+                throw new InvalidOperationException("Muxi Account 登录已过期，请重新登录");
+            }
+            await LoadAccountAsync().ConfigureAwait(false);
+        }
         var username = _account?["username"]?.GetValue<string>() ?? "";
         if (!OfflineAuth.IsValidUsername(username))
             throw new InvalidOperationException("账号玩家名无效，请联系管理员");
