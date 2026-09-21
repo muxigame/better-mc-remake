@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import copy
 import json
 import os
 from pathlib import Path
 from urllib.parse import quote
+from urllib.request import Request as UrlRequest, urlopen
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.gzip import GZipMiddleware
@@ -18,8 +18,6 @@ from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
 SERVER_ROOT = Path(__file__).resolve().parent.parent
 WORKSPACE_ROOT = SERVER_ROOT.parent
 WEB_ROOT = SERVER_ROOT / "web"
-PUBLISH_ROOT = SERVER_ROOT / "publish"
-MANIFEST_FILE = PUBLISH_ROOT / "manifest.json"
 SITE_FILE = SERVER_ROOT / "site.json"
 RELEASE_FILES = (
     WORKSPACE_ROOT / "artifacts" / "client" / "launcher-release.json",
@@ -118,40 +116,100 @@ def admin_account(account=Depends(current_account)):
 def site_config() -> dict:
     config = read_json(SITE_FILE)
     config["ossBaseUrl"] = os.getenv("BMC_OSS_BASE_URL", config["ossBaseUrl"]).rstrip("/")
+    config["clientLatestUrl"] = os.getenv(
+        "BMC_CLIENT_LATEST_URL",
+        config.get("clientLatestUrl", ""),
+    )
+    manifest_object = str(config.get("manifestObject", "manifest.json")).lstrip("/")
+    files_prefix = str(config.get("filesPrefix", "files")).strip("/")
+    config["manifestUrl"] = os.getenv(
+        "BMC_MANIFEST_URL",
+        f'{config["ossBaseUrl"]}/{quote(manifest_object)}',
+    )
+    config["filesBaseUrl"] = os.getenv(
+        "BMC_FILES_BASE_URL",
+        f'{config["ossBaseUrl"]}/{files_prefix}',
+    ).rstrip("/")
     return config
 
 
 def launcher_release(config: dict) -> dict:
-    release_file = next((path for path in RELEASE_FILES if path.is_file()), RELEASE_FILES[0])
-    release = read_json(
-        release_file,
-        {
-            "version": "1.0.0",
-            "installer": config["launcherObject"],
-            "sha256": "",
-            "size": 0,
-        },
-    )
+    release = None
+    latest_url = str(config.get("clientLatestUrl") or "").strip()
+    if latest_url:
+        request = UrlRequest(
+            latest_url,
+            headers={"User-Agent": "BatterMC-Website/1.0", "Accept": "application/json"},
+        )
+        try:
+            with urlopen(request, timeout=6) as response:
+                release = json.loads(response.read().decode("utf-8-sig"))
+        except (OSError, ValueError, json.JSONDecodeError):
+            # 网络/OSS 故障时退回镜像内最后一次成功发布快照；
+            # 正常情况下 OSS latest metadata 是唯一当前版本真相源。
+            release = None
+
+    if release is None:
+        release_file = next((path for path in RELEASE_FILES if path.is_file()), RELEASE_FILES[0])
+        release = read_json(
+            release_file,
+            {
+                "version": "1.0.0",
+                "installer": config["launcherObject"],
+                "sha256": "",
+                "size": 0,
+            },
+        )
     object_name = release.get("installer") or config["launcherObject"]
+    release_url = release.get("url") or f'{config["ossBaseUrl"]}/{quote(object_name)}'
     return {
         "version": release.get("version", "1.0.0"),
-        "url": f'{config["ossBaseUrl"]}/{quote(object_name)}',
+        "url": release_url,
+        "ossObject": release.get("ossObject"),
+        "releaseObject": release.get("releaseObject"),
         "sha256": release.get("sha256", ""),
         "size": int(release.get("size", 0)),
         "sizeText": human_size(int(release.get("size", 0))),
+        "signature": release.get("signature", ""),
+        "pubDate": release.get("pubDate"),
         "notes": "下载客户端后，由客户端完成整合包、Java 与 NeoForge 的安装和更新。",
         "mandatory": False,
     }
 
 
+def semver_tuple(value: str) -> tuple[int, ...]:
+    parts: list[int] = []
+    for token in value.lstrip("vV").replace("+", ".").replace("-", ".").split("."):
+        try:
+            parts.append(int(token))
+        except ValueError:
+            parts.append(0)
+    while parts and parts[-1] == 0:
+        parts.pop()
+    return tuple(parts or [0])
+
+
 def load_manifest() -> dict:
-    return read_json(MANIFEST_FILE)
+    config = site_config()
+    request = UrlRequest(
+        config["manifestUrl"],
+        headers={"User-Agent": "BatterMC-Website/1.0", "Accept": "application/json"},
+    )
+    try:
+        with urlopen(request, timeout=8) as response:
+            return json.loads(response.read().decode("utf-8-sig"))
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise HTTPException(status_code=503, detail="无法读取当前整合包 manifest") from error
 
 
 @app.get("/healthz")
 def health() -> dict:
-    manifest = load_manifest()
-    return {"ok": True, "pack": manifest.get("pack", {}).get("version"), "service": "website"}
+    config = site_config()
+    return {
+        "ok": True,
+        "service": "website",
+        "manifestUrl": config["manifestUrl"],
+    }
 
 
 @app.get("/api/v1/site")
@@ -187,18 +245,41 @@ def latest_launcher() -> dict:
     return launcher_release(site_config())
 
 
+@app.get("/api/v1/launcher/updater/{target}/{arch}/{current_version}")
+def tauri_updater(target: str, arch: str, current_version: str):
+    # 当前只发布 Windows x64。Tauri 对没有更新的情况要求 204。
+    if target != "windows" or arch not in {"x86_64", "x86-64", "amd64"}:
+        return Response(status_code=204)
+
+    release = launcher_release(site_config())
+    latest = str(release.get("version", "0.0.0"))
+    if semver_tuple(latest) <= semver_tuple(current_version):
+        return Response(status_code=204)
+
+    signature = str(release.get("signature") or "").strip()
+    if not signature:
+        raise HTTPException(status_code=503, detail="当前客户端发布缺少 Tauri updater 签名")
+
+    return {
+        "version": latest,
+        "pub_date": release.get("pubDate"),
+        "url": release["url"],
+        "signature": signature,
+        "notes": release.get("notes", ""),
+    }
+
+
 @app.get("/api/v1/manifest")
 def manifest() -> JSONResponse:
     config = site_config()
-    payload = copy.deepcopy(load_manifest())
-    base = config["ossBaseUrl"]
-    prefix = config["filesPrefix"].strip("/")
-    for item in payload.get("files", []):
-        if not item.get("url"):
-            encoded = "/".join(quote(part, safe="") for part in item["path"].split("/"))
-            item["url"] = f"{base}/{prefix}/{encoded}"
-    payload["launcher"] = launcher_release(config)
-    return JSONResponse(payload, headers={"Cache-Control": "public, max-age=60"})
+    return JSONResponse(
+        {
+            "manifestUrl": config["manifestUrl"],
+            "filesBaseUrl": config["filesBaseUrl"],
+            "launcher": launcher_release(config),
+        },
+        headers={"Cache-Control": "public, max-age=30"},
+    )
 
 
 @app.get("/account.html", include_in_schema=False)

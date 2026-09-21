@@ -83,6 +83,34 @@ def reconcile_overlay_policies(files: list[dict], spec: dict, log: Log) -> None:
         log(f"  !! 硬配置指向的文件不在分发清单里：{overlay_path}")
 
 
+def apply_default_distribution_policies(files: list[dict], spec: dict, log: Log) -> None:
+    """Apply project-wide defaults after include rules have selected files.
+
+    Config files and bundled shaderpacks are part of the standard first install,
+    but they should not remain permanently managed afterwards. Seed means the
+    launcher delivers each server revision once, then gives ownership back to
+    the player until the server publishes a new SHA-1.
+
+    Optional remains available for future explicitly optional add-ons. A spec
+    can opt back into optional shaderpacks with `shaderpacksOptional: true`.
+    """
+    shaderpacks_optional = bool(spec.get("shaderpacksOptional", False))
+    changed = 0
+    for item in files:
+        path = item["path"].replace("\\", "/").lstrip("/")
+        lower = path.casefold()
+        target = None
+        if lower.startswith("config/"):
+            target = "Seed"
+        elif lower.startswith("shaderpacks/") and not shaderpacks_optional:
+            target = "Seed"
+        if target and item.get("policy") != target:
+            item["policy"] = target
+            changed += 1
+    if changed:
+        log(f"  默认分发策略调整 {changed} 个文件：config/shaderpacks -> Seed")
+
+
 def publish_files(
     root: Path,
     publish_dir: Path,
@@ -226,6 +254,7 @@ def build_manifest(
     except OSError:
         pass
     files.sort(key=lambda item: item["path"].casefold())
+    apply_default_distribution_policies(files, spec, log)
     reconcile_overlay_policies(files, spec, log)
 
     pack = copy_dict(spec["pack"])

@@ -13,7 +13,7 @@ public sealed class SyncPlan
 {
     public List<DownloadItem> Downloads { get; } = new();
     public List<string> Deletions { get; } = new();
-    public List<string> SeedTargets { get; } = new();
+    public Dictionary<string, string> SeedRevisionTargets { get; } = new(StringComparer.OrdinalIgnoreCase);
     public long Bytes => Downloads.Sum(d => Math.Max(0, d.ExpectedSize));
     public bool IsEmpty => Downloads.Count == 0 && Deletions.Count == 0;
 }
@@ -23,7 +23,7 @@ public sealed class SyncPlan
 ///
 /// 三种策略：
 ///   Managed  — 服务器说了算，哈希不符就覆盖，玩家删了补回来
-///   Seed     — 只投放一次，之后是玩家的
+///   Seed     — 每个服务端 SHA 修订强制投放一次，之后重新交还给玩家
 ///   Optional — 玩家勾了才装，取消勾选就删掉
 ///
 /// 外加 prune：清单指定的目录里，不在清单上的文件一律删除。
@@ -39,6 +39,7 @@ public sealed class SyncEngine
 
     public string? LastManifestUrl { get; private set; }
     public string? LastManifestError { get; private set; }
+    public string? LastFilesBaseUrl { get; private set; }
 
     public SyncEngine(LauncherPaths paths, LocalState state, LauncherSettings settings, Downloader downloader)
     {
@@ -55,16 +56,28 @@ public sealed class SyncEngine
 
         foreach (var url in urls)
         {
-            Log.Info($"拉取清单：{url}");
+            Log.Info($"请求更新控制面：{url}");
             try
             {
-                var json = await _downloader.GetStringAsync(url, ct).ConfigureAwait(false);
+                var controlJson = await _downloader.GetStringAsync(url, ct).ConfigureAwait(false);
+                var control = ManifestControl.FromJson(controlJson)
+                    ?? throw new InvalidOperationException("更新控制面响应为空");
+                if (string.IsNullOrWhiteSpace(control.ManifestUrl))
+                    throw new InvalidOperationException("更新控制面没有返回 manifestUrl");
+                if (string.IsNullOrWhiteSpace(control.FilesBaseUrl))
+                    throw new InvalidOperationException("更新控制面没有返回 filesBaseUrl");
+
+                Log.Info($"拉取真实清单：{control.ManifestUrl}");
+                var json = await _downloader.GetStringAsync(control.ManifestUrl, ct).ConfigureAwait(false);
                 var manifest = PackManifest.FromJson(json)
                     ?? throw new InvalidOperationException("清单内容为空");
+                manifest.Launcher = control.Launcher;
                 AtomicFile.WriteAllText(_paths.ManifestCacheFile, json);
-                LastManifestUrl = url;
+                LastManifestUrl = control.ManifestUrl;
+                LastFilesBaseUrl = control.FilesBaseUrl.TrimEnd('/');
+                _state.LastFilesBaseUrl = LastFilesBaseUrl;
                 LastManifestError = null;
-                Log.Info($"清单版本 {manifest.Pack.Version}，{manifest.Files.Count} 个文件；来源 {url}");
+                Log.Info($"清单版本 {manifest.Pack.Version}，{manifest.Files.Count} 个文件；来源 {control.ManifestUrl}");
                 return manifest;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -85,6 +98,7 @@ public sealed class SyncEngine
             if (cached is not null)
             {
                 LastManifestUrl = "cache";
+                LastFilesBaseUrl = _state.LastFilesBaseUrl;
                 Log.Warn($"离线模式：使用缓存的清单 {cached.Pack.Version}");
                 return cached;
             }
@@ -121,7 +135,9 @@ public sealed class SyncEngine
     public SyncPlan Plan(PackManifest manifest, IProgress<SyncStatus>? progress, CancellationToken ct)
     {
         var plan = new SyncPlan();
-        var baseUrl = _settings.UpdateBaseUrl.TrimEnd('/');
+        var baseUrl = (LastFilesBaseUrl ?? _state.LastFilesBaseUrl)
+            ?.TrimEnd('/')
+            ?? throw new InvalidOperationException("更新控制面未提供 filesBaseUrl");
         var enabled = new HashSet<string>(_settings.EnabledOptional, StringComparer.OrdinalIgnoreCase);
 
         // 并行校验，所以用并发集合；ConcurrentDictionary 当作 set 用
@@ -129,8 +145,8 @@ public sealed class SyncEngine
         var freshHashes = new ConcurrentDictionary<string, HashCacheEntry>(StringComparer.OrdinalIgnoreCase);
         var downloads = new ConcurrentBag<DownloadItem>();
         var deletions = new ConcurrentBag<string>();
-        var seeded = new ConcurrentBag<string>();
-
+        var seedRevisionTargets = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var seedBaselines = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var done = 0;
         var total = manifest.Files.Count;
 
@@ -150,11 +166,35 @@ public sealed class SyncEngine
                 }
                 else if (file.Policy == FilePolicy.Seed)
                 {
-                    // 只投放一次。玩家事后删掉是玩家的自由，不再补。
-                    if (!File.Exists(absolute) && !_state.HasSeeded(file.Path))
+                    // Seed = 每个服务端修订强制同步一次，而不是永久 Managed。
+                    // 第一次切换到 revision 模型时，如果本地已有文件，只记录当前 SHA 为基线，
+                    // 不覆盖玩家已经修改过的配置；以后 manifest SHA 变化才强制同步一次。
+                    if (_state.TryGetSeedRevision(file.Path, out var appliedRevision))
                     {
+                        if (!appliedRevision.Equals(file.Sha1, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (NeedsDownload(file, absolute, freshHashes))
+                            {
+                                downloads.Add(MakeItem(file, absolute, baseUrl));
+                                seedRevisionTargets[file.Path] = file.Sha1;
+                            }
+                            else
+                            {
+                                // 本地内容已经等于新修订，只更新记账即可。
+                                seedBaselines[file.Path] = file.Sha1;
+                            }
+                        }
+                    }
+                    else if (_state.HasSeeded(file.Path) || File.Exists(absolute))
+                    {
+                        // 老 state 或现有安装：当前服务端版本作为基线，不做一次性全覆盖。
+                        seedBaselines[file.Path] = file.Sha1;
+                    }
+                    else
+                    {
+                        // 真正的首次安装。
                         downloads.Add(MakeItem(file, absolute, baseUrl));
-                        seeded.Add(file.Path);
+                        seedRevisionTargets[file.Path] = file.Sha1;
                     }
                 }
                 else
@@ -172,7 +212,10 @@ public sealed class SyncEngine
 
         plan.Downloads.AddRange(downloads.OrderBy(d => d.Display, StringComparer.OrdinalIgnoreCase));
         plan.Deletions.AddRange(deletions);
-        plan.SeedTargets.AddRange(seeded);
+        foreach (var (path, revision) in seedRevisionTargets)
+            plan.SeedRevisionTargets[path] = revision;
+        foreach (var (path, revision) in seedBaselines)
+            _state.MarkSeedRevision(path, revision);
 
         // --- prune：清掉清单里没有的文件 ---
         foreach (var dir in manifest.Prune)
@@ -226,7 +269,7 @@ public sealed class SyncEngine
     private static DownloadItem MakeItem(ManagedFile file, string absolute, string baseUrl) => new()
     {
         Url = string.IsNullOrWhiteSpace(file.Url)
-            ? $"{baseUrl}/files/{Uri.EscapeDataString(file.Path).Replace("%2F", "/", StringComparison.Ordinal)}"
+            ? $"{baseUrl}/{Uri.EscapeDataString(file.Path).Replace("%2F", "/", StringComparison.Ordinal)}"
             : file.Url!,
         TargetPath = absolute,
         ExpectedSize = file.Size,
@@ -287,7 +330,8 @@ public sealed class SyncEngine
             }
         }
 
-        foreach (var s in plan.SeedTargets) _state.MarkSeeded(s);
+        foreach (var (path, revision) in plan.SeedRevisionTargets)
+            _state.MarkSeedRevision(path, revision);
     }
 
     public static string Human(long bytes)

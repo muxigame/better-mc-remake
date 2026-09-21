@@ -8,4 +8,5 @@ namespace BatterMC.Protocol;
 /// </summary>
 [JsonSerializable(typeof(PackManifest))]
 [JsonSerializable(typeof(LauncherRelease))]
+[JsonSerializable(typeof(ManifestControl))]
 public partial class ManifestJsonContext : JsonSerializerContext;

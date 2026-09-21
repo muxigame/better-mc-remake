@@ -8,11 +8,11 @@
 |---|---|
 | `BMC5Server\` | 服务端。320 个 mod + 17 个 Paxi 数据包，config 为 BMC5 官方全量 |
 | `BMC5Pack\` | 客户端源。405 mod jar + 497 config + 20 资源包 + 20 光影 + options.txt；`BMC5-v53.zip` 是 CurseForge 原包，PCL 可直接导入 |
-| `Better MC Remake [FORGE]\` | 干净、未运行的客户端游戏源；构建过程只读，不放入 exe 或其他产物 |
 | `待处理_无1.21.1版\` | 没有 1.21.1 版本的 mod：内容型 3 待解决 / 工具型 27 / 已解决 22 / 冲突 1，见其 `清单.csv` |
 | `client\` | 独立客户端工程：Tauri 2 + .NET 9 sidecar；协议模型归客户端所有 |
-| `server\` | FastAPI 官网 + API、实机图库、整合包清单和发布目录 |
-| `scripts\` | 跨项目构建与 OSS 发布脚本 |
+| `pack\` | MC 客户端整合包发布域：版本规则、干净客户端源、staging、增量 OSS 发布 |
+| `server\` | FastAPI 官网 + API + 已发布版本快照；不负责上传客户端内容 |
+| `scripts\` | 跨项目构建脚本 |
 | `artifacts\` | 本机构建产物，不属于源码仓库 |
 | `BMC5迁移评估.csv` | 402 个旧 mod 的逐条迁移结论 |
 
@@ -36,7 +36,9 @@ BMC5Server\start.bat
 ```powershell
 scripts\build.ps1 -SelfTest         # 构建客户端和官网后端到 artifacts\
 server\run-server.ps1               # 启动官网和 API
-scripts\publish-oss.ps1             # 发布安装包、清单和按需下载文件到 OSS
+client\publish.ps1                  # 只发布启动器安装包
+client\promote.ps1 -Version 1.1.2   # 将已有历史版本晋升/回滚为 latest，不改二进制
+pack\publish.ps1                    # 只增量发布 MC 整合包内容 + manifest
 ```
 
 OSS 发布位置：`oss://muxigame-prod-static-cn/bmc/release/latest/`（杭州地域）。
@@ -44,7 +46,8 @@ OSS 发布位置：`oss://muxigame-prod-static-cn/bmc/release/latest/`（杭州�
 能力：邮箱注册与验证、官网/客户端统一账号、整合包增量同步（带哈希缓存，8966 个文件校验约 1 秒）、**键级硬配置下发**
 （服务器点名的键每次启动强制纠正，没点名的键保留玩家自己的值）、
 Java 自动发现与按需下载、账号验证后的固定玩家名（游戏侧仍使用对应离线 UUID）、servers.dat 维护、
-崩溃诊断。客户端 UI 已迁到 Tauri 2；签名式自动更新待接入 Tauri updater。
+崩溃诊断。客户端 UI 已迁到 Tauri 2，并使用 Tauri updater 对完整 NSIS 客户端做签名自更新；
+更新会同时替换 Tauri 主程序、.NET sidecar 和前端资源，不会只替换单个 exe。
 
 开始游戏时客户端会先并行解析、探测主服务器的所有 TCP 路线候选，按
 LAN → IPv6 → IPv4 → 端口映射 → 隧道 → 国内 Relay 的优先级和实测握手延迟选路。
@@ -52,7 +55,7 @@ Minecraft 只连接 `127.0.0.1` 上的临时端口，由 sidecar 代理到选中
 真正连接时失效会自动尝试其余已探测可用线路。当前清单先把原有公网入口登记为国内
 Relay 兜底，后续控制面可以直接下发同一 `routes` 结构的房主 LAN/IPv6/映射/隧道候选。
 
-实测：全新安装 → 主菜单 175 秒（PCL 是 202 秒），67 项自检全通过。
+实测：全新安装 → 主菜单 175 秒（PCL 是 202 秒），71 项自检全通过。
 
 ## 客户端专属 mod 的剔除
 

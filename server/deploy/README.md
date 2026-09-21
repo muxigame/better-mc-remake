@@ -32,6 +32,10 @@ FastAPI 只监听 `127.0.0.1:8099`。当前香港生产机使用宝塔自带 Ngi
 
 ```dotenv
 BMC_PUBLIC_URL=https://mc.muxigame.com
+BMC_OSS_BASE_URL=https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/release/latest
+# 可选：迁移对象存储时只改这两项，客户端仍只访问 mc.muxigame.com 控制面。
+BMC_MANIFEST_URL=
+BMC_FILES_BASE_URL=
 BMC_DATABASE_PATH=server/data/battermc.db
 BMC_AUTH_ISSUER=https://account.muxigame.com
 BMC_AUTH_CLIENT_ID=better-mc-web

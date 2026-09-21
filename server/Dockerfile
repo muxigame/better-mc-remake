@@ -10,7 +10,6 @@ COPY server/requirements.txt ./requirements.txt
 RUN python -m pip install --disable-pip-version-check -r requirements.txt
 
 COPY server/app ./app
-COPY server/publish/manifest.json ./publish/manifest.json
 COPY server/launcher-release.json server/site.json ./
 
 RUN useradd --system --uid 10001 --home-dir /app --shell /usr/sbin/nologin battermc \

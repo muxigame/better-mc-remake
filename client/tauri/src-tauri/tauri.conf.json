@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "BatterMC5Remake",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "identifier": "cn.battermc.launcher",
   "build": {
     "frontendDist": "../../sidecar/web"
@@ -29,6 +29,18 @@
     "active": true,
     "targets": ["nsis"],
     "externalBin": ["binaries/battermc-backend"],
-    "icon": ["../../sidecar/icon.ico"]
+    "icon": ["../../sidecar/icon.ico"],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdDRjA2Qjc0MDg3MUNDRTUKUldUbHpIRUlkR3Z3ZkprWFZmR0ZGMzJ6KzVuMCs4RXVWTG5vanpIKzNHTnFtVmFWSVZ3NXB2eFoK",
+      "endpoints": [
+        "https://mc.muxigame.com/api/v1/launcher/updater/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

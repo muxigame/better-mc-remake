@@ -31,16 +31,27 @@ class ManifestBuilderTests(unittest.TestCase):
                 "root": str(root),
                 "pack": {"id": "test", "name": "Test", "version": "1.0"},
                 "minecraft": {"versionId": "Remake"}, "java": {}, "servers": [],
-                "include": [{"glob": "mods/**", "policy": "Managed"}, {"glob": "options.txt", "policy": "Managed"}],
+                "include": [
+                    {"glob": "mods/**", "policy": "Managed"},
+                    {"glob": "config/**", "policy": "Managed"},
+                    {"glob": "shaderpacks/**", "policy": "Optional"},
+                    {"glob": "options.txt", "policy": "Managed"},
+                ],
                 "exclude": ["**/*.log"],
                 "map": [{"from": "version.json", "to": "versions/Remake/Remake.json", "policy": "Managed", "rewriteVersionId": True}],
                 "prune": ["mods"],
                 "overlays": [{"path": "options.txt", "format": "Properties", "enforce": {"skipMultiplayerWarning": True}}],
             }
+            (root / "config").mkdir()
+            (root / "config" / "example.toml").write_text("value = 1\n")
+            (root / "shaderpacks").mkdir()
+            (root / "shaderpacks" / "example.zip").write_text("shader")
             manifest, _ = build_manifest(spec, base / "packspec.json", publish, log=lambda _: None)
-            self.assertEqual(3, len(manifest["files"]))
+            self.assertEqual(5, len(manifest["files"]))
             self.assertFalse(any(item["path"].endswith(".log") for item in manifest["files"]))
             self.assertEqual("Seed", next(item for item in manifest["files"] if item["path"] == "options.txt")["policy"])
+            self.assertEqual("Seed", next(item for item in manifest["files"] if item["path"] == "config/example.toml")["policy"])
+            self.assertEqual("Seed", next(item for item in manifest["files"] if item["path"] == "shaderpacks/example.zip")["policy"])
             self.assertEqual("Remake", json.loads((publish / "versions/Remake/Remake.json").read_text())["id"])
             self.assertFalse((publish / "obsolete.txt").exists())
 

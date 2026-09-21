@@ -65,19 +65,19 @@ Minecraft 本体、144 个运行库、几千个资源文件走官方 CDN——
 
 ### 1. 配置发布源（只做一次）
 
-编辑 `server\packspec.json` 的 `root`、版本号和 include / exclude 规则。
+编辑 `pack\packspec.json` 的版本号和 include / exclude 规则。干净客户端源放在
+`pack\source\Better MC Remake [FORGE]\`，该目录被 Git 忽略。
 
 ### 2. 改版本号，然后构建
 
 ```powershell
-Push-Location .\server
-.\.venv\Scripts\python.exe -m app.cli build --spec .\packspec.json --publish .\publish --link
-Pop-Location
+$env:PYTHONPATH='server'
+..\.ops-venv\Scripts\python.exe -m app.cli build --link
 ```
 
 - 扫描整合包、算 SHA-1（带缓存，第二次几秒完成）
-- 生成 `publish\manifest.json`
-- 把要分发的文件同步到 `publish\`
+- 生成 `pack\staging\manifest.json`
+- 把要分发的文件同步到 `pack\staging\files\`
 - `--link` 用硬链接代替复制：同一块盘上秒完成、不占额外空间。
   **代价是改了源文件发布目录会立刻跟着变，所以改完必须重新 build。**
   不确定就别加这个参数，老老实实复制。
@@ -103,25 +103,44 @@ Windows 上有现成的脚本：
 .\server\run-server.ps1 -Reload          # 本地开发热更新
 ```
 
-### 4. 发布新版启动器（待接 Tauri 签名更新器）
+### 4. 发布新版启动器
 
-当前应直接分发 `artifacts\client\BatterMC5Remake-setup.exe`。旧的 `set-launcher --exe`
-和“批处理覆盖运行中 exe”的更新方式属于 WinForms 单文件版，不能直接用于 Tauri + sidecar。
-启用自动更新前要生成 Tauri updater 签名密钥，并同时签名主程序和 sidecar 安装包。
+客户端使用 Tauri updater 对完整 NSIS 安装包进行签名更新。公钥嵌入客户端；私钥仅保存在发布机，
+构建时通过 `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 注入。
+Windows 下更新会下载并验证整个 NSIS 包，因此 Tauri 主程序、.NET sidecar 和前端资源始终作为一个版本更新。
 
-sidecar 目前会明确拒绝旧式 `applyLauncherUpdate`，避免只替换其中一个二进制造成版本错配。
+`1.1.1` 是第一版带完整 updater 的客户端；更早版本需要手动安装一次 `1.1.1`，此后可在客户端内升级。
+
+启动器发布入口：
+
+```powershell
+.\client\publish.ps1
+```
+
+每个客户端版本永久存放在 `bmc/client/releases/<version>/`，同版本禁止覆盖；
+`bmc/client/latest/metadata.json` 只是当前正式版本指针，也是 `/api/v1/launcher/latest`
+与 Tauri updater 的正常真相源。快速回滚/重新晋升已有版本：
+
+```powershell
+.\client\promote.ps1 -Version 1.1.2
+```
+
+`server/launcher-release.json` 只作为 OSS/latest 暂时不可访问时的镜像内 fallback。
 
 ### 5. 发布到阿里云 OSS
 
 发布目标固定为 `oss://muxigame-prod-static-cn/bmc/release/latest/`，地域为 `cn-hangzhou`。
 凭据保存在项目根目录的 `.env`，发布脚本会自动加载，再执行：
 
+整合包发布入口：
+
 ```powershell
-.\scripts\publish-oss.ps1
+.\pack\publish.ps1
 ```
 
-脚本会上传 `artifacts\client\BatterMC5Remake-setup.exe`、`manifest.json` 和
-`server\publish\` 中的按需下载文件。官网不再提供 1.5 GB 整包 ZIP。
+`pack\publish.ps1` 会先请求生产 `/api/v1/manifest` 获取当前 `manifestUrl`，按 `path + SHA-1` 只上传新增或变化的游戏文件，
+最后才更新 OSS manifest。OSS manifest 是唯一发布真相源；官网/API 只下发 `manifestUrl` / `filesBaseUrl`，不保存运行时 manifest 副本。
+官网不再提供 1.5 GB 整包 ZIP。
 
 ---
 
@@ -135,9 +154,9 @@ sidecar 目前会明确拒绝旧式 `applyLauncherUpdate`，避免只替换其�
 
 | 策略 | 行为 | 用在哪 |
 |---|---|---|
-| `Managed` | 每次启动校验哈希，不一致就覆盖；玩家删了补回来 | `mods/**`、`config/**`、`kubejs/**` |
-| `Seed` | 只在本地不存在时投放一次，之后是玩家的，永不覆盖 | `options.txt`、键位 |
-| `Optional` | 玩家在设置里勾了才装，取消勾选就删掉 | `shaderpacks/**` |
+| `Managed` | 每次启动校验哈希，不一致就覆盖；玩家删了补回来 | `mods/**`、`kubejs/**`、核心资源 |
+| `Seed` | 每个服务端 SHA 修订强制同步一次；之后玩家可自由修改，直到下次发布新修订 | `config/**`、`shaderpacks/**`、`options.txt` |
+| `Optional` | 只用于未来显式声明的额外可选内容；当前正式整合包不使用 | — |
 
 再加一个 `prune`：列出的目录里，凡是不在清单上的文件一律删除。
 
@@ -218,7 +237,7 @@ launcher\
   crash\              hs_err / 堆转储
 ```
 
-项目根目录的 `Better MC Remake [FORGE]\` 是只读的干净游戏源，不存放客户端 exe 或构建产物。
+项目中的干净发布源位于 `pack\source\Better MC Remake [FORGE]\`，Git 忽略该目录，不存放客户端 exe 或构建产物。
 构建只产出客户端安装包；整合包由客户端的“下载”页面从 OSS 按需安装。
 
 ### Java

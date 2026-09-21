@@ -6,6 +6,7 @@ use tauri_plugin_shell::{
     process::{CommandChild, CommandEvent},
     ShellExt,
 };
+use tauri_plugin_updater::UpdaterExt;
 
 struct BackendState(Mutex<Option<CommandChild>>);
 
@@ -49,9 +50,58 @@ fn pick_java() -> Option<String> {
         .map(|p| p.to_string_lossy().into_owned())
 }
 
+#[tauri::command]
+async fn install_client_update(app: tauri::AppHandle) -> Result<(), String> {
+    let update = app
+        .updater()
+        .map_err(|e| format!("初始化客户端更新器失败：{e}"))?
+        .check()
+        .await
+        .map_err(|e| format!("检查客户端更新失败：{e}"))?
+        .ok_or_else(|| "当前已经是最新客户端".to_string())?;
+
+    let version = update.version.clone();
+    let progress_app = app.clone();
+    let finished_app = app.clone();
+    let mut downloaded: u64 = 0;
+
+    let _ = app.emit(
+        "client-update-progress",
+        serde_json::json!({"phase":"started","version":version}),
+    );
+
+    update
+        .download_and_install(
+            move |chunk_length, content_length| {
+                downloaded = downloaded.saturating_add(chunk_length as u64);
+                let _ = progress_app.emit(
+                    "client-update-progress",
+                    serde_json::json!({
+                        "phase":"downloading",
+                        "downloaded":downloaded,
+                        "total":content_length,
+                    }),
+                );
+            },
+            move || {
+                let _ = finished_app.emit(
+                    "client-update-progress",
+                    serde_json::json!({"phase":"installing"}),
+                );
+            },
+        )
+        .await
+        .map_err(|e| format!("客户端下载或安装失败：{e}"))?;
+
+    // Windows 的 updater 在成功启动 NSIS 安装器后会自动退出当前应用。
+    // 其它平台未来接入时再在这里显式 restart。
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let sidecar = app.shell().sidecar("battermc-backend")?;
             let (mut events, child) = sidecar.spawn()?;
@@ -91,7 +141,8 @@ fn main() {
             close_app,
             begin_drag,
             restore_window,
-            pick_java
+            pick_java,
+            install_client_update
         ])
         .run(tauri::generate_context!())
         .expect("启动 BatterMC5Remake 失败");

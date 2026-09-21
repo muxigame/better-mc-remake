@@ -31,6 +31,19 @@ public sealed class LocalState
     /// <summary>已经投放过的 Seed 文件，避免玩家删掉后又被重新投放。</summary>
     public List<string> SeededFiles { get; set; } = new();
 
+    /// <summary>
+    /// Seed 文件最后一次由发布端强制投放的内容修订：相对路径 → manifest SHA-1。
+    ///
+    /// 语义不是“永远跟服务器一致”，而是“每个新修订强制同步一次”：
+    /// - 首次安装下载；
+    /// - 玩家之后可自由修改/删除；
+    /// - 服务器将该 Seed 文件发布为新的 SHA-1 时，再强制同步一次。
+    /// </summary>
+    public Dictionary<string, string> SeedRevisions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>最后一次由官方控制面下发的游戏文件根地址，用于离线 manifest 缓存。</summary>
+    public string? LastFilesBaseUrl { get; set; }
+
     [JsonIgnore] private string? _file;
 
     private static readonly JsonSerializerOptions Opts = new()
@@ -53,6 +66,9 @@ public sealed class LocalState
                 {
                     s._file = file;
                     s.Hashes = new Dictionary<string, HashCacheEntry>(s.Hashes, StringComparer.OrdinalIgnoreCase);
+                    s.SeedRevisions = new Dictionary<string, string>(
+                        s.SeedRevisions ?? new Dictionary<string, string>(),
+                        StringComparer.OrdinalIgnoreCase);
                     return s;
                 }
             }
@@ -78,5 +94,15 @@ public sealed class LocalState
     public void MarkSeeded(string relative)
     {
         if (!HasSeeded(relative)) SeededFiles.Add(relative);
+    }
+
+    public bool TryGetSeedRevision(string relative, out string revision)
+        => SeedRevisions.TryGetValue(relative, out revision!);
+
+    public void MarkSeedRevision(string relative, string revision)
+    {
+        if (string.IsNullOrWhiteSpace(revision)) return;
+        SeedRevisions[relative] = revision;
+        MarkSeeded(relative); // 保留旧客户端/旧 state 语义，便于向后兼容。
     }
 }

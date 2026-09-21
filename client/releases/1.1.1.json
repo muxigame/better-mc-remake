@@ -1,0 +1,16 @@
+{
+    "version":  "1.1.1",
+    "architecture":  "tauri-2-with-dotnet-sidecar",
+    "installer":  "BatterMC5Remake-setup.exe",
+    "signatureFile":  "BatterMC5Remake-setup.exe.sig",
+    "sha256":  "ead5ab6a9db634a05189c16781c1a1357ab944e3991bda9fea13133fd1e335ba",
+    "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZkJFRk1sQ004WTdiK0MraDFrQ0g5bzR1UVV5OHZsSkVzdlBnMVVHYk80c0p0WThrd2hMU29XV0dCUStXNXZzN1cwOEJrNmdCbXVNT3VkNDFJVnZBblFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5OTk0NjE3CWZpbGU6QmF0dGVyTUM1UmVtYWtlXzEuMS4xX3g2NC1zZXR1cC5leGUJdmVyc2lvbjoxLjEuMQpwa2F6djFKbERqS1FOeXNIYkxhT2xWaTU3RFhQQ0N2WEpGUnUrQmM2aS84ZGZrRCswWkR0MithWDloSmR4cUVNbk9ZZVA5dHJJbG1qNXlGNXN6bElDdz09Cg==",
+    "size":  32549226,
+    "pubDate":  "2026-09-21T12:43:38.2064285+00:00",
+    "updaterCompatible":  true,
+    "ossObject":  "bmc/client/releases/1.1.1/BatterMC5Remake-setup.exe",
+    "signatureObject":  "bmc/client/releases/1.1.1/BatterMC5Remake-setup.exe.sig",
+    "releaseObject":  "bmc/client/releases/1.1.1/release.json",
+    "url":  "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.1/BatterMC5Remake-setup.exe",
+    "signatureUrl":  "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.1/BatterMC5Remake-setup.exe.sig"
+}

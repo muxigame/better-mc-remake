@@ -1,6 +1,6 @@
 [package]
 name = "battermc5remake"
-version = "1.1.0"
+version = "1.1.2"
 description = "BatterMC5Remake launcher"
 authors = ["Batter MC"]
 edition = "2021"
@@ -11,6 +11,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
+tauri-plugin-updater = "2"
 rfd = "0.15"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

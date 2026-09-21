@@ -1,14 +1,8 @@
-using System.Diagnostics;
-using System.Text;
-using BatterMC.Protocol;
-
 namespace BatterMC.Core;
 
 /// <summary>
-/// 启动器自更新。
-///
-/// Windows 上运行中的 exe 不能被覆盖，所以套路是：
-/// 下新版到临时文件 → 写一个批处理 → 退出自己 → 批处理等进程消失后换文件并重新拉起。
+/// 客户端版本比较。真正的完整客户端安装由 Tauri updater 负责，
+/// 保证 Tauri 主程序、.NET sidecar 和前端资源作为一个签名 NSIS 包同步更新。
 /// </summary>
 public static class SelfUpdater
 {
@@ -29,86 +23,5 @@ public static class SelfUpdater
             if (x != y) return x > y;
         }
         return false;
-    }
-
-    /// <summary>下载新版并就位。成功返回 true，调用方随后应立即退出进程。</summary>
-    public static async Task<bool> ApplyAsync(
-        LauncherRelease release, LauncherPaths paths, LauncherSettings settings,
-        Downloader downloader, IProgress<DownloadProgress>? progress, CancellationToken ct)
-    {
-        var currentExe = Environment.ProcessPath;
-        if (string.IsNullOrEmpty(currentExe))
-        {
-            Log.Warn("拿不到当前 exe 路径，跳过自更新");
-            return false;
-        }
-
-        var url = release.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-            ? release.Url
-            : settings.UpdateBaseUrl.TrimEnd('/') + "/" + release.Url.TrimStart('/');
-
-        var updateDir = Path.Combine(paths.DataDir, "update");
-        Directory.CreateDirectory(updateDir);
-        var newExe = Path.Combine(updateDir, "BatterMC5Remake.new.exe");
-
-        Log.Info($"下载启动器 {release.Version}：{url}");
-        await downloader.DownloadAllAsync(new[]
-        {
-            new DownloadItem
-            {
-                Url = url,
-                TargetPath = newExe,
-                ExpectedSize = release.Size,
-                Display = $"启动器 {release.Version}",
-            },
-        }, progress, ct).ConfigureAwait(false);
-
-        if (!string.IsNullOrWhiteSpace(release.Sha256))
-        {
-            var actual = Hashing.Sha256File(newExe);
-            if (!actual.Equals(release.Sha256, StringComparison.OrdinalIgnoreCase))
-            {
-                try { File.Delete(newExe); } catch { }
-                throw new InvalidOperationException($"启动器校验失败：期望 {release.Sha256}，实得 {actual}");
-            }
-        }
-
-        var script = Path.Combine(updateDir, "apply-update.cmd");
-        var pid = Environment.ProcessId;
-
-        // /W 让 ping 当计时器用，比 timeout 更不挑环境
-        var cmd = $"""
-            @echo off
-            chcp 65001 >nul
-            echo 正在更新 BatterMC5Remake 启动器...
-            :wait
-            tasklist /FI "PID eq {pid}" 2>nul | find "{pid}" >nul
-            if not errorlevel 1 (
-              ping -n 2 127.0.0.1 >nul
-              goto wait
-            )
-            ping -n 2 127.0.0.1 >nul
-            move /Y "{newExe}" "{currentExe}" >nul
-            if errorlevel 1 (
-              echo 更新失败，请手动把 "{newExe}" 覆盖到 "{currentExe}"
-              pause
-              exit /b 1
-            )
-            start "" "{currentExe}"
-            del "%~f0"
-            """;
-
-        File.WriteAllText(script, cmd, new UTF8Encoding(false));
-
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = "cmd.exe",
-            Arguments = $"/c \"{script}\"",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        });
-
-        Log.Info("更新脚本已启动，退出当前进程");
-        return true;
     }
 }

@@ -53,4 +53,8 @@ python -m app.cli promote-admin you@example.com
 
 ## 发布版本记录
 
-`artifacts/client/launcher-release.json` 是最新本地构建；`server/launcher-release.json` 是已上传 OSS 的线上版本。只有 `scripts/publish-oss.ps1` 完整成功后才会推进线上记录，避免官网宣布一个尚未发布的安装包。
+`artifacts/client/launcher-release.json` 是最新本地构建。正式客户端二进制永久存放在
+`bmc/client/releases/<version>/`，`bmc/client/latest/metadata.json` 是当前正式客户端版本的唯一正常真相源；
+`client/publish.ps1` 创建新历史版本并推进 latest，`client/promote.ps1 -Version x.y.z` 可把已有版本晋升/回滚为 latest。
+`server/launcher-release.json` 仅作为 OSS/latest 不可访问时的镜像内 fallback。
+整合包内容由 `pack/publish.ps1` 发布，OSS manifest 是唯一发布真相源；`server` 只负责下发 manifest / files 地址，不负责上传或保存整合包 manifest。

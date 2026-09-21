@@ -1,9 +1,6 @@
 .venv/
 **/__pycache__/
 *.py[cod]
-publish/*
-!publish/manifest.json
 data/
 *.log
 .hashcache-*.json
-packspec.json

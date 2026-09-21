@@ -12,7 +12,11 @@ public enum FilePolicy
     /// <summary>服务器说了算。每次启动校验哈希，不一致就覆盖；玩家删掉会补回来。mods / 核心 config 用这个。</summary>
     Managed = 0,
 
-    /// <summary>只在本地不存在时投放一次。之后玩家随便改，启动器永不覆盖。options.txt / 键位 / 个人偏好用这个。</summary>
+    /// <summary>
+    /// 每个服务端内容修订投放一次。首次安装会下载；玩家之后可自由修改或删除；
+    /// 当 manifest 中该文件的 SHA-1 变化时，再强制同步一次新修订，然后重新交还给玩家。
+    /// config / shaderpacks / options.txt 等“默认内容但允许玩家修改”的文件用这个。
+    /// </summary>
     Seed = 1,
 
     /// <summary>服务器提供但默认不装。玩家可在设置里勾选。额外光影 / 可选资源包用这个。</summary>
@@ -142,6 +146,23 @@ public sealed class LauncherRelease
     public string? Notes { get; set; }
     /// <summary>为 true 时低于该版本的启动器拒绝继续，必须更新。</summary>
     public bool Mandatory { get; set; }
+}
+
+/// <summary>
+/// 更新控制面返回值。客户端永远只请求 MuxiGame 域名获取这个对象；
+/// 真正的 manifest 与文件存储地址可以随时由服务端切换到 OSS/COS/R2。
+/// </summary>
+public sealed class ManifestControl
+{
+    private static readonly ManifestJsonContext Context =
+        new(new JsonSerializerOptions(PackManifest.JsonOptions));
+
+    public string ManifestUrl { get; set; } = "";
+    public string FilesBaseUrl { get; set; } = "";
+    public LauncherRelease? Launcher { get; set; }
+
+    public static ManifestControl? FromJson(string json) =>
+        JsonSerializer.Deserialize(json, Context.ManifestControl);
 }
 
 public sealed class ManagedFile

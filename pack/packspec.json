@@ -1,0 +1,88 @@
+{
+  "root": "__SET_WITH_--root__",
+  "pack": {
+    "id": "battermc5remake",
+    "name": "BatterMC5Remake",
+    "version": "1.3.1",
+    "changelog": "1.3.1\n- 配置与内置光影改为按发布修订一次性同步\n- 首次安装默认下载完整整合包\n- 发布端改为按 manifest SHA-1 增量上传"
+  },
+  "minecraft": {
+    "version": "1.21.1",
+    "loader": "neoforge",
+    "loaderVersion": "21.1.250",
+    "versionJson": "versions/BatterMC5Remake/BatterMC5Remake.json",
+    "versionId": "BatterMC5Remake"
+  },
+  "java": {
+    "major": 21,
+    "min": "21.0.0",
+    "image": "jre",
+    "distribution": "temurin",
+    "size": 0
+  },
+  "servers": [
+    {
+      "name": "Batter MC 5",
+      "host": "110.42.51.3",
+      "port": 25565,
+      "primary": true,
+      "forced": true,
+      "routes": [
+        {
+          "id": "cn-relay-current",
+          "label": "国内服务器兜底",
+          "kind": "Relay",
+          "transport": "tcp",
+          "host": "110.42.51.3",
+          "port": 25565,
+          "priority": 0,
+          "probeTimeoutMs": 1800
+        }
+      ]
+    }
+  ],
+  "include": [
+    { "glob": "mods/**", "policy": "Managed" },
+    { "glob": "config/**", "policy": "Seed" },
+    { "glob": "defaultconfigs/**", "policy": "Seed" },
+    { "glob": "configureddefaults/**", "policy": "Seed" },
+    { "glob": "options.txt", "policy": "Seed" },
+    { "glob": "shaderpacks/**", "policy": "Seed" },
+    { "glob": "resourcepacks/**", "policy": "Managed" },
+    { "glob": "kubejs/**", "policy": "Managed" },
+    { "glob": "tlm_custom_pack/**", "policy": "Managed" },
+    { "glob": "fancymenu_data/**", "policy": "Seed" },
+    { "glob": "versions/**", "policy": "Managed" }
+  ],
+  "exclude": [
+    "logs/**",
+    "saves/**",
+    "crash-reports/**",
+    "local/**",
+    "libraries/**",
+    "assets/**",
+    "launcher/**",
+    "runtime/**",
+    "**/*.part"
+  ],
+  "prune": ["mods"],
+  "overlays": [
+    {
+      "path": "config/iris.properties",
+      "format": "Properties",
+      "enforce": {
+        "maxShadowRenderDistance": 16,
+        "disableUpdateMessage": true
+      },
+      "createIfMissing": true
+    },
+    {
+      "path": "options.txt",
+      "format": "Properties",
+      "enforce": {
+        "skipMultiplayerWarning": true
+      },
+      "createIfMissing": false
+    }
+  ]
+}

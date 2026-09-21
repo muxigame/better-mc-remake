@@ -31,6 +31,7 @@ internal static class SelfTest
         PropertiesOverlay();
         TomlOverlay();
         JsonOverlay();
+        SeedRevisionSync();
         NbtRoundTrip();
         VersionRules();
         VersionCompare();
@@ -196,6 +197,57 @@ internal static class SelfTest
         Check("自动建出缺失的中间层",
             root.GetProperty("render").GetProperty("distance").GetInt32() == 12, result);
         Check("改动计数", changed == 2, changed.ToString());
+    }
+
+    private static void SeedRevisionSync()
+    {
+        Section("Seed 修订同步");
+        var tmp = Path.Combine(Path.GetTempPath(), "battermc-seedtest-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            var paths = LauncherPaths.At(tmp);
+            paths.EnsureCreated();
+            var settings = new LauncherSettings();
+            using var downloader = new Downloader();
+            const string path = "config/example.toml";
+            var shaV1 = new string('a', 40);
+            var shaV2 = new string('b', 40);
+            PackManifest Manifest(string sha) => new()
+            {
+                Files =
+                [
+                    new ManagedFile { Path = path, Size = 0, Sha1 = sha, Policy = FilePolicy.Seed },
+                ],
+            };
+
+            // 真正首次安装：文件不存在、也没有修订记账，必须下载。
+            var firstState = new LocalState { LastFilesBaseUrl = "https://example.invalid/files" };
+            var first = new SyncEngine(paths, firstState, settings, downloader).Plan(Manifest(shaV1), null, CancellationToken.None);
+            Check("首次安装 Seed 会下载", first.Downloads.Count == 1);
+
+            // 模拟 v1 已成功投放，玩家随后改了本地内容。同一修订不能覆盖。
+            var absolute = paths.ResolveGameFile(path);
+            Directory.CreateDirectory(Path.GetDirectoryName(absolute)!);
+            File.WriteAllText(absolute, "player custom value");
+            firstState.MarkSeedRevision(path, shaV1);
+            var sameRevision = new SyncEngine(paths, firstState, settings, downloader).Plan(Manifest(shaV1), null, CancellationToken.None);
+            Check("同一 Seed 修订保留玩家修改", sameRevision.Downloads.Count == 0);
+
+            // 服务端发布 v2 SHA 后，必须强制同步一次。
+            var nextRevision = new SyncEngine(paths, firstState, settings, downloader).Plan(Manifest(shaV2), null, CancellationToken.None);
+            Check("Seed SHA 变化会强制同步一次",
+                nextRevision.Downloads.Count == 1 && nextRevision.SeedRevisionTargets.TryGetValue(path, out var revision) && revision == shaV2);
+
+            // 老客户端升级到新记账模型：已有文件但没有 SeedRevisions 时，只建基线，不覆盖。
+            var legacyState = new LocalState { LastFilesBaseUrl = "https://example.invalid/files" };
+            var bootstrap = new SyncEngine(paths, legacyState, settings, downloader).Plan(Manifest(shaV1), null, CancellationToken.None);
+            Check("老安装首次升级只建立 Seed 基线", bootstrap.Downloads.Count == 0 &&
+                legacyState.TryGetSeedRevision(path, out var baseline) && baseline == shaV1);
+        }
+        finally
+        {
+            try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
+        }
     }
 
     private static void NbtRoundTrip()

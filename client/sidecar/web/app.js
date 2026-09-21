@@ -58,6 +58,22 @@ const transportReady = tauri
         catch (error) { appendLog('ERROR', 'sidecar 消息解析失败：' + error); }
       }),
       tauri.event.listen('backend-error', (e) => appendLog('ERROR', String(e.payload || 'sidecar 异常退出')))
+      ,tauri.event.listen('client-update-progress', (e) => {
+        const p = e.payload || {};
+        if (p.phase === 'started') {
+          setProgress('更新客户端', `准备更新到 ${p.version || '新版本'}`, -1);
+        } else if (p.phase === 'downloading') {
+          const total = Number(p.total || 0);
+          const downloaded = Number(p.downloaded || 0);
+          setProgress(
+            '下载客户端更新',
+            total > 0 ? `${humanSize(downloaded)} / ${humanSize(total)}` : humanSize(downloaded),
+            total > 0 ? Math.min(1, downloaded / total) : -1
+          );
+        } else if (p.phase === 'installing') {
+          setProgress('安装客户端更新', '即将退出并替换完整客户端', -1);
+        }
+      })
     ])
   : Promise.reject(new Error('Tauri API 不可用'));
 
@@ -542,8 +558,18 @@ function bind() {
     rpc('resetVerification')
       .then(() => toast('已清空校验缓存，下次启动会逐个文件核对', 'good'))
       .catch((e) => toast(e.message, 'error'));
-  $('btn-launcher-update').onclick = () =>
-    rpc('applyLauncherUpdate').catch((e) => toast(e.message, 'error'));
+  $('btn-launcher-update').onclick = async () => {
+    const button = $('btn-launcher-update');
+    button.disabled = true;
+    try {
+      setProgress('检查客户端更新', '正在验证签名更新包', -1);
+      await invoke('install_client_update');
+      // Windows 正常情况下会由 Tauri updater 启动安装器并退出当前应用。
+    } catch (e) {
+      button.disabled = false;
+      toast(String(e && e.message ? e.message : e), 'error', 15000);
+    }
+  };
 
   // ── 高级 ──
   $('jvmargs').addEventListener('change', () => save({ extraJvmArgs: $('jvmargs').value }));

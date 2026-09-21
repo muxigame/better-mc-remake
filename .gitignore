@@ -3,7 +3,10 @@
 *.local
 
 # Local game/server payloads are distributed through OSS, not Git
-/Better MC Remake*/
+/pack/source/
+/pack/archive/
+/pack/staging/
+/pack/.hashcache-*.json
 /BMC5Pack/
 /BMC5Server/
 /server/publish/*

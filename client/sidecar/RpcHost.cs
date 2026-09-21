@@ -107,7 +107,6 @@ internal sealed class RpcHost : IDisposable
         "cancel" => Cancel(),
         "detectJava" => DetectJava(),
         "openPath" => OpenPath(p["which"]?.GetValue<string>() ?? "root"),
-        "applyLauncherUpdate" => throw new InvalidOperationException("Tauri 更新器需要签名密钥，尚未启用"),
         "resetVerification" => ResetVerification(),
         _ => throw new InvalidOperationException($"未知方法 {method}"),
     };
@@ -741,6 +740,7 @@ internal sealed class RpcHost : IDisposable
     {
         _state.Hashes.Clear();
         _state.SeededFiles.Clear();
+        _state.SeedRevisions.Clear();
         _state.InstalledPackVersion = null;
         _state.Save(_paths.StateFile);
         return new JsonObject { ["cleared"] = true };
