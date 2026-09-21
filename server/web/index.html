@@ -20,7 +20,11 @@
 
   <main>
     <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-backdrop"></div><div class="hero-shade"></div>
+      <picture class="hero-backdrop" aria-hidden="true">
+        <source type="image/webp" srcset="/media/hero-1280.f29feb5edbe5.webp 1280w, /media/hero-1920.a3ba60ae904f.webp 1920w, /media/hero-2560.42a18784fb6e.webp 2560w" sizes="100vw">
+        <img src="/media/hero-1920.a3ba60ae904f.webp" alt="" fetchpriority="high" decoding="async">
+      </picture>
+      <div class="hero-shade"></div>
       <div class="hero-content">
         <p class="eyebrow">BETTER MC · REMADE FOR US</p>
         <h1 id="hero-title">一起走过的世界，<br>值得认真重做。</h1>
@@ -40,9 +44,9 @@
     </section>
 
     <section class="world-grid" aria-label="世界实机截图">
-      <figure class="world-card world-card-wide"><img src="/assets/world-02.png" alt="两位玩家坐在室内长椅" loading="lazy"><figcaption><span>01</span><strong>回到熟悉的家</strong><small>DEC 16 · HOME</small></figcaption></figure>
-      <figure class="world-card"><img src="/assets/world-03.png" alt="海边住宅与玩家角色" loading="lazy"><figcaption><span>02</span><strong>把基地建到海边</strong><small>DEC 16 · SHORE</small></figcaption></figure>
-      <figure class="world-card"><img src="/assets/world-04.png" alt="圣诞夜海边聚会" loading="lazy"><figcaption><span>03</span><strong>记住一起在线的晚上</strong><small>DEC 25 · TOGETHER</small></figcaption></figure>
+      <figure class="world-card world-card-wide"><img src="/media/world-02-960.aab807463a7a.webp" srcset="/media/world-02-960.aab807463a7a.webp 960w, /media/world-02-1600.7bdbe43ae406.webp 1600w" sizes="(max-width: 900px) 100vw, 64vw" alt="两位玩家坐在室内长椅" loading="lazy" decoding="async"><figcaption><span>01</span><strong>回到熟悉的家</strong><small>DEC 16 · HOME</small></figcaption></figure>
+      <figure class="world-card"><img src="/media/world-03-960.8f2900e595be.webp" srcset="/media/world-03-960.8f2900e595be.webp 960w, /media/world-03-1600.a89373d35221.webp 1600w" sizes="(max-width: 900px) 100vw, 36vw" alt="海边住宅与玩家角色" loading="lazy" decoding="async"><figcaption><span>02</span><strong>把基地建到海边</strong><small>DEC 16 · SHORE</small></figcaption></figure>
+      <figure class="world-card"><img src="/media/world-04-960.5f30834df41a.webp" srcset="/media/world-04-960.5f30834df41a.webp 960w, /media/world-04-1600.2728de817422.webp 1600w" sizes="(max-width: 900px) 100vw, 36vw" alt="圣诞夜海边聚会" loading="lazy" decoding="async"><figcaption><span>03</span><strong>记住一起在线的晚上</strong><small>DEC 25 · TOGETHER</small></figcaption></figure>
     </section>
 
     <section class="platform section" id="launcher">
@@ -70,7 +74,7 @@
     </section>
 
     <section class="download section" id="download">
-      <div class="download-image"><img src="/assets/world-05.png" alt="基地储物区与玩家角色" loading="lazy"></div>
+      <div class="download-image"><img src="/media/world-05-960.5d9dcc53fe5b.webp" srcset="/media/world-05-960.5d9dcc53fe5b.webp 960w, /media/world-05-1600.4bc16f740249.webp 1600w" sizes="(max-width: 900px) 100vw, 50vw" alt="基地储物区与玩家角色" loading="lazy" decoding="async"></div>
       <div class="download-copy">
         <p class="eyebrow">NEXT WORLD</p><h2>下一次上线，<br>从这里开始。</h2>
         <p>先注册玩家账号，再安装 Windows 客户端。包体由客户端从 OSS 按需下载，不需要手工解压。</p>
