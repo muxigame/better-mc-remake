@@ -75,7 +75,6 @@ jobs:
             ${{ env.SERVER_IMAGE }}:${{ steps.meta.outputs.image_tag }}
             ${{ env.SERVER_IMAGE }}:latest
           cache-from: type=gha,scope=server
-          cache-to: type=gha,mode=max,scope=server
 
       - name: Build and push web frontend
         uses: docker/build-push-action@v6
@@ -89,7 +88,6 @@ jobs:
             ${{ env.WEB_IMAGE }}:${{ steps.meta.outputs.image_tag }}
             ${{ env.WEB_IMAGE }}:latest
           cache-from: type=gha,scope=web
-          cache-to: type=gha,mode=max,scope=web
 
   deploy:
     needs: build

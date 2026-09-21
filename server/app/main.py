@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from urllib.parse import quote
 from urllib.request import Request as UrlRequest, urlopen
@@ -105,6 +106,26 @@ def current_account(request: Request):
     if account is None:
         raise HTTPException(status_code=401, detail="请先登录")
     return account
+
+
+def current_player_account(request: Request):
+    account = web_auth_store.session(request.cookies.get("bmc_session"))
+    if account is not None:
+        return account
+
+    authorization = request.headers.get("authorization", "")
+    if authorization.lower().startswith("bearer "):
+        token = authorization[7:].strip()
+        if token:
+            try:
+                return oidc_client.userinfo(token)
+            except (RuntimeError, ValueError) as error:
+                raise HTTPException(status_code=401, detail="Muxi Account 会话无效") from error
+    raise HTTPException(status_code=401, detail="请先登录")
+
+
+class GameNameRequest(BaseModel):
+    gameName: str
 
 
 def admin_account(account=Depends(current_account)):
@@ -326,6 +347,24 @@ def auth_callback(code: str = "", state: str = "", error: str = "", error_descri
 @app.get("/api/v1/auth/me")
 def me(account=Depends(current_account)) -> dict:
     return {"user": account.public()}
+
+
+@app.get("/api/v1/player/profile")
+def player_profile(account=Depends(current_player_account)) -> dict:
+    profile = web_auth_store.player_profile(account)
+    return {"user": account.public(), "player": profile.public()}
+
+
+@app.patch("/api/v1/player/profile")
+def update_player_profile(payload: GameNameRequest, account=Depends(current_player_account)) -> dict:
+    game_name = payload.gameName.strip()
+    if not re.fullmatch(r"[A-Za-z0-9_]{3,16}", game_name):
+        raise HTTPException(status_code=422, detail="Minecraft 游戏名只能使用 3–16 位字母、数字和下划线")
+    try:
+        profile = web_auth_store.update_game_name(account, game_name)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return {"user": account.public(), "player": profile.public()}
 
 
 @app.post("/api/v1/auth/logout")

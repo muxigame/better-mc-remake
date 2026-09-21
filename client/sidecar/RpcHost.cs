@@ -32,6 +32,7 @@ internal sealed class RpcHost : IDisposable
     private string? _accountToken;
     private string? _accountRefreshToken;
     private JsonObject? _account;
+    private JsonObject? _player;
     private string? _activeUpdateSource;
     private string? _updateError;
 
@@ -183,6 +184,7 @@ internal sealed class RpcHost : IDisposable
             ["autoMemoryMb"] = _settings.EffectiveMaxMemoryMb(),
             ["totalMemoryMb"] = TotalMemoryMb(),
             ["account"] = _account?.DeepClone(),
+            ["player"] = _player?.DeepClone(),
             ["updateServer"] = new JsonObject
             {
                 ["configured"] = _settings.UpdateBaseUrl,
@@ -489,6 +491,9 @@ internal sealed class RpcHost : IDisposable
         return $"{baseUrl}{path}";
     }
 
+    private static string GameApi(string path)
+        => LauncherSettings.OfficialUpdateBaseUrl.TrimEnd('/') + path;
+
     private static string Base64Url(byte[] bytes)
         => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
@@ -610,9 +615,9 @@ internal sealed class RpcHost : IDisposable
             listener.Stop();
         }
 
-        var gameName = _account?["game_name"]?.GetValue<string>() ?? "";
+        var gameName = _player?["gameName"]?.GetValue<string>() ?? "";
         if (!OfflineAuth.IsValidUsername(gameName))
-            throw new InvalidOperationException("统一账户游戏名不符合 Minecraft 玩家名规则");
+            throw new InvalidOperationException("Better MC 玩家游戏名无效");
         _settings.Username = gameName;
         _settings.Save(_paths.SettingsFile);
         Emit("state", BuildState());
@@ -630,12 +635,28 @@ internal sealed class RpcHost : IDisposable
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(json?["error_description"]?.GetValue<string>() ?? "统一账户会话无效");
         _account = json;
-        var gameName = _account?["game_name"]?.GetValue<string>() ?? "";
+        await LoadPlayerProfileAsync().ConfigureAwait(false);
+        var gameName = _player?["gameName"]?.GetValue<string>() ?? "";
         if (!OfflineAuth.IsValidUsername(gameName))
         {
             _account = null;
-            throw new InvalidOperationException("登录服务器返回了无效账号信息");
+            _player = null;
+            throw new InvalidOperationException("Better MC 返回了无效游戏名");
         }
+    }
+
+    private async Task LoadPlayerProfileAsync()
+    {
+        if (string.IsNullOrEmpty(_accountToken))
+            throw new InvalidOperationException("请先登录 Muxi Account");
+        using var request = new HttpRequestMessage(HttpMethod.Get, GameApi("/api/v1/player/profile"));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
+        using var response = await _accountHttp.SendAsync(request).ConfigureAwait(false);
+        var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var json = JsonNode.Parse(text)?.AsObject();
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException(json?["detail"]?.GetValue<string>() ?? "无法读取 Better MC 玩家资料");
+        _player = json?["player"]?.AsObject();
     }
 
     private async Task<JsonNode> AccountLogoutAsync()
@@ -657,6 +678,7 @@ internal sealed class RpcHost : IDisposable
         _accountToken = null;
         _accountRefreshToken = null;
         _account = null;
+        _player = null;
         Emit("state", BuildState());
         return BuildState();
     }
@@ -698,7 +720,7 @@ internal sealed class RpcHost : IDisposable
             }
             await LoadAccountAsync().ConfigureAwait(false);
         }
-        var gameName = _account?["game_name"]?.GetValue<string>() ?? "";
+        var gameName = _player?["gameName"]?.GetValue<string>() ?? "";
         if (!OfflineAuth.IsValidUsername(gameName))
             throw new InvalidOperationException("账号玩家名无效，请联系管理员");
         _settings.Username = gameName;

@@ -98,6 +98,28 @@ class WebsiteAccount:
         }
 
 
+@dataclass(frozen=True)
+class PlayerProfile:
+    subject: str
+    uid: int
+    game_name: str
+    points: int
+    balance_cents: int
+    created_at: str
+    updated_at: str
+
+    def public(self) -> dict:
+        return {
+            "subject": self.subject,
+            "uid": self.uid,
+            "gameName": self.game_name,
+            "points": self.points,
+            "balanceCents": self.balance_cents,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
+        }
+
+
 class WebsiteAuthStore:
     def __init__(self, database: Path):
         self.database = database
@@ -141,6 +163,15 @@ class WebsiteAuthStore:
                     created_at_claim TEXT,
                     last_login_at_claim TEXT,
                     expires_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS player_profiles (
+                    subject TEXT PRIMARY KEY,
+                    uid INTEGER NOT NULL,
+                    game_name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                    points INTEGER NOT NULL DEFAULT 0,
+                    balance_cents INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
                 );
                 """
             )
@@ -207,6 +238,71 @@ class WebsiteAuthStore:
             return
         with self._lock, self.connect() as db:
             db.execute("DELETE FROM oidc_web_sessions WHERE token_hash=?", (token_hash(raw),))
+
+    def player_profile(self, account: WebsiteAccount) -> PlayerProfile:
+        now = iso(utc_now())
+        with self._lock, self.connect() as db:
+            row = db.execute(
+                "SELECT * FROM player_profiles WHERE subject=?",
+                (account.subject,),
+            ).fetchone()
+            if row is None:
+                game_name = account.game_name
+                try:
+                    db.execute(
+                        """INSERT INTO player_profiles
+                           (subject,uid,game_name,points,balance_cents,created_at,updated_at)
+                           VALUES(?,?,?,0,0,?,?)""",
+                        (account.subject, account.uid, game_name, now, now),
+                    )
+                except sqlite3.IntegrityError:
+                    # 极端情况下历史数据发生重名，用 UID 生成一个稳定兜底名。
+                    game_name = f"BMC{account.uid}"[:16]
+                    db.execute(
+                        """INSERT INTO player_profiles
+                           (subject,uid,game_name,points,balance_cents,created_at,updated_at)
+                           VALUES(?,?,?,0,0,?,?)""",
+                        (account.subject, account.uid, game_name, now, now),
+                    )
+                row = db.execute(
+                    "SELECT * FROM player_profiles WHERE subject=?",
+                    (account.subject,),
+                ).fetchone()
+            return PlayerProfile(
+                subject=str(row["subject"]),
+                uid=int(row["uid"]),
+                game_name=str(row["game_name"]),
+                points=int(row["points"]),
+                balance_cents=int(row["balance_cents"]),
+                created_at=str(row["created_at"]),
+                updated_at=str(row["updated_at"]),
+            )
+
+    def update_game_name(self, account: WebsiteAccount, game_name: str) -> PlayerProfile:
+        # 确保资料存在，再只更新 Better MC 业务侧游戏名。
+        self.player_profile(account)
+        now = iso(utc_now())
+        with self._lock, self.connect() as db:
+            try:
+                db.execute(
+                    "UPDATE player_profiles SET game_name=?,uid=?,updated_at=? WHERE subject=?",
+                    (game_name, account.uid, now, account.subject),
+                )
+            except sqlite3.IntegrityError as error:
+                raise ValueError("该 Minecraft 游戏名已经被其他玩家使用") from error
+            row = db.execute(
+                "SELECT * FROM player_profiles WHERE subject=?",
+                (account.subject,),
+            ).fetchone()
+        return PlayerProfile(
+            subject=str(row["subject"]),
+            uid=int(row["uid"]),
+            game_name=str(row["game_name"]),
+            points=int(row["points"]),
+            balance_cents=int(row["balance_cents"]),
+            created_at=str(row["created_at"]),
+            updated_at=str(row["updated_at"]),
+        )
 
 
 class OidcClient:

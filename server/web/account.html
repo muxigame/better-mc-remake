@@ -1,36 +1,70 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0b0d">
-  <title>玩家资料 · Batter MC Remake</title>
+  <title>玩家中心 · Batter MC Remake</title>
   <link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/auth.css">
 </head>
 <body class="auth-page">
-  <header class="site-nav"><a class="brand" href="/"><span class="brand-pixel">B</span><span>BATTER MC</span></a><nav><a href="/">返回官网</a></nav><a class="nav-cta" href="/#download">下载客户端</a></header>
-  <main class="auth-shell">
-    <section class="auth-intro">
-      <p class="eyebrow">PLAYER PROFILE</p>
-      <h1 id="profile-nickname">—</h1>
-      <p><span id="profile-username">—</span> · UID <span id="profile-uid">—</span></p>
-      <div class="auth-features"><span>Muxi Account</span><span>OpenID Connect</span><span>统一身份</span></div>
+  <header class="site-nav">
+    <a class="brand" href="/"><span class="brand-pixel">B</span><span>BATTER MC</span></a>
+    <nav><a href="/">返回官网</a><a href="#identity">统一身份</a><a href="#game">游戏资料</a></nav>
+    <a class="nav-user" id="account-nav-user" href="https://account.muxigame.com/account">—</a>
+  </header>
+
+  <main class="player-center">
+    <section class="player-hero">
+      <div>
+        <p class="eyebrow">PLAYER CENTER</p>
+        <h1 id="profile-nickname">—</h1>
+        <p class="player-identity-line"><span id="profile-username">—</span><span>UID <b id="profile-uid">—</b></span></p>
+      </div>
+      <div class="player-summary-grid">
+        <article><small>积分</small><strong id="player-points">0</strong><span>即将开放</span></article>
+        <article><small>余额</small><strong id="player-balance">¥0.00</strong><span>充值功能筹备中</span></article>
+        <article><small>活动</small><strong>—</strong><span>暂无进行中的活动</span></article>
+      </div>
     </section>
 
-    <section class="profile-card" id="profile-card">
-      <p class="eyebrow">BETTER MC</p><h2>玩家资料</h2>
-      <p>身份由 Muxi Account 提供；Better MC 只保存本站会话和业务数据，不保存账户密码。</p>
-      <dl>
-        <div><dt>Minecraft 游戏名</dt><dd id="profile-game-name">—</dd></div>
-        <div><dt>邮箱</dt><dd id="profile-email">—</dd></div>
-        <div><dt>邮箱状态</dt><dd id="profile-email-status">—</dd></div>
-        <div><dt>账号角色</dt><dd id="profile-role">玩家</dd></div>
-        <div><dt>创建时间</dt><dd id="profile-created">—</dd></div>
-      </dl>
-      <div class="profile-actions">
-        <a class="button button-primary" href="/#download">下载客户端</a>
-        <a class="button button-outline" href="https://account.muxigame.com/account">管理 Muxi Account</a>
-        <a class="button button-outline" id="admin-link" href="/admin.html" hidden>管理后台</a>
-        <button class="text-button" id="logout-button">退出 Better MC</button>
-      </div>
+    <section class="player-grid">
+      <article class="profile-card player-panel" id="game">
+        <p class="eyebrow">MINECRAFT PROFILE</p>
+        <h2>游戏资料</h2>
+        <p>这里属于 Better MC。游戏名会被启动器用于当前离线 Minecraft 身份。</p>
+        <div id="profile-message" class="form-message" hidden></div>
+        <form id="game-name-form" class="player-form">
+          <label>
+            <span>Minecraft 游戏名</span>
+            <input id="profile-game-name" name="gameName" minlength="3" maxlength="16" pattern="[A-Za-z0-9_]+" required>
+            <small>3–16 位字母、数字或下划线。当前服务器仍使用 Offline UUID，修改后服务器可能把你识别为新玩家。</small>
+          </label>
+          <button class="button button-primary" type="submit">保存游戏名</button>
+        </form>
+        <div class="nickname-note">
+          <strong>中文昵称怎么办？</strong>
+          <p>真实 Minecraft 用户名仍保持 ASCII；中文或带格式的名字应通过显示昵称 Mod 实现，这样不会破坏登录身份和 UUID。</p>
+        </div>
+      </article>
+
+      <article class="profile-card player-panel" id="identity">
+        <p class="eyebrow">MUXI ACCOUNT</p>
+        <h2>统一身份</h2>
+        <p>用户名、昵称、邮箱、密码和第三方账号绑定统一由 Muxi Account 管理。</p>
+        <dl>
+          <div><dt>昵称</dt><dd id="identity-nickname">—</dd></div>
+          <div><dt>用户名</dt><dd id="identity-username">—</dd></div>
+          <div><dt>UID</dt><dd id="identity-uid">—</dd></div>
+          <div><dt>邮箱</dt><dd id="profile-email">未绑定</dd></div>
+          <div><dt>邮箱状态</dt><dd id="profile-email-status">—</dd></div>
+          <div><dt>账号角色</dt><dd id="profile-role">玩家</dd></div>
+          <div><dt>创建时间</dt><dd id="profile-created">—</dd></div>
+        </dl>
+        <div class="profile-actions">
+          <a class="button button-primary" href="https://account.muxigame.com/account">管理 Muxi Account</a>
+          <a class="button button-outline" id="admin-link" href="/admin.html" hidden>管理后台</a>
+          <button class="text-button" id="logout-button">退出 Better MC</button>
+        </div>
+      </article>
     </section>
   </main>
   <script src="/account.js" defer></script>
