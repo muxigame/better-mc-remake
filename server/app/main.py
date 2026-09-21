@@ -124,7 +124,7 @@ def current_player_account(request: Request):
             try:
                 return oidc_client.userinfo(token)
             except (RuntimeError, ValueError) as error:
-                raise HTTPException(status_code=401, detail="Muxi Account 会话无效") from error
+                raise HTTPException(status_code=401, detail="muxi 账户 会话无效") from error
     raise HTTPException(status_code=401, detail="请先登录")
 
 

@@ -510,10 +510,62 @@ internal sealed class RpcHost : IDisposable
         return result;
     }
 
+    private async Task<(string Flow, string Secret)> CreateLauncherAuthFlowAsync(CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, AccountApi("/api/launcher/auth-flow"));
+        using var response = await _accountHttp.SendAsync(request, ct).ConfigureAwait(false);
+        var text = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        var json = JsonNode.Parse(text)?.AsObject();
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException(json?["detail"]?.GetValue<string>() ?? "无法创建启动器授权会话");
+        var flow = json?["flow"]?.GetValue<string>() ?? "";
+        var secret = json?["secret"]?.GetValue<string>() ?? "";
+        if (string.IsNullOrWhiteSpace(flow) || string.IsNullOrWhiteSpace(secret))
+            throw new InvalidOperationException("muxi 账户没有返回有效的启动器授权会话");
+        return (flow, secret);
+    }
+
+    private async Task<string> WatchLauncherAuthFlowAsync(string flow, string secret, CancellationToken ct)
+    {
+        var url = AccountApi($"/api/launcher/auth-flow/{Uri.EscapeDataString(flow)}?secret={Uri.EscapeDataString(secret)}");
+        while (true)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(750), ct).ConfigureAwait(false);
+            try
+            {
+                using var response = await _accountHttp.GetAsync(url, ct).ConfigureAwait(false);
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    return "expired";
+                if (!response.IsSuccessStatusCode)
+                    continue;
+                var json = JsonNode.Parse(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false))?.AsObject();
+                var status = json?["status"]?.GetValue<string>() ?? "pending";
+                if (!status.Equals("pending", StringComparison.OrdinalIgnoreCase))
+                    return status;
+            }
+            catch (HttpRequestException)
+            {
+                // 短暂网络波动不应该打断已经打开的浏览器授权页。
+            }
+        }
+    }
+
+    private async Task CompleteLauncherAuthFlowAsync(string flow, string secret)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Delete,
+                AccountApi($"/api/launcher/auth-flow/{Uri.EscapeDataString(flow)}?secret={Uri.EscapeDataString(secret)}"));
+            using var _ = await _accountHttp.SendAsync(request).ConfigureAwait(false);
+        }
+        catch { }
+    }
+
     private static async Task WriteBrowserResultAsync(NetworkStream stream, bool ok)
     {
         var title = ok ? "登录成功" : "登录失败";
-        var body = ok ? "已完成 Muxi Account 授权，可以关闭这个页面并返回 Better MC。" : "授权没有完成，请返回 Better MC 重试。";
+        var body = ok ? "已完成 muxi 账户 授权，可以关闭这个页面并返回 Better MC。" : "授权没有完成，请返回 Better MC 重试。";
         var html = $"<!doctype html><meta charset=\"utf-8\"><title>{title}</title><style>body{{font:16px system-ui;background:#0b0d12;color:#f5f7fb;display:grid;place-items:center;min-height:100vh;margin:0}}main{{max-width:560px;padding:40px;border:1px solid #303746;background:#151922}}h1{{margin-top:0}}p{{color:#9aa4b5}}</style><main><h1>{title}</h1><p>{body}</p></main>";
         var bytes = Encoding.UTF8.GetBytes(html);
         var header = Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {bytes.Length}\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n");
@@ -529,6 +581,9 @@ internal sealed class RpcHost : IDisposable
         var state = Base64Url(RandomNumberGenerator.GetBytes(24));
         var nonce = Base64Url(RandomNumberGenerator.GetBytes(24));
 
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(register ? 15 : 5));
+        var (launcherFlow, launcherFlowSecret) = await CreateLauncherAuthFlowAsync(timeout.Token).ConfigureAwait(false);
+
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start(1);
         try
@@ -543,7 +598,9 @@ internal sealed class RpcHost : IDisposable
                 $"&state={Uri.EscapeDataString(state)}" +
                 $"&nonce={Uri.EscapeDataString(nonce)}" +
                 $"&code_challenge={Uri.EscapeDataString(challenge)}" +
-                "&code_challenge_method=S256";
+                "&code_challenge_method=S256" +
+                $"&launcher_flow={Uri.EscapeDataString(launcherFlow)}" +
+                $"&launcher_flow_secret={Uri.EscapeDataString(launcherFlowSecret)}";
 
             var browserUrl = register
                 ? AccountApi("/register") + $"?continue={Uri.EscapeDataString(authorizePath)}"
@@ -554,13 +611,30 @@ internal sealed class RpcHost : IDisposable
             {
                 ["phase"] = register ? "等待注册" : "等待登录",
                 ["detail"] = register
-                    ? "请在浏览器中创建并验证 Muxi Account，完成后会自动返回启动器"
-                    : "请在浏览器中完成 Muxi Account 登录",
+                    ? "请在浏览器中创建并验证 muxi 账户，完成后会自动返回启动器"
+                    : "请在浏览器中完成 muxi 账户登录",
                 ["fraction"] = -1,
             });
 
-            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(register ? 15 : 5));
-            using var client = await listener.AcceptTcpClientAsync(timeout.Token).ConfigureAwait(false);
+            using var wait = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+            var callbackTask = listener.AcceptTcpClientAsync(wait.Token).AsTask();
+            var flowTask = WatchLauncherAuthFlowAsync(launcherFlow, launcherFlowSecret, wait.Token);
+            var completed = await Task.WhenAny(callbackTask, flowTask).ConfigureAwait(false);
+            if (completed == flowTask)
+            {
+                var flowStatus = await flowTask.ConfigureAwait(false);
+                wait.Cancel();
+                try { await callbackTask.ConfigureAwait(false); }
+                catch (OperationCanceledException) { }
+                if (flowStatus.Equals("cancelled", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException(register ? "已取消 muxi 账户创建" : "已取消 muxi 账户登录");
+                throw new InvalidOperationException(register ? "muxi 账户创建已超时，请重新尝试" : "muxi 账户登录已超时，请重新尝试");
+            }
+
+            using var client = await callbackTask.ConfigureAwait(false);
+            wait.Cancel();
+            try { await flowTask.ConfigureAwait(false); }
+            catch (OperationCanceledException) { }
             await using var stream = client.GetStream();
             using var reader = new StreamReader(stream, Encoding.ASCII, false, 4096, leaveOpen: true);
             var requestLine = await reader.ReadLineAsync(timeout.Token).ConfigureAwait(false) ?? "";
@@ -569,18 +643,18 @@ internal sealed class RpcHost : IDisposable
             if (parts.Length < 2 || !Uri.TryCreate("http://127.0.0.1" + parts[1], UriKind.Absolute, out var callback))
             {
                 await WriteBrowserResultAsync(stream, false).ConfigureAwait(false);
-                throw new InvalidOperationException("Muxi Account 返回了无效的登录回调");
+                throw new InvalidOperationException("muxi 账户返回了无效的登录回调");
             }
             var query = ParseQuery(callback.Query);
             if (!query.TryGetValue("state", out var returnedState) || !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(state), Encoding.UTF8.GetBytes(returnedState)))
             {
                 await WriteBrowserResultAsync(stream, false).ConfigureAwait(false);
-                throw new InvalidOperationException("Muxi Account 登录状态校验失败");
+                throw new InvalidOperationException("muxi 账户登录状态校验失败");
             }
             if (!query.TryGetValue("code", out var code) || string.IsNullOrWhiteSpace(code))
             {
                 await WriteBrowserResultAsync(stream, false).ConfigureAwait(false);
-                throw new InvalidOperationException(query.GetValueOrDefault("error_description") ?? query.GetValueOrDefault("error") ?? "Muxi Account 未返回授权码");
+                throw new InvalidOperationException(query.GetValueOrDefault("error_description") ?? query.GetValueOrDefault("error") ?? "muxi 账户未返回授权码");
             }
 
             using var content = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -605,14 +679,19 @@ internal sealed class RpcHost : IDisposable
             if (string.IsNullOrEmpty(_accountToken))
             {
                 await WriteBrowserResultAsync(stream, false).ConfigureAwait(false);
-                throw new InvalidOperationException("Muxi Account 没有返回访问令牌");
+                throw new InvalidOperationException("muxi 账户没有返回访问令牌");
             }
             await LoadAccountAsync().ConfigureAwait(false);
             await WriteBrowserResultAsync(stream, true).ConfigureAwait(false);
         }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        {
+            throw new InvalidOperationException(register ? "muxi 账户创建已超时，请重新尝试" : "muxi 账户登录已超时，请重新尝试");
+        }
         finally
         {
             listener.Stop();
+            await CompleteLauncherAuthFlowAsync(launcherFlow, launcherFlowSecret).ConfigureAwait(false);
         }
 
         var gameName = _player?["gameName"]?.GetValue<string>() ?? "";
@@ -626,7 +705,7 @@ internal sealed class RpcHost : IDisposable
 
     private async Task LoadAccountAsync()
     {
-        if (string.IsNullOrEmpty(_accountToken)) throw new InvalidOperationException("请先登录 Muxi Account");
+        if (string.IsNullOrEmpty(_accountToken)) throw new InvalidOperationException("请先登录 muxi 账户");
         using var request = new HttpRequestMessage(HttpMethod.Get, AccountApi("/oauth/userinfo"));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
         using var response = await _accountHttp.SendAsync(request).ConfigureAwait(false);
@@ -648,7 +727,7 @@ internal sealed class RpcHost : IDisposable
     private async Task LoadPlayerProfileAsync()
     {
         if (string.IsNullOrEmpty(_accountToken))
-            throw new InvalidOperationException("请先登录 Muxi Account");
+            throw new InvalidOperationException("请先登录 muxi 账户");
         using var request = new HttpRequestMessage(HttpMethod.Get, GameApi("/api/v1/player/profile"));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
         using var response = await _accountHttp.SendAsync(request).ConfigureAwait(false);
@@ -703,7 +782,7 @@ internal sealed class RpcHost : IDisposable
     private async Task RequireAccountAsync()
     {
         if (string.IsNullOrEmpty(_accountToken) || _account is null)
-            throw new InvalidOperationException("请先登录 Muxi Account");
+            throw new InvalidOperationException("请先登录 muxi 账户");
         try
         {
             await LoadAccountAsync().ConfigureAwait(false);
@@ -716,7 +795,7 @@ internal sealed class RpcHost : IDisposable
                 _accountRefreshToken = null;
                 _account = null;
                 Emit("state", BuildState());
-                throw new InvalidOperationException("Muxi Account 登录已过期，请重新登录");
+                throw new InvalidOperationException("muxi 账户 登录已过期，请重新登录");
             }
             await LoadAccountAsync().ConfigureAwait(false);
         }

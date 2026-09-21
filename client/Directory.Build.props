@@ -8,7 +8,7 @@
     <Product>BatterMC5Remake</Product>
     <Company>Batter MC</Company>
     <Copyright>Batter MC</Copyright>
-    <Version>1.1.3</Version>
+    <Version>1.1.4</Version>
 
     <!-- 调试符号内嵌到 dll 里，发布目录就不会散落一堆 .pdb -->
     <DebugType>embedded</DebugType>

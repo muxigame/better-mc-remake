@@ -11,6 +11,7 @@ const invoke = tauri && tauri.core && tauri.core.invoke;
 
 let state = {};
 let busy = false;
+let accountAuthPending = false;
 let optionalItems = [];
 
 /* ───────────────────────── RPC ───────────────────────── */
@@ -154,11 +155,21 @@ function setBusy(value) {
   $('idle').hidden = value;
   $('working').hidden = !value;
   $('btn-play').disabled = value;
-  $('btn-account-login').disabled = value;
-  $('btn-account-register').disabled = value;
+  syncAccountAuthButtons();
   $('btn-install-pack').disabled = value;
   $('btn-download-cancel').hidden = !value;
   $('download-progress').hidden = !value;
+}
+
+function syncAccountAuthButtons() {
+  const disabled = busy || accountAuthPending;
+  $('btn-account-login').disabled = disabled;
+  $('btn-account-register').disabled = disabled;
+}
+
+function setAccountAuthPending(value) {
+  accountAuthPending = value;
+  syncAccountAuthButtons();
 }
 
 function setProgress(phase, detail, fraction) {
@@ -420,32 +431,32 @@ async function play() {
 async function accountLogin() {
   const error = $('account-error');
   try {
-    $('btn-account-login').disabled = true;
+    setAccountAuthPending(true);
     const result = await rpc('accountLogin', {});
     error.hidden = true;
     render(result);
-    toast('Muxi Account 登录成功', 'good');
+    toast('muxi 账户登录成功', 'good');
   } catch (e) {
     error.textContent = e.message;
     error.hidden = false;
   } finally {
-    $('btn-account-login').disabled = false;
+    setAccountAuthPending(false);
   }
 }
 
 async function accountRegister() {
   const error = $('account-error');
   try {
-    $('btn-account-register').disabled = true;
+    setAccountAuthPending(true);
     const result = await rpc('accountRegister', {});
     error.hidden = true;
     render(result);
-    toast('Muxi Account 注册并登录成功', 'good');
+    toast('muxi 账户注册并登录成功', 'good');
   } catch (e) {
     error.textContent = e.message;
     error.hidden = false;
   } finally {
-    $('btn-account-register').disabled = false;
+    setAccountAuthPending(false);
   }
 }
 

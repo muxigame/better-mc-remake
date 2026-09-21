@@ -16,7 +16,7 @@
       const user = response.ok ? (await response.json()).user : null;
       document.querySelectorAll('[data-account-link]').forEach(link => {
         link.textContent = user ? (user.nickname || user.username || '玩家中心') : '玩家账号';
-        link.title = user ? '@' + user.username + ' · UID ' + user.uid : '使用 Muxi Account 登录';
+        link.title = user ? '@' + user.username + ' · UID ' + user.uid : '使用 muxi 账户 登录';
         link.classList.toggle('is-authenticated', !!user);
       });
     } catch (_) { /* Keep the working server-side entry link when offline. */ }

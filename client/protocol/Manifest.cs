@@ -149,7 +149,7 @@ public sealed class LauncherRelease
 }
 
 /// <summary>
-/// 更新控制面返回值。客户端永远只请求 MuxiGame 域名获取这个对象；
+/// 更新控制面返回值。客户端永远只请求 muxigame 域名获取这个对象；
 /// 真正的 manifest 与文件存储地址可以随时由服务端切换到 OSS/COS/R2。
 /// </summary>
 public sealed class ManifestControl

@@ -1,6 +1,6 @@
 # Batter MC Remake 官网与 API
 
-FastAPI 后端 + 无构建步骤的 HTML/CSS/JS 官网。Python 提供官网、OIDC 登录接入和管理 API；统一账户、注册、邮箱验证与密码都由独立的 Muxi Account 服务负责。客户端安装包与整合包文件直接从阿里云 OSS 下载。
+FastAPI 后端 + 无构建步骤的 HTML/CSS/JS 官网。Python 提供官网、OIDC 登录接入和管理 API；统一账户、注册、邮箱验证与密码都由独立的 muxi 账户 服务负责。客户端安装包与整合包文件直接从阿里云 OSS 下载。
 
 ```powershell
 py -3 -m venv .\server\.venv
@@ -24,8 +24,8 @@ Pop-Location
 - `/api/v1/manifest`：客户端清单；文件 URL 已指向 OSS
 - `/account.html`：统一账户入口和当前登录状态
 - `/admin.html`：嵌入官网的管理后台（仅管理员）
-- `/api/v1/auth/login`：跳转到 Muxi Account 的 Authorization Code + PKCE 登录
-- `/api/v1/auth/register`：跳转到 Muxi Account 注册页
+- `/api/v1/auth/login`：跳转到 muxi 账户 的 Authorization Code + PKCE 登录
+- `/api/v1/auth/register`：跳转到 muxi 账户 注册页
 - `/api/v1/auth/callback`：OIDC 回调，成功后建立本站 HttpOnly Session
 - `/api/v1/auth/me`：读取当前官网会话
 - `/api/v1/admin/users`：管理员读取统一账户中心的账号列表
@@ -37,9 +37,9 @@ Pop-Location
 
 - `BMC_PUBLIC_URL`：HTTPS 官网地址
 - `BMC_DATABASE_PATH`：本站 OIDC 登录状态与 Web Session 的 SQLite 文件
-- `BMC_AUTH_ISSUER`：Muxi Account，例如 `https://account.muxigame.com`
+- `BMC_AUTH_ISSUER`：muxi 账户，例如 `https://account.muxigame.com`
 - `BMC_AUTH_CLIENT_ID`：`better-mc-web`
-- `BMC_AUTH_CLIENT_SECRET`：与 Muxi Account 中 confidential client 完全一致的高熵 Secret
+- `BMC_AUTH_CLIENT_SECRET`：与 muxi 账户 中 confidential client 完全一致的高熵 Secret
 - `BMC_AUTH_REDIRECT_URI`：`https://mc.muxigame.com/api/v1/auth/callback`
 
 Better MC 官网不接收、验证或保存用户密码；注册、邮箱验证、Argon2id 密码哈希、OAuth Token 与账号角色都在 `muxi-auth` 仓库中维护。本站只保存自己的一次性 OAuth state/PKCE verifier 和登录后的站点 Session。
