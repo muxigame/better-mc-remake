@@ -50,12 +50,14 @@ public sealed class LaunchPipeline
         var manifest = await sync.FetchManifestAsync(settings.UpdateBaseUrl, ct).ConfigureAwait(false);
         _ctx.Manifest = manifest;
 
-        // 2. 启动器自更新（只提示，装不装交给 UI）
+        // 2. 在任何游戏下载/写入之前检查客户端支持策略，不能仅依赖 UI 禁用按钮。
         if (manifest.Launcher is not null &&
             SelfUpdater.IsNewer(manifest.Launcher.Version, GameLauncher.ThisVersion()))
         {
             Log.Info($"启动器有新版本：{manifest.Launcher.Version}");
             try { LauncherUpdateAvailable?.Invoke(manifest.Launcher); } catch { }
+            if (SelfUpdater.IsRequired(manifest.Launcher, GameLauncher.ThisVersion()))
+                throw new InvalidOperationException($"当前客户端已停止支持，请先更新到 {manifest.Launcher.Version}。");
         }
 
         // 3. 整合包文件

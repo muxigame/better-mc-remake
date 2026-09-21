@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
+from .client_updates import update_required, validate_policy, version_key
 
 
 SERVER_ROOT = Path(__file__).resolve().parent.parent
@@ -22,7 +23,6 @@ WORKSPACE_ROOT = SERVER_ROOT.parent
 WEB_ROOT = SERVER_ROOT / "web"
 SITE_FILE = SERVER_ROOT / "site.json"
 RELEASE_FILES = (
-    WORKSPACE_ROOT / "artifacts" / "client" / "launcher-release.json",
     SERVER_ROOT / "launcher-release.json",
 )
 
@@ -187,6 +187,10 @@ def launcher_release(config: dict) -> dict:
         )
     object_name = release.get("installer") or config["launcherObject"]
     release_url = release.get("url") or f'{config["ossBaseUrl"]}/{quote(object_name)}'
+    try:
+        policy = validate_policy(release, str(release.get("version", "1.0.0")))
+    except (TypeError, ValueError) as error:
+        raise HTTPException(status_code=503, detail="客户端发布策略无效") from error
     return {
         "version": release.get("version", "1.0.0"),
         "url": release_url,
@@ -197,21 +201,14 @@ def launcher_release(config: dict) -> dict:
         "sizeText": human_size(int(release.get("size", 0))),
         "signature": release.get("signature", ""),
         "pubDate": release.get("pubDate"),
-        "notes": "下载客户端后，由客户端完成整合包、Java 与 NeoForge 的安装和更新。",
-        "mandatory": False,
+        "notes": release.get("notes", ""),
+        "mandatory": release.get("mandatory") is True,
+        **policy,
     }
 
 
-def semver_tuple(value: str) -> tuple[int, ...]:
-    parts: list[int] = []
-    for token in value.lstrip("vV").replace("+", ".").replace("-", ".").split("."):
-        try:
-            parts.append(int(token))
-        except ValueError:
-            parts.append(0)
-    while parts and parts[-1] == 0:
-        parts.pop()
-    return tuple(parts or [0])
+def semver_tuple(value: str) -> tuple:
+    return version_key(value)
 
 
 def load_manifest() -> dict:
@@ -266,20 +263,34 @@ def site() -> dict:
 
 
 @app.get("/api/v1/launcher/latest")
-def latest_launcher() -> dict:
-    return launcher_release(site_config())
+def latest_launcher(current_version: str | None = None, response: Response = None) -> dict:
+    if response is not None:
+        response.headers["Cache-Control"] = "no-store"
+    release = launcher_release(site_config())
+    if current_version is not None:
+        try:
+            release["mandatory"] = update_required(release, current_version)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail="客户端版本号无效") from error
+    return release
 
 
 @app.get("/api/v1/launcher/updater/{target}/{arch}/{current_version}")
-def tauri_updater(target: str, arch: str, current_version: str):
+def tauri_updater(target: str, arch: str, current_version: str, response: Response = None):
+    if response is not None:
+        response.headers["Cache-Control"] = "no-store"
     # 当前只发布 Windows x64。Tauri 对没有更新的情况要求 204。
     if target != "windows" or arch not in {"x86_64", "x86-64", "amd64"}:
         return Response(status_code=204)
 
     release = launcher_release(site_config())
     latest = str(release.get("version", "0.0.0"))
-    if semver_tuple(latest) <= semver_tuple(current_version):
-        return Response(status_code=204)
+    try:
+        if version_key(latest) <= version_key(current_version):
+            return Response(status_code=204, headers={"Cache-Control": "no-store"})
+        required = update_required(release, current_version)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail="客户端版本号无效") from error
 
     signature = str(release.get("signature") or "").strip()
     if not signature:
@@ -291,6 +302,11 @@ def tauri_updater(target: str, arch: str, current_version: str):
         "url": release["url"],
         "signature": signature,
         "notes": release.get("notes", ""),
+        "size": release.get("size", 0),
+        "mandatory": required,
+        "minSupportedVersion": release.get("minSupportedVersion"),
+        "blockedVersions": release.get("blockedVersions", []),
+        "updateReason": release.get("updateReason", ""),
     }
 
 

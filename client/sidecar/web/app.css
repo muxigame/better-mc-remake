@@ -63,6 +63,45 @@ input  { font-family: inherit; font-size: inherit; }
 
 /* ───────────────────────── 标题栏 ───────────────────────── */
 
+/* Native modal: focus stays inside; the page underneath is inert. */
+.client-update-dialog {
+  width: min(480px, calc(100vw - 40px));
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--gold);
+  box-shadow: 8px 8px 0 rgba(0,0,0,.24), 0 24px 80px rgba(0,0,0,.5);
+  overflow-y: auto;
+}
+.client-update-dialog::backdrop { background: rgba(10,9,13,.78); backdrop-filter: blur(4px); }
+.cu-header { display: flex; align-items: center; justify-content: space-between; min-height: 46px; padding: 5px 15px 0 26px; }
+.cu-kicker { color: var(--muted); font-size: 11px; letter-spacing: .1em; }
+.cu-body { padding: 12px 28px 24px; }
+.cu-body h2 { margin: 0 0 9px; font-size: 24px; font-weight: 650; letter-spacing: -.025em; }
+.cu-description { margin: 0; color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+.cu-versions { display: flex; gap: 23px; align-items: center; padding: 19px 0; margin-top: 9px; border-bottom: 1px solid var(--line); }
+.cu-versions div { display: grid; gap: 6px; }
+.cu-versions div span { color: var(--muted); font-size: 11px; }
+.cu-versions strong { font: 600 20px var(--mono); }
+.cu-versions div:nth-of-type(2) strong { color: var(--gold); }
+.cu-arrow { color: var(--muted); }
+.cu-size { margin-left: auto; color: var(--muted); font: 11px var(--mono); white-space: nowrap; }
+.cu-notes { margin: 18px 0 0; max-height: 150px; overflow-y: auto; white-space: pre-line; color: var(--text-dim); font-size: 12px; line-height: 1.8; }
+.cu-progress { margin-top: 23px; }
+.cu-progress-head { display: flex; justify-content: space-between; margin-bottom: 10px; }
+.cu-progress-head strong { color: var(--gold); font: 600 14px var(--mono); }
+.cu-progress .progress-track { height: 7px; }
+.cu-progress .progress-fill { background: var(--gold); }
+.cu-transfer { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; color: var(--muted); font: 11px var(--mono); }
+.cu-error { margin: 18px 0 0; color: #efaaa7; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; user-select: text; }
+.cu-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 18px 28px 22px; border-top: 1px solid var(--line-soft); background: rgba(0,0,0,.1); }
+.cu-actions .mc-btn { min-width: 108px; height: 39px; font-size: 13px; }
+.client-update-dialog button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+@media(max-width:480px) { .cu-body { padding: 12px 20px 20px; } .cu-actions { padding: 16px 20px; } .cu-versions { gap: 16px; } }
+@media(prefers-reduced-motion:reduce) { .cu-progress .progress-fill { animation: none; transition: none; } }
+
 .titlebar {
   height: 38px;
   flex: 0 0 38px;
@@ -172,7 +211,6 @@ input  { font-family: inherit; font-size: inherit; }
 .idle { display: flex; flex-direction: column; gap: 10px; }
 .account-login { display: grid; grid-template-columns: 1fr; gap: 9px; }
 .account-login .mc-btn { grid-column: 1 / -1; }
-.account-oauth-note { color: var(--muted); font-size: 11px; line-height: 1.55; padding: 8px 10px; border-left: 2px solid var(--gold); background: rgba(0,0,0,.22); }
 .mc-btn-secondary { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.22); color: var(--text); }
 .mc-btn-secondary:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.34); }
 .account-ready { display: grid; grid-template-columns: 1fr 1.15fr; gap: 9px; align-items: center; }

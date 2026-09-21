@@ -87,6 +87,8 @@ if ($Target -in 'all', 'client') {
         Step '核心逻辑自检'
         & $backend --selftest
         if ($LASTEXITCODE -ne 0) { throw '自检失败' }
+        node --test client/tests/client-update.test.cjs
+        if ($LASTEXITCODE -ne 0) { throw 'Client update UI tests failed' }
     }
 
     Step '构建 Tauri 2 客户端和 NSIS 安装包'

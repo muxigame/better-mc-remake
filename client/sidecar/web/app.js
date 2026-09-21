@@ -13,6 +13,7 @@ let state = {};
 let busy = false;
 let accountAuthPending = false;
 let optionalItems = [];
+let clientUpdate = null;
 
 /* ───────────────────────── RPC ───────────────────────── */
 
@@ -58,23 +59,8 @@ const transportReady = tauri
         try { receive(JSON.parse(e.payload)); }
         catch (error) { appendLog('ERROR', 'sidecar 消息解析失败：' + error); }
       }),
-      tauri.event.listen('backend-error', (e) => appendLog('ERROR', String(e.payload || 'sidecar 异常退出')))
-      ,tauri.event.listen('client-update-progress', (e) => {
-        const p = e.payload || {};
-        if (p.phase === 'started') {
-          setProgress('更新客户端', `准备更新到 ${p.version || '新版本'}`, -1);
-        } else if (p.phase === 'downloading') {
-          const total = Number(p.total || 0);
-          const downloaded = Number(p.downloaded || 0);
-          setProgress(
-            '下载客户端更新',
-            total > 0 ? `${humanSize(downloaded)} / ${humanSize(total)}` : humanSize(downloaded),
-            total > 0 ? Math.min(1, downloaded / total) : -1
-          );
-        } else if (p.phase === 'installing') {
-          setProgress('安装客户端更新', '即将退出并替换完整客户端', -1);
-        }
-      })
+      tauri.event.listen('backend-error', (e) => appendLog('ERROR', String(e.payload || 'sidecar 异常退出'))),
+      tauri.event.listen('client-update-progress', (e) => clientUpdate?.progress(e.payload || {}))
     ])
   : Promise.reject(new Error('Tauri API 不可用'));
 
@@ -154,15 +140,21 @@ function setBusy(value) {
   busy = value;
   $('idle').hidden = value;
   $('working').hidden = !value;
-  $('btn-play').disabled = value;
-  syncAccountAuthButtons();
-  $('btn-install-pack').disabled = value;
+  syncClientActions();
   $('btn-download-cancel').hidden = !value;
   $('download-progress').hidden = !value;
+  clientUpdate?.refreshActivity();
+}
+
+function syncClientActions() {
+  const blocked = busy || !!clientUpdate?.blocksUse();
+  $('btn-play').disabled = blocked;
+  $('btn-install-pack').disabled = blocked;
+  syncAccountAuthButtons();
 }
 
 function syncAccountAuthButtons() {
-  const disabled = busy || accountAuthPending;
+  const disabled = busy || accountAuthPending || !!clientUpdate?.blocksUse();
   $('btn-account-login').disabled = disabled;
   $('btn-account-register').disabled = disabled;
 }
@@ -170,6 +162,7 @@ function syncAccountAuthButtons() {
 function setAccountAuthPending(value) {
   accountAuthPending = value;
   syncAccountAuthButtons();
+  clientUpdate?.refreshActivity();
 }
 
 function setProgress(phase, detail, fraction) {
@@ -392,10 +385,7 @@ function escapeHtml(s) {
 }
 
 function showLauncherUpdate(u) {
-  $('lu-version').textContent = u.version || '';
-  $('lu-notes').textContent = u.notes || '';
-  $('launcher-update').hidden = false;
-  if (u.mandatory) toast('启动器必须更新到 ' + u.version + ' 才能进游戏', 'error', 15000);
+  clientUpdate?.offer(u);
 }
 
 /* ───────────────────────── 保存 ───────────────────────── */
@@ -417,6 +407,7 @@ function save(patch) {
 /* ───────────────────────── 启动 ───────────────────────── */
 
 async function play() {
+  if (clientUpdate?.blocksUse()) { clientUpdate.refreshActivity(); return; }
   try {
     setBusy(true);
     setProgress('准备中', '', -1);
@@ -461,6 +452,7 @@ async function accountRegister() {
 }
 
 async function installPack() {
+  if (clientUpdate?.blocksUse()) { clientUpdate.refreshActivity(); return; }
   try {
     setBusy(true);
     setProgress('准备下载', '', -1);
@@ -477,6 +469,19 @@ async function installPack() {
 /* ───────────────────────── 绑定 ───────────────────────── */
 
 function bind() {
+  clientUpdate = window.createClientUpdateDialog({
+    get: $, humanSize,
+    currentVersion: () => state.launcherVersion,
+    isAppBusy: () => busy || accountAuthPending,
+    onStateChange: syncClientActions,
+    check: () => transportReady.then(() => invoke('check_client_update')),
+    reserve: () => rpc('beginClientUpdate'),
+    release: () => rpc('endClientUpdate'),
+    install: () => invoke('install_client_update'),
+    exit: () => rpc('close'),
+    notify: (text) => toast(text, 'good'),
+    log: appendLog,
+  });
   // 无边框窗口拖动：标题栏空白处按下就交给系统
   $('titlebar').addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
@@ -513,6 +518,7 @@ function bind() {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (clientUpdate?.isOpen()) return;
     if (!$('downloads').hidden && !busy) $('downloads').hidden = true;
     else if (!$('settings').hidden) $('settings').hidden = true;
     else if (!$('logdrawer').hidden) $('logdrawer').hidden = true;
@@ -569,18 +575,6 @@ function bind() {
     rpc('resetVerification')
       .then(() => toast('已清空校验缓存，下次启动会逐个文件核对', 'good'))
       .catch((e) => toast(e.message, 'error'));
-  $('btn-launcher-update').onclick = async () => {
-    const button = $('btn-launcher-update');
-    button.disabled = true;
-    try {
-      setProgress('检查客户端更新', '正在验证签名更新包', -1);
-      await invoke('install_client_update');
-      // Windows 正常情况下会由 Tauri updater 启动安装器并退出当前应用。
-    } catch (e) {
-      button.disabled = false;
-      toast(String(e && e.message ? e.message : e), 'error', 15000);
-    }
-  };
 
   // ── 高级 ──
   $('jvmargs').addEventListener('change', () => save({ extraJvmArgs: $('jvmargs').value }));
@@ -645,10 +639,13 @@ function refresh() {
 /* ───────────────────────── 启动 ───────────────────────── */
 
 bind();
+// Client updates do not depend on successfully downloading the game manifest.
+clientUpdate.check();
+setInterval(() => clientUpdate.check(), 15 * 60 * 1000);
 rpc('init')
   .then((s) => {
     render(s);
-    if (!s.account) $('btn-account-login').focus();
+    if (!s.account && !clientUpdate.isOpen()) $('btn-account-login').focus();
   })
   .catch((e) => {
     $('hero-meta').textContent = '初始化失败';

@@ -23,6 +23,8 @@ internal sealed class RpcHost : IDisposable
     private readonly Downloader _downloader = new();
     private readonly HttpClient _accountHttp = new() { Timeout = TimeSpan.FromSeconds(15) };
     private readonly object _outputLock = new();
+    private readonly object _activityLock = new();
+    private bool _clientUpdating;
 
     private CancellationTokenSource? _work;
     private PackManifest? _manifest;
@@ -109,6 +111,8 @@ internal sealed class RpcHost : IDisposable
         "detectJava" => DetectJava(),
         "openPath" => OpenPath(p["which"]?.GetValue<string>() ?? "root"),
         "resetVerification" => ResetVerification(),
+        "beginClientUpdate" => BeginClientUpdate(),
+        "endClientUpdate" => EndClientUpdate(),
         _ => throw new InvalidOperationException($"未知方法 {method}"),
     };
 
@@ -302,16 +306,14 @@ internal sealed class RpcHost : IDisposable
 
     private async Task<JsonNode> LaunchAsync(bool forceVerify)
     {
-        if (_busy) throw new InvalidOperationException("正在忙，请先等当前操作完成");
-        await RequireAccountAsync().ConfigureAwait(false);
-
-        _busy = true;
+        BeginGameOperation();
         _work?.Dispose();
         _work = new CancellationTokenSource();
         var ct = _work.Token;
 
         try
         {
+            await RequireAccountAsync().ConfigureAwait(false);
             Emit("busy", new JsonObject { ["busy"] = true });
             var ctx = new PipelineContext { Paths = _paths, Settings = _settings, State = _state };
             var pipeline = new LaunchPipeline(ctx, _downloader);
@@ -331,8 +333,8 @@ internal sealed class RpcHost : IDisposable
             _manifest = ctx.Manifest;
             Emit("state", BuildState());
 
-            if (_manifest!.Launcher is { Mandatory: true } mandatory &&
-                SelfUpdater.IsNewer(mandatory.Version, GameLauncher.ThisVersion()))
+            if (_manifest!.Launcher is { } mandatory &&
+                SelfUpdater.IsRequired(mandatory, GameLauncher.ThisVersion()))
                 throw new InvalidOperationException($"必须先把启动器更新到 {mandatory.Version} 才能进游戏。");
 
             var session = GameSession.Offline(_settings.Username);
@@ -435,16 +437,14 @@ internal sealed class RpcHost : IDisposable
 
     private async Task<JsonNode> InstallAsync(bool forceVerify)
     {
-        if (_busy) throw new InvalidOperationException("正在忙，请先等当前操作完成");
-        await RequireAccountAsync().ConfigureAwait(false);
-
-        _busy = true;
+        BeginGameOperation();
         _work?.Dispose();
         _work = new CancellationTokenSource();
         var ct = _work.Token;
 
         try
         {
+            await RequireAccountAsync().ConfigureAwait(false);
             Emit("busy", new JsonObject { ["busy"] = true });
             var ctx = new PipelineContext { Paths = _paths, Settings = _settings, State = _state };
             var pipeline = new LaunchPipeline(ctx, _downloader);
@@ -478,6 +478,33 @@ internal sealed class RpcHost : IDisposable
     {
         _work?.Cancel();
         return new JsonObject { ["cancelled"] = true };
+    }
+
+    private void BeginGameOperation()
+    {
+        lock (_activityLock)
+        {
+            if (_clientUpdating) throw new InvalidOperationException("正在更新客户端，请稍候");
+            if (_busy) throw new InvalidOperationException("正在忙，请先等当前操作完成");
+            _busy = true;
+        }
+    }
+
+    private JsonNode BeginClientUpdate()
+    {
+        lock (_activityLock)
+        {
+            if (_busy) throw new InvalidOperationException("请先退出游戏或等待当前任务完成，再更新客户端");
+            if (_clientUpdating) throw new InvalidOperationException("客户端更新已在进行中");
+            _clientUpdating = true;
+        }
+        return new JsonObject { ["reserved"] = true };
+    }
+
+    private JsonNode EndClientUpdate()
+    {
+        lock (_activityLock) _clientUpdating = false;
+        return new JsonObject { ["released"] = true };
     }
 
     private string AccountApi(string path)
@@ -850,8 +877,12 @@ internal sealed class RpcHost : IDisposable
     private static JsonObject LauncherUpdateNode(LauncherRelease release) => new()
     {
         ["version"] = release.Version,
+        ["currentVersion"] = GameLauncher.ThisVersion(),
         ["notes"] = release.Notes,
-        ["mandatory"] = release.Mandatory,
+        ["size"] = release.Size,
+        ["mandatory"] = SelfUpdater.IsRequired(release, GameLauncher.ThisVersion()),
+        ["minSupportedVersion"] = release.MinSupportedVersion,
+        ["updateReason"] = release.UpdateReason,
     };
 
     private static int TotalMemoryMb()

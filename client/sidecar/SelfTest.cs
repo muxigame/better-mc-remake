@@ -32,6 +32,7 @@ internal static class SelfTest
         TomlOverlay();
         JsonOverlay();
         SeedRevisionSync();
+        ClientUpdatePolicy();
         NbtRoundTrip();
         VersionRules();
         VersionCompare();
@@ -248,6 +249,26 @@ internal static class SelfTest
         {
             try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
         }
+    }
+
+    private static void ClientUpdatePolicy()
+    {
+        Section("客户端支持策略");
+        var release = new LauncherRelease { Version = "1.2.0", MinSupportedVersion = "1.1.5" };
+        Check("低于最低支持版本必须更新", SelfUpdater.IsRequired(release, "1.1.4"));
+        Check("等于最低支持版本允许稍后", !SelfUpdater.IsRequired(release, "1.1.5"));
+        Check("较新但非最新版本允许稍后", !SelfUpdater.IsRequired(release, "1.1.9"));
+        Check("最新客户端不会强制循环更新", !SelfUpdater.IsRequired(release, "1.2.0"));
+        Check("不强制降级", !SelfUpdater.IsRequired(release, "1.3.0"));
+        release.MinSupportedVersion = null;
+        release.BlockedVersions.Add("1.1.8");
+        Check("单独停用问题版本", SelfUpdater.IsRequired(release, "1.1.8+build1"));
+        Check("停用问题版不牵连其它版本", !SelfUpdater.IsRequired(release, "1.1.7"));
+        Check("正式版高于预发布版", SelfUpdater.IsNewer("1.1.5", "1.1.5-rc.1"));
+        Check("预发布数字正确排序", SelfUpdater.IsNewer("1.1.5-rc.10", "1.1.5-rc.2"));
+        Check("忽略 build metadata", SelfUpdater.Compare("v1.1.5+build1", "1.1.5+build2") == 0);
+        var control = ManifestControl.FromJson("{\"launcher\":{\"version\":\"1.2.0\",\"minSupportedVersion\":\"1.1.5\",\"blockedVersions\":[\"1.1.8\"]}}");
+        Check("控制面策略 JSON 正确反序列化", control?.Launcher is {} parsed && SelfUpdater.IsRequired(parsed, "1.1.4") && SelfUpdater.IsRequired(parsed, "1.1.8"));
     }
 
     private static void NbtRoundTrip()

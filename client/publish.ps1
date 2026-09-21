@@ -4,7 +4,9 @@ param(
     [string]$Region,
     [string]$OutDir,
     [string]$ClientPrefix,
-    [string]$PublicBaseUrl
+    [string]$PublicBaseUrl,
+    [string]$PolicyPath,
+    [string]$NotesPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,6 +43,7 @@ function Upload-OssObject([string]$OssUtil, [string]$Source, [string]$Target, [s
 }
 
 $workspaceRoot = Split-Path $PSScriptRoot -Parent
+. (Join-Path $PSScriptRoot 'release-policy.ps1')
 Import-DotEnv (Join-Path $workspaceRoot '.env')
 if (-not $OutDir) { $OutDir = Join-Path $workspaceRoot 'artifacts' }
 if (-not $Bucket) { $Bucket = $env:OSS_BUCKET }
@@ -112,8 +115,13 @@ $published = [ordered]@{
     url = "$PublicBaseUrl/$installerObject"
     signatureUrl = "$PublicBaseUrl/$signatureObject"
 }
+if (-not $NotesPath) { $NotesPath = Join-Path $PSScriptRoot 'release-notes.md' }
+if (Test-Path -LiteralPath $NotesPath -PathType Leaf) {
+    $published.notes = (Get-Content -LiteralPath $NotesPath -Raw -Encoding UTF8).Trim()
+}
 $publishedPath = Join-Path $OutDir "client\release-$version.json"
 [IO.File]::WriteAllText($publishedPath, ($published | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding($false)))
+Merge-ClientUpdatePolicy $workspaceRoot $publishedPath $PolicyPath $publishedPath
 
 Write-Host "客户端 $version -> $releasePrefix" -ForegroundColor Cyan
 Write-Host "  历史版本目录不可覆盖；latest 只更新 metadata 指针" -ForegroundColor DarkGray

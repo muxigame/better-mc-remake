@@ -146,6 +146,11 @@ public sealed class LauncherRelease
     public string? Notes { get; set; }
     /// <summary>为 true 时低于该版本的启动器拒绝继续，必须更新。</summary>
     public bool Mandatory { get; set; }
+    /// <summary>低于此版本必须更新；空值表示不按版本门槛停用旧版。</summary>
+    public string? MinSupportedVersion { get; set; }
+    /// <summary>单独停用的缺陷版本；不影响其它仍受支持的旧版本。</summary>
+    public List<string> BlockedVersions { get; set; } = new();
+    public string? UpdateReason { get; set; }
 }
 
 /// <summary>

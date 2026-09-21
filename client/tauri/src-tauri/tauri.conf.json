@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "BatterMC5Remake",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "identifier": "cn.battermc.launcher",
   "build": {
     "frontendDist": "../../sidecar/web"
@@ -27,9 +27,15 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "externalBin": ["binaries/battermc-backend"],
-    "icon": ["../../sidecar/icon.ico"],
+    "targets": [
+      "nsis"
+    ],
+    "externalBin": [
+      "binaries/battermc-backend"
+    ],
+    "icon": [
+      "../../sidecar/icon.ico"
+    ],
     "createUpdaterArtifacts": true
   },
   "plugins": {

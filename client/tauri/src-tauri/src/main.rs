@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::Mutex;
+use std::sync::{atomic::{AtomicBool, Ordering}, Mutex};
+use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager};
 use tauri_plugin_shell::{
     process::{CommandChild, CommandEvent},
@@ -9,6 +10,12 @@ use tauri_plugin_shell::{
 use tauri_plugin_updater::UpdaterExt;
 
 struct BackendState(Mutex<Option<CommandChild>>);
+
+static CLIENT_UPDATE_ACTIVE: AtomicBool = AtomicBool::new(false);
+struct UpdateGuard;
+impl Drop for UpdateGuard {
+    fn drop(&mut self) { CLIENT_UPDATE_ACTIVE.store(false, Ordering::SeqCst); }
+}
 
 #[tauri::command]
 fn send_message(state: tauri::State<'_, BackendState>, json: String) -> Result<(), String> {
@@ -51,9 +58,29 @@ fn pick_java() -> Option<String> {
 }
 
 #[tauri::command]
+async fn check_client_update(app: tauri::AppHandle) -> Result<Option<serde_json::Value>, String> {
+    let update = app.updater_builder().timeout(Duration::from_secs(15))
+        .build().map_err(|e| format!("初始化更新器失败：{e}"))?
+        .check().await.map_err(|e| format!("检查客户端更新失败：{e}"))?;
+    Ok(update.map(|u| serde_json::json!({
+        "version": u.version,
+        "currentVersion": u.current_version,
+        "notes": u.body,
+        "size": u.raw_json.get("size").and_then(|v| v.as_u64()).unwrap_or(0),
+        "mandatory": u.raw_json.get("mandatory").and_then(|v| v.as_bool()).unwrap_or(false),
+        "minSupportedVersion": u.raw_json.get("minSupportedVersion"),
+        "updateReason": u.raw_json.get("updateReason"),
+    })))
+}
+
+#[tauri::command]
 async fn install_client_update(app: tauri::AppHandle) -> Result<(), String> {
+    if CLIENT_UPDATE_ACTIVE.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
+        return Err("客户端更新已在进行中".into());
+    }
+    let _guard = UpdateGuard;
     let update = app
-        .updater()
+        .updater_builder().timeout(Duration::from_secs(300)).build()
         .map_err(|e| format!("初始化客户端更新器失败：{e}"))?
         .check()
         .await
@@ -64,34 +91,45 @@ async fn install_client_update(app: tauri::AppHandle) -> Result<(), String> {
     let progress_app = app.clone();
     let finished_app = app.clone();
     let mut downloaded: u64 = 0;
+    let mut last_progress = Instant::now() - Duration::from_secs(1);
 
     let _ = app.emit(
         "client-update-progress",
         serde_json::json!({"phase":"started","version":version}),
     );
 
-    update
-        .download_and_install(
+    let bytes = update
+        .download(
             move |chunk_length, content_length| {
                 downloaded = downloaded.saturating_add(chunk_length as u64);
-                let _ = progress_app.emit(
-                    "client-update-progress",
-                    serde_json::json!({
-                        "phase":"downloading",
-                        "downloaded":downloaded,
-                        "total":content_length,
-                    }),
-                );
+                if last_progress.elapsed() >= Duration::from_millis(100) || content_length == Some(downloaded) {
+                    last_progress = Instant::now();
+                    let _ = progress_app.emit(
+                        "client-update-progress",
+                        serde_json::json!({
+                            "phase":"downloading",
+                            "downloaded":downloaded,
+                            "total":content_length,
+                        }),
+                    );
+                }
             },
             move || {
                 let _ = finished_app.emit(
                     "client-update-progress",
-                    serde_json::json!({"phase":"installing"}),
+                    serde_json::json!({"phase":"verifying"}),
                 );
             },
         )
         .await
-        .map_err(|e| format!("客户端下载或安装失败：{e}"))?;
+        .map_err(|e| format!("更新包下载或签名校验失败：{e}"))?;
+
+    // download() verifies the minisign signature before returning these bytes.
+    // Never launch NSIS on a partial/unverified download.
+    let _ = app.emit("client-update-progress", serde_json::json!({"phase":"installing"}));
+    tauri::async_runtime::spawn_blocking(move || update.install(bytes))
+        .await.map_err(|e| format!("无法启动客户端安装器：{e}"))?
+        .map_err(|e| format!("无法启动客户端安装器：{e}"))?;
 
     // Windows 的 updater 在成功启动 NSIS 安装器后会自动退出当前应用。
     // 其它平台未来接入时再在这里显式 restart。
@@ -142,6 +180,7 @@ fn main() {
             begin_drag,
             restore_window,
             pick_java,
+            check_client_update,
             install_client_update
         ])
         .run(tauri::generate_context!())

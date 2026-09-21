@@ -4,7 +4,8 @@ param(
     [string]$Version,
     [string]$Bucket,
     [string]$Region,
-    [string]$ClientPrefix
+    [string]$ClientPrefix,
+    [string]$PolicyPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,6 +25,7 @@ function Import-DotEnv([string]$Path) {
 }
 
 $workspaceRoot = Split-Path $PSScriptRoot -Parent
+. (Join-Path $PSScriptRoot 'release-policy.ps1')
 Import-DotEnv (Join-Path $workspaceRoot '.env')
 if (-not $Bucket) { $Bucket = $env:OSS_BUCKET }
 if (-not $Region) { $Region = $env:OSS_REGION }
@@ -42,6 +44,12 @@ if (-not (Test-Path -LiteralPath $history -PathType Leaf)) {
 }
 $meta = Get-Content -LiteralPath $history -Raw -Encoding UTF8 | ConvertFrom-Json
 if ([string]$meta.version -ne $Version) { throw "发布记录版本不匹配：$history" }
+
+# Reapply CURRENT policy, never restore an obsolete floor from historical metadata.
+$promotionDir = Join-Path $workspaceRoot 'artifacts\client'
+New-Item -ItemType Directory -Force -Path $promotionDir | Out-Null
+$promoted = Join-Path $promotionDir "promote-$Version.json"
+Merge-ClientUpdatePolicy $workspaceRoot $history $PolicyPath $promoted
 
 $ossutil = Get-Command ossutil -ErrorAction SilentlyContinue
 if ($ossutil) { $oss = $ossutil.Path } else {
@@ -68,10 +76,10 @@ foreach ($object in $requiredObjects) {
 $latest = "oss://$Bucket/$($ClientPrefix)latest/metadata.json"
 Write-Host "将客户端 latest 切换到 $Version" -ForegroundColor Cyan
 if (-not $PSCmdlet.ShouldProcess($latest, "晋升/回滚客户端到 $Version")) { return }
-& $oss cp $history $latest -f --content-type 'application/json; charset=utf-8' --cache-control 'no-cache, no-store, must-revalidate' @common
+& $oss cp $promoted $latest -f --content-type 'application/json; charset=utf-8' --cache-control 'no-cache, no-store, must-revalidate' @common
 if ($LASTEXITCODE -ne 0) { throw '更新 latest metadata 失败' }
 
 # 同步镜像内 fallback；真正线上当前版本仍以 OSS latest metadata 为准。
-Copy-Item -LiteralPath $history -Destination (Join-Path $workspaceRoot 'server\launcher-release.json') -Force
+Copy-Item -LiteralPath $promoted -Destination (Join-Path $workspaceRoot 'server\launcher-release.json') -Force
 Write-Host "latest 已切换到 $Version；历史二进制未发生任何修改。" -ForegroundColor Green
 
