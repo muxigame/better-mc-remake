@@ -7,15 +7,15 @@
   <meta name="description" content="Batter MC — 更稳定、更省心，也更值得长久游玩的 Minecraft 整合包。">
   <title>Batter MC · 更好的 Minecraft</title>
   <link rel="icon" href="/favicon.svg">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=player-center-2">
 </head>
 <body>
   <header class="site-nav" id="top">
     <a class="brand" href="#top" aria-label="Batter MC Remake 首页"><span class="brand-pixel">B</span><span>BATTER MC</span></a>
     <nav aria-label="主导航">
-      <a href="#world">世界</a><a href="#launcher">客户端</a><a href="#story">历程</a><a href="/account.html">玩家账号</a>
+      <a href="#world">世界</a><a href="#launcher">客户端</a><a href="#story">历程</a>
     </nav>
-    <a class="nav-user" id="nav-account" href="/account.html">玩家账号</a>
+    <div class="nav-actions"><a class="nav-user" id="nav-account" data-account-link href="/api/v1/auth/entry?return_to=%2Faccount.html">玩家账号</a><a class="nav-cta" href="#download">开始游戏</a></div>
   </header>
 
   <main>
@@ -61,7 +61,7 @@
 
     <section class="account-promo section">
       <div><p class="eyebrow">MUXI ACCOUNT</p><h2>一个身份，<br>连接官网和客户端。</h2></div>
-      <div class="account-copy"><p>Better MC 使用 Muxi Account 统一身份。点击玩家账号后会直接进入统一登录；注册、第三方登录和账户资料都由 account.muxigame.com 管理。</p><a class="button button-primary" href="/account.html">玩家账号</a></div>
+      <div class="account-copy"><p>Better MC 使用 Muxi Account 统一身份。点击玩家账号后会直接进入统一登录；注册、第三方登录和账户资料都由 account.muxigame.com 管理。</p><a class="button button-primary" href="/api/v1/auth/entry?return_to=%2Faccount.html">玩家账号</a></div>
     </section>
 
     <section class="timeline section" id="story">
@@ -79,7 +79,7 @@
         <p class="eyebrow">NEXT WORLD</p><h2>下一次上线，<br>从这里开始。</h2>
         <p>使用 Muxi Account 登录后安装 Windows 客户端。包体由客户端从 OSS 按需下载，不需要手工解压。</p>
         <div class="release-line"><span><small>最新客户端</small><strong id="release-version">—</strong></span><span><small>Windows x64</small><strong id="release-size">—</strong></span></div>
-        <div class="download-actions"><a class="button button-primary" id="download-button" href="#">下载客户端</a><a class="button button-outline" href="/account.html">玩家账号</a></div>
+        <div class="download-actions"><a class="button button-primary" id="download-button" href="#">下载客户端</a><a class="button button-outline" href="/api/v1/auth/entry?return_to=%2Faccount.html">玩家账号</a></div>
         <code id="release-sha">SHA-256 —</code>
       </div>
     </section>
@@ -87,10 +87,10 @@
 
   <footer>
     <div class="footer-brand"><span class="brand-pixel">B</span><p>把世界留给故事。<br>把复杂留给系统。</p></div>
-    <div><strong>游戏与服务</strong><a href="#world">我们的世界</a><a href="#launcher">客户端</a><a href="/account.html">玩家账号</a></div>
+    <div><strong>游戏与服务</strong><a href="#world">我们的世界</a><a href="#launcher">客户端</a><a href="/api/v1/auth/entry?return_to=%2Faccount.html">玩家账号</a></div>
     <div><strong>连接</strong><span id="server-address">110.42.51.3:25565</span><a href="/healthz">服务状态</a></div>
     <p class="copyright">非 Mojang 或 Microsoft 官方产品。Minecraft 为 Mojang Studios 的商标。</p>
   </footer>
-  <script src="/app.js" defer></script>
+  <script src="/app.js?v=player-center-2" defer></script><script src="/auth-nav.js?v=2" defer></script>
 </body>
 </html>

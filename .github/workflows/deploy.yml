@@ -43,7 +43,7 @@ jobs:
 
       - name: Run backend tests
         run: |
-          python -m pip install --disable-pip-version-check -r server/requirements.txt
+          python -m pip install --disable-pip-version-check -r server/requirements-dev.txt
           PYTHONPATH=server python -m unittest discover -s server/tests -v
 
       - name: Create image tag

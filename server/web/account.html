@@ -1,72 +1,81 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0b0d">
-  <title>玩家中心 · Batter MC Remake</title>
-  <link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/auth.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b0b0d">
+  <meta name="robots" content="noindex,nofollow">
+  <title>玩家中心 · Batter MC</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/styles.css?v=player-center-2">
+  <link rel="stylesheet" href="/player-center.css?v=2">
 </head>
-<body class="auth-page">
+<body class="player-page">
   <header class="site-nav">
-    <a class="brand" href="/"><span class="brand-pixel">B</span><span>BATTER MC</span></a>
-    <nav><a href="/">返回官网</a><a href="#identity">统一身份</a><a href="#game">游戏资料</a></nav>
-    <a class="nav-user" id="account-nav-user" href="https://account.muxigame.com/account">—</a>
+    <a class="brand" href="/" aria-label="Batter MC 首页"><span class="brand-pixel">B</span><span>BATTER MC</span></a>
+    <nav aria-label="主导航"><a href="/#world">世界</a><a href="/#launcher">客户端</a><a href="/#story">历程</a></nav>
+    <div class="nav-actions">
+      <a class="nav-user" data-account-link aria-current="page" href="/api/v1/auth/entry?return_to=%2Faccount.html">玩家账号</a>
+      <a class="nav-cta" href="/#download">开始游戏</a>
+    </div>
   </header>
 
-  <main class="player-center">
-    <section class="player-hero">
-      <div>
-        <p class="eyebrow">PLAYER CENTER</p>
-        <h1 id="profile-nickname">—</h1>
-        <p class="player-identity-line"><span id="profile-username">—</span><span>UID <b id="profile-uid">—</b></span></p>
+  <main class="pc-shell">
+    <a class="pc-back" href="/">← 返回官网</a>
+    <header class="pc-banner">
+      <div class="pc-banner-image" aria-hidden="true"></div>
+      <div class="pc-banner-copy">
+        <p class="eyebrow">BATTER MC / PLAYER CENTER</p>
+        <h1>玩家中心</h1>
+        <p class="pc-lead">准备好，回到你的世界。</p>
+        <div class="pc-userline" id="player-identity" hidden>
+          <span class="pc-avatar" id="player-avatar" aria-hidden="true">B</span>
+          <div><strong id="player-display-name"></strong><span id="player-handle"></span></div>
+          <span class="pc-uid" id="player-uid"></span>
+        </div>
       </div>
-      <div class="player-summary-grid">
-        <article><small>积分</small><strong id="player-points">0</strong><span>即将开放</span></article>
-        <article><small>余额</small><strong id="player-balance">¥0.00</strong><span>充值功能筹备中</span></article>
-        <article><small>活动</small><strong>—</strong><span>暂无进行中的活动</span></article>
-      </div>
-    </section>
+    </header>
 
-    <section class="player-grid">
-      <article class="profile-card player-panel" id="game">
-        <p class="eyebrow">MINECRAFT PROFILE</p>
-        <h2>游戏资料</h2>
-        <p>这里属于 Better MC。游戏名会被启动器用于当前离线 Minecraft 身份。</p>
-        <div id="profile-message" class="form-message" hidden></div>
-        <form id="game-name-form" class="player-form">
-          <label>
-            <span>Minecraft 游戏名</span>
-            <input id="profile-game-name" name="gameName" minlength="3" maxlength="16" pattern="[A-Za-z0-9_]+" required>
-            <small>3–16 位字母、数字或下划线。当前服务器仍使用 Offline UUID，修改后服务器可能把你识别为新玩家。</small>
-          </label>
-          <button class="button button-primary" type="submit">保存游戏名</button>
+    <p class="pc-load-state" id="player-load-state" role="status">正在读取玩家资料…</p>
+    <div class="pc-content" id="player-content" hidden>
+      <section class="pc-game" aria-labelledby="game-heading">
+        <div class="pc-section-title"><span class="pc-index">01</span><div><h2 id="game-heading">游戏资料</h2><p>在 Better MC 中使用的名字。</p></div></div>
+        <form id="game-name-form" class="pc-form">
+          <label for="game-name">Minecraft 游戏名</label>
+          <input id="game-name" name="gameName" type="text" minlength="3" maxlength="16" pattern="[A-Za-z0-9_]{3,16}" autocomplete="off" spellcheck="false" aria-describedby="game-name-help game-name-warning" required disabled>
+          <p class="pc-field-help" id="game-name-help">3–16 位字母、数字或下划线，与 Muxi 用户名独立。</p>
+          <div class="pc-notice" id="game-name-warning">
+            <strong>改名前请留意</strong>
+            <p>当前服务器使用离线身份。改名会改变游戏 UUID，原有存档、背包和权限可能需要迁移。</p>
+          </div>
+          <div class="pc-form-actions"><button class="button button-primary" id="save-game-name" type="submit" disabled>保存修改</button><span id="save-hint">修改后，下次启动游戏时生效。</span></div>
+          <p id="profile-message" class="pc-message" role="status" aria-live="polite" hidden></p>
         </form>
-        <div class="nickname-note">
-          <strong>中文昵称怎么办？</strong>
-          <p>真实 Minecraft 用户名仍保持 ASCII；中文或带格式的名字应通过显示昵称 Mod 实现，这样不会破坏登录身份和 UUID。</p>
-        </div>
-      </article>
+        <div class="pc-game-foot"><span>想调整平台上的名字？</span><a href="https://account.muxigame.com/account">修改昵称与用户名 ↗</a></div>
+      </section>
 
-      <article class="profile-card player-panel" id="identity">
-        <p class="eyebrow">MUXI ACCOUNT</p>
-        <h2>统一身份</h2>
-        <p>用户名、昵称、邮箱、密码和第三方账号绑定统一由 Muxi Account 管理。</p>
-        <dl>
-          <div><dt>昵称</dt><dd id="identity-nickname">—</dd></div>
-          <div><dt>用户名</dt><dd id="identity-username">—</dd></div>
-          <div><dt>UID</dt><dd id="identity-uid">—</dd></div>
-          <div><dt>邮箱</dt><dd id="profile-email">未绑定</dd></div>
-          <div><dt>邮箱状态</dt><dd id="profile-email-status">—</dd></div>
-          <div><dt>账号角色</dt><dd id="profile-role">玩家</dd></div>
-          <div><dt>创建时间</dt><dd id="profile-created">—</dd></div>
+      <aside class="pc-identity" aria-labelledby="identity-heading">
+        <div class="pc-section-title"><span class="pc-index">02</span><div><h2 id="identity-heading">统一账户</h2><p>Muxi Account</p></div></div>
+        <dl class="pc-details">
+          <div><dt>昵称</dt><dd id="identity-nickname"></dd></div>
+          <div><dt>用户名</dt><dd id="identity-username" class="pc-mono"></dd></div>
+          <div><dt>UID</dt><dd id="identity-uid" class="pc-mono"></dd></div>
+          <div class="pc-email-row"><dt>邮箱</dt><dd><span id="identity-email"></span><small id="identity-email-status"></small></dd></div>
         </dl>
-        <div class="profile-actions">
-          <a class="button button-primary" href="https://account.muxigame.com/account">管理 Muxi Account</a>
-          <a class="button button-outline" id="admin-link" href="/admin.html" hidden>管理后台</a>
-          <button class="text-button" id="logout-button">退出 Better MC</button>
-        </div>
-      </article>
-    </section>
+        <a class="button button-outline pc-manage" href="https://account.muxigame.com/account">管理统一账户 <span aria-hidden="true">↗</span></a>
+        <p class="pc-account-note">邮箱、密码与第三方登录方式，在账户中心统一管理。</p>
+        <div class="pc-session-actions"><a href="/admin.html" id="admin-link" hidden>管理后台</a><button type="button" id="logout-button">退出本站</button></div>
+      </aside>
+    </div>
+    <div class="pc-foot"><span>BATTER MC</span><p>把世界留给故事。把复杂留给系统。</p><a href="/#download">获取客户端 ↗</a></div>
   </main>
-  <script src="/account.js" defer></script>
+
+  <dialog id="rename-dialog" class="pc-dialog" aria-labelledby="rename-title" aria-describedby="rename-description">
+    <p class="eyebrow">CONFIRM CHANGE</p><h2 id="rename-title">确认修改游戏名？</h2>
+    <p id="rename-description">游戏名将改为 <strong id="rename-new-name"></strong>。当前离线身份的 UUID 也会改变，此操作不会自动迁移旧玩家数据。</p>
+    <div class="pc-dialog-actions"><button type="button" class="button button-outline" id="cancel-rename" autofocus>暂不修改</button><button type="button" class="button button-primary" id="confirm-rename">确认修改</button></div>
+  </dialog>
+  <script src="/auth-nav.js?v=2" defer></script>
+  <script src="/account.js?v=player-center-2" defer></script>
 </body>
 </html>

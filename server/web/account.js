@@ -1,27 +1,103 @@
 'use strict';
-const $=(id)=>document.getElementById(id);
-async function api(path,options={}){const response=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});let body={};try{body=await response.json()}catch{}if(!response.ok){const error=new Error(body.detail||'请求失败');error.status=response.status;throw error}return body}
-function money(cents){return `¥${(Number(cents||0)/100).toFixed(2)}`}
-function showMessage(text,error=false){const box=$('profile-message');box.textContent=text;box.classList.toggle('error',error);box.hidden=false}
-function render(data){
-  const user=data.user||{},player=data.player||{};
-  const nickname=user.nickname||user.username||'玩家';
-  $('profile-nickname').textContent=nickname;
-  $('profile-username').textContent=`@${user.username||'—'}`;
-  $('profile-uid').textContent=user.uid||'—';
-  $('account-nav-user').textContent=nickname;
-  $('profile-game-name').value=player.gameName||'';
-  $('player-points').textContent=Number(player.points||0).toLocaleString('zh-CN');
-  $('player-balance').textContent=money(player.balanceCents);
-  $('identity-nickname').textContent=nickname;
-  $('identity-username').textContent=`@${user.username||'—'}`;
-  $('identity-uid').textContent=user.uid||'—';
-  $('profile-email').textContent=user.email||'未绑定';
-  $('profile-email-status').textContent=user.email?(user.emailVerified?'已验证':'待验证'):'未绑定';
-  $('profile-role').textContent=user.role==='admin'?'管理员':'玩家';
-  $('profile-created').textContent=user.createdAt?new Date(user.createdAt).toLocaleDateString('zh-CN'):'—';
-  $('admin-link').hidden=user.role!=='admin';
-}
-$('game-name-form').onsubmit=async(event)=>{event.preventDefault();const gameName=$('profile-game-name').value.trim();if(!confirm(`确定把 Better MC 游戏名改为 ${gameName}？\n\n当前服务器使用 Offline UUID，改名可能使服务器把你识别为新的玩家。`))return;try{const data=await api('/api/v1/player/profile',{method:'PATCH',body:JSON.stringify({gameName})});render(data);showMessage('游戏名已保存。下次启动客户端时会使用新的游戏名。')}catch(error){showMessage(error.message,true)}};
-$('logout-button').onclick=async()=>{await api('/api/v1/auth/logout',{method:'POST'});location.href='/'};
-(async()=>{try{render(await api('/api/v1/player/profile'))}catch(error){if(error.status===401){location.href='/api/v1/auth/login?return_to=%2Faccount.html'}else{showMessage(error.message,true)}}})();
+(() => {
+  const $ = id => document.getElementById(id);
+  const form = $('game-name-form');
+  const input = $('game-name');
+  const save = $('save-game-name');
+  const dialog = $('rename-dialog');
+  const state = { gameName: '', pendingName: '', busy: false };
+  const entry = '/api/v1/auth/entry?return_to=%2Faccount.html';
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      ...options, credentials: 'same-origin', cache: 'no-store',
+      headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) },
+    });
+    let body = {};
+    try { body = await response.json(); } catch (_) {}
+    if (!response.ok) {
+      const error = new Error(typeof body.detail === 'string' ? body.detail : '暂时无法处理，请稍后重试。');
+      error.status = response.status;
+      throw error;
+    }
+    return body;
+  }
+  function message(text, error = false) {
+    $('profile-message').textContent = text;
+    $('profile-message').classList.toggle('is-error', error);
+    $('profile-message').hidden = !text;
+  }
+  function updateButton() {
+    save.disabled = state.busy || input.disabled || input.value.trim() === state.gameName || !input.validity.valid;
+    save.textContent = state.busy ? '正在保存…' : '保存修改';
+  }
+  function render({ user, player }) {
+    if (!user || !player || !player.gameName) throw new Error('玩家资料不完整，请重新登录。');
+    const nickname = user.nickname || user.username || '玩家';
+    $('player-display-name').textContent = nickname;
+    $('player-avatar').textContent = Array.from(nickname)[0];
+    $('player-handle').textContent = '@' + user.username;
+    $('player-uid').textContent = 'UID ' + user.uid;
+    $('identity-nickname').textContent = nickname;
+    $('identity-username').textContent = '@' + user.username;
+    $('identity-uid').textContent = user.uid;
+    $('identity-email').textContent = user.email || '未绑定';
+    $('identity-email-status').textContent = user.email ? (user.emailVerified ? '已验证' : '待验证') : '前往账户中心管理';
+    $('identity-email-status').classList.toggle('is-unverified', !user.emailVerified);
+    $('admin-link').hidden = user.role !== 'admin';
+    state.gameName = player.gameName;
+    input.value = state.gameName;
+    input.disabled = false;
+    $('player-identity').hidden = false;
+    $('player-content').hidden = false;
+    $('player-load-state').hidden = true;
+    updateButton();
+  }
+  function handleError(error) {
+    if (error.status === 401) {
+      $('player-content').hidden = true;
+      $('player-identity').hidden = true;
+      location.replace(entry);
+      return;
+    }
+    message(error.message, true);
+  }
+  async function load() {
+    try { render(await api('/api/v1/player/profile')); }
+    catch (error) {
+      if (error.status === 401) return handleError(error);
+      $('player-load-state').hidden = false;
+      $('player-load-state').classList.add('is-error');
+      $('player-load-state').textContent = '暂时无法读取玩家资料，请刷新页面重试。';
+    }
+  }
+  input.addEventListener('input', () => { message(''); updateButton(); });
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    if (save.disabled || !form.reportValidity()) return;
+    state.pendingName = input.value.trim();
+    $('rename-new-name').textContent = state.pendingName;
+    dialog.showModal();
+  });
+  $('cancel-rename').addEventListener('click', () => dialog.close());
+  $('confirm-rename').addEventListener('click', async () => {
+    if (state.busy) return;
+    dialog.close(); state.busy = true; input.disabled = true; updateButton();
+    try {
+      const result = await api('/api/v1/player/profile', { method: 'PATCH', body: JSON.stringify({ gameName: state.pendingName }) });
+      render(result);
+      message('已保存，下次启动游戏时将使用新名字。');
+    } catch (error) { handleError(error); }
+    finally { state.busy = false; input.disabled = false; updateButton(); }
+  });
+  $('logout-button').addEventListener('click', async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try { await api('/api/v1/auth/logout', { method: 'POST' }); location.replace('/'); }
+    catch (error) { handleError(error); button.disabled = false; }
+  });
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) { $('player-content').hidden = true; $('player-identity').hidden = true; load(); }
+  });
+  load();
+})();

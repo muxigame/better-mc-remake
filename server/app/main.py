@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
 from pathlib import Path
 from urllib.parse import quote
 from urllib.request import Request as UrlRequest, urlopen
@@ -96,8 +97,11 @@ async def security_headers(request: Request, call_next):
     )
     if request.url.scheme == "https" or os.getenv("BMC_PUBLIC_URL", "").lower().startswith("https://"):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    if request.url.path.startswith(("/api/v1/auth", "/api/v1/admin")):
-        response.headers["Cache-Control"] = "no-store"
+    if (request.url.path.startswith(("/api/v1/auth", "/api/v1/admin", "/api/v1/player"))
+            or request.url.path in {"/account", "/account.html", "/admin.html"}):
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["Vary"] = "Cookie"
+        response.headers["Referrer-Policy"] = "no-referrer"
     return response
 
 
@@ -304,22 +308,66 @@ def manifest() -> JSONResponse:
 
 
 @app.get("/account.html", include_in_schema=False)
+@app.get("/account", include_in_schema=False)
 def account_page(request: Request):
     account = web_auth_store.session(request.cookies.get("bmc_session"))
     if account is None:
-        return RedirectResponse("/api/v1/auth/login?return_to=%2Faccount.html", status_code=303)
-    return FileResponse(WEB_ROOT / "account.html")
+        return begin_login(request, "/account.html")
+    return protected_page("account.html")
+
+
+def protected_page(filename: str):
+    # In production the HTML lives only in the web image. Nginx serves this
+    # internal location ONLY after the API has authenticated the request.
+    if os.getenv("BMC_SERVE_WEB", "1") == "0":
+        return Response(headers={
+            "X-Accel-Redirect": f"/__protected/{filename}",
+            "Cache-Control": "private, no-store",
+        }, media_type="text/html")
+    return FileResponse(WEB_ROOT / filename, headers={"Cache-Control": "private, no-store"})
+
+
+@app.get("/admin.html", include_in_schema=False)
+def admin_page(request: Request):
+    account = web_auth_store.session(request.cookies.get("bmc_session"))
+    if account is None:
+        return begin_login(request, "/admin.html")
+    if account.role != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    return protected_page("admin.html")
+
+
+def begin_login(request: Request, return_to: str) -> RedirectResponse:
+    browser_token = request.cookies.get("bmc_oauth_browser", "")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{40,128}", browser_token):
+        browser_token = secrets.token_urlsafe(32)
+    state, _verifier, challenge = web_auth_store.create_login(safe_return_to(return_to), browser_token)
+    response = RedirectResponse(oidc_client.authorize_url(state, challenge), status_code=303)
+    response.set_cookie(
+        "bmc_oauth_browser", browser_token, max_age=1200, httponly=True,
+        secure=os.getenv("BMC_PUBLIC_URL", "").lower().startswith("https://"),
+        samesite="lax", path="/",
+    )
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
+
+
+@app.get("/api/v1/auth/entry")
+def account_entry(request: Request, return_to: str = "/account.html") -> RedirectResponse:
+    destination = safe_return_to(return_to)
+    if web_auth_store.session(request.cookies.get("bmc_session")) is not None:
+        return RedirectResponse(destination, status_code=303)
+    return begin_login(request, destination)
 
 
 @app.get("/api/v1/auth/login")
-def login(return_to: str = "/account.html") -> RedirectResponse:
-    state, _verifier, challenge = web_auth_store.create_login(safe_return_to(return_to))
-    return RedirectResponse(oidc_client.authorize_url(state, challenge), status_code=303)
+def login(request: Request, return_to: str = "/account.html") -> RedirectResponse:
+    return account_entry(request, return_to)
 
 
 @app.get("/api/v1/auth/callback")
-def auth_callback(code: str = "", state: str = "", error: str = "", error_description: str = "") -> RedirectResponse:
-    login_state = web_auth_store.consume_login(state) if state else None
+def auth_callback(request: Request, code: str = "", state: str = "", error: str = "", error_description: str = "") -> RedirectResponse:
+    login_state = web_auth_store.consume_login(state, request.cookies.get("bmc_oauth_browser")) if state else None
     if login_state is None:
         return RedirectResponse("/?auth=invalid_state", status_code=303)
     verifier, return_to = login_state
@@ -331,6 +379,8 @@ def auth_callback(code: str = "", state: str = "", error: str = "", error_descri
     except (RuntimeError, ValueError):
         return RedirectResponse("/?auth=failed", status_code=303)
     token = web_auth_store.create_session(account)
+    # Rotate any previous website session when completing a new login.
+    web_auth_store.logout(request.cookies.get("bmc_session"))
     response = RedirectResponse(return_to, status_code=303)
     response.set_cookie(
         "bmc_session",

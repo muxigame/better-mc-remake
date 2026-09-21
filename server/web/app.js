@@ -24,26 +24,5 @@ async function loadSite() {
   }
 }
 
-async function loadAccount() {
-  const link = $('nav-account');
-  if (!link) return;
-  try {
-    const response = await fetch('/api/v1/auth/me', {
-      headers: { Accept: 'application/json' },
-      credentials: 'same-origin',
-    });
-    if (!response.ok) return;
-    const data = await response.json();
-    const user = data.user || {};
-    const nickname = user.nickname || user.username;
-    if (!nickname) return;
-    link.textContent = nickname;
-    link.title = `@${user.username || ''} · UID ${user.uid || '—'}`;
-    link.classList.add('is-authenticated');
-  } catch (error) {
-    console.debug('account state unavailable', error);
-  }
-}
 
 loadSite();
-loadAccount();

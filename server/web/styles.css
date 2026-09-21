@@ -136,3 +136,13 @@ footer{grid-template-columns:1fr;padding:65px 20px 30px}
 }
 
 .nav-user{min-width:108px;padding:11px 16px;border:1px solid rgba(255,255,255,.18);border-radius:5px;background:rgba(255,255,255,.04);color:#efeee9;font-size:13px;font-weight:800;text-align:center;white-space:nowrap}.nav-user:hover{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.08)}@media(max-width:900px){.nav-user{margin-left:auto}}
+
+/* Shared navigation: a single account entry and a separate play action. */
+.site-nav { gap: 32px; }
+.nav-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; min-width: 0; }
+.nav-user { display: inline-block; max-width: 170px; min-width: 88px; overflow: hidden; text-overflow: ellipsis; padding: 11px 14px; }
+.nav-user.is-authenticated { color: var(--accent); border-color: rgba(243,211,63,.3); }
+.nav-cta { white-space: nowrap; }
+@media(max-width:900px) { .nav-actions { margin-left: auto; } .nav-user { margin-left: 0; } }
+@media(max-width:560px) { .site-nav { gap: 10px; } .nav-actions { gap: 8px; } .nav-user { max-width: 94px; min-width: 72px; padding: 10px; font-size: 12px; } .nav-cta { padding: 11px 12px; font-size: 12px; } }
+@media(max-width:390px) { .brand { gap: 8px; } .brand span:last-child { letter-spacing: .05em; font-size: 10px; } .nav-cta { padding: 11px 8px; } }

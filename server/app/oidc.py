@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import hmac
 import json
 import secrets
 import sqlite3
@@ -37,8 +38,21 @@ def pkce_challenge(verifier: str) -> str:
 
 
 def safe_return_to(value: str | None) -> str:
-    if not value or not value.startswith("/") or value.startswith("//"):
+    if not value or len(value) > 2048:
         return "/account.html"
+    # Check decoded forms too: browsers normalize backslashes and encoded slashes.
+    decoded = value
+    for _ in range(4):
+        if (not decoded.startswith("/") or decoded.startswith("//")
+                or "\\" in decoded or any(ord(c) < 32 or ord(c) == 127 for c in decoded)):
+            return "/account.html"
+        parts = urllib.parse.urlsplit(decoded)
+        if parts.scheme or parts.netloc or parts.path.startswith(("/api/", "/__protected/")):
+            return "/account.html"
+        unquoted = urllib.parse.unquote(decoded)
+        if unquoted == decoded:
+            break
+        decoded = unquoted
     return value
 
 
@@ -148,6 +162,7 @@ class WebsiteAuthStore:
                     state_hash TEXT PRIMARY KEY,
                     code_verifier TEXT NOT NULL,
                     return_to TEXT NOT NULL,
+                    browser_hash TEXT,
                     expires_at TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS oidc_web_sessions (
@@ -176,24 +191,34 @@ class WebsiteAuthStore:
                 """
             )
 
-    def create_login(self, return_to: str) -> tuple[str, str, str]:
+            state_columns = {str(row["name"]) for row in db.execute("PRAGMA table_info(oidc_login_states)")}
+            if "browser_hash" not in state_columns:
+                db.execute("ALTER TABLE oidc_login_states ADD COLUMN browser_hash TEXT")
+
+    def create_login(self, return_to: str, browser_token: str) -> tuple[str, str, str]:
         state = secrets.token_urlsafe(32)
         verifier = secrets.token_urlsafe(48)
         with self._lock, self.connect() as db:
             now = utc_now()
             db.execute("DELETE FROM oidc_login_states WHERE expires_at < ?", (iso(now),))
             db.execute(
-                "INSERT INTO oidc_login_states(state_hash,code_verifier,return_to,expires_at) VALUES(?,?,?,?)",
-                (token_hash(state), verifier, safe_return_to(return_to), iso(now + timedelta(minutes=10))),
+                "INSERT INTO oidc_login_states(state_hash,code_verifier,return_to,browser_hash,expires_at) VALUES(?,?,?,?,?)",
+                (token_hash(state), verifier, safe_return_to(return_to), token_hash(browser_token), iso(now + timedelta(minutes=20))),
             )
         return state, verifier, pkce_challenge(verifier)
 
-    def consume_login(self, state: str) -> tuple[str, str] | None:
+    def consume_login(self, state: str, browser_token: str | None) -> tuple[str, str] | None:
+        if not state or not browser_token:
+            return None
         with self._lock, self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
             row = db.execute(
-                "SELECT code_verifier,return_to,expires_at FROM oidc_login_states WHERE state_hash=?",
+                "SELECT code_verifier,return_to,browser_hash,expires_at FROM oidc_login_states WHERE state_hash=?",
                 (token_hash(state),),
             ).fetchone()
+            if (row is None or not row["browser_hash"]
+                    or not hmac.compare_digest(str(row["browser_hash"]), token_hash(browser_token))):
+                return None
             db.execute("DELETE FROM oidc_login_states WHERE state_hash=?", (token_hash(state),))
         if row is None or datetime.fromisoformat(str(row["expires_at"])) < utc_now():
             return None
@@ -339,6 +364,8 @@ class OidcClient:
             except Exception:
                 detail = None
             raise RuntimeError(detail or f"统一账户服务返回 HTTP {error.code}") from error
+        except (urllib.error.URLError, TimeoutError) as error:
+            raise RuntimeError("统一账户服务暂时无法连接，请稍后重试") from error
 
     def exchange_code(self, code: str, verifier: str) -> dict:
         data = urllib.parse.urlencode(
