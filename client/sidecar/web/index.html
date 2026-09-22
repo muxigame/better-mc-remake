@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BatterMC5Remake</title>
+  <title>Minecraft</title>
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
 <header class="titlebar" id="titlebar">
   <div class="titlebar-brand">
     <span class="brand-mark"></span>
-    <span class="brand-text">BatterMC5Remake</span>
+    <span class="brand-text">Minecraft</span>
   </div>
   <div class="titlebar-actions">
     <button class="win-btn" id="btn-min" title="最小化" aria-label="最小化">
@@ -28,10 +28,8 @@
 <main class="stage" id="stage">
 
   <div class="hero">
-    <h1 class="wordmark">
-      <span>B</span><span>A</span><span>T</span><span>T</span><span>E</span><span>R</span><span>M</span><span>C</span><span class="gold">5</span>
-    </h1>
-    <div class="wordmark-sub">R E M A K E</div>
+    <!-- 点阵字标，由 scripts/make_wordmark.py 生成。描边、立体面、渐变都在 SVG 里。 -->
+    <h1 class="wordmark"><img src="wordmark.svg" alt="BETTERMC5 REMAKE"></h1>
     <div class="hero-meta" id="hero-meta">正在连接更新服务器…</div>
   </div>
 
@@ -57,7 +55,7 @@
         <span class="progress-phase" id="progress-phase">准备中</span>
         <span class="progress-detail" id="progress-detail"></span>
       </div>
-      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-track" id="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
       <button class="mc-btn mc-btn-ghost" id="btn-cancel">取消</button>
     </div>
 
@@ -73,10 +71,8 @@
   </section>
 
   <footer class="statusbar">
-    <div class="status-left">
-      <span id="status-pack">—</span>
-      <span class="dot">·</span>
-      <span id="status-sync">—</span>
+    <div class="status-left" id="status-components">
+      <!-- 由 renderComponents() 填：每个组件一个圆点 + 名字 + 版本 -->
     </div>
     <div class="status-right">
       <button class="link-btn" id="btn-download-page">下载</button>
@@ -139,6 +135,28 @@
 
           <div class="row">
             <div class="row-text">
+              <div class="row-title">光影</div>
+              <div class="row-desc">启动时使用的光影；在游戏里换了这里也会跟着变</div>
+            </div>
+            <div class="row-control">
+              <!-- 选项由 renderShaderOptions() 按游戏目录里实际存在的光影包填充 -->
+              <select class="sel" id="shaderpack"></select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">显卡</div>
+              <div class="row-desc">指定游戏运行的显卡</div>
+            </div>
+            <div class="row-control">
+              <!-- 选项由 renderGpuOptions() 按实测到的显卡填充 -->
+              <select class="sel" id="gpu"></select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="row-text">
               <div class="row-title">全屏启动</div>
               <div class="row-desc">忽略上面的窗口尺寸</div>
             </div>
@@ -164,7 +182,6 @@
 
         <!-- Java -->
         <section class="tab" data-tab="java">
-          <div class="hint" id="java-hint">本整合包需要 Java 21。找不到会自动下载一份，不影响你机器上原有的 Java。</div>
           <div class="row">
             <div class="row-text">
               <div class="row-title">当前使用</div>
@@ -228,7 +245,6 @@
 
         <!-- 可选内容 -->
         <section class="tab" data-tab="optional">
-          <div class="hint">这些内容由服务器提供但不强制安装。取消勾选会把已装的文件删掉。</div>
           <div class="list" id="optional-list"><div class="list-empty">启动一次后才能看到可选内容</div></div>
         </section>
 
@@ -254,10 +270,6 @@
             <button class="mc-btn mc-btn-small" data-open="runtime">Java 运行时</button>
           </div>
 
-          <div class="hint warn">
-            这个启动器不做任何「内存优化」「进程加速」。
-            游戏加载期间去清空 Java 进程的工作集，是随机崩溃最常见的来源。
-          </div>
         </section>
 
         <!-- 关于 -->
@@ -298,7 +310,7 @@
       <div class="download-hero">
         <div>
           <span class="download-state" id="download-state">正在读取版本…</span>
-          <h3 id="download-pack-name">BatterMC5Remake</h3>
+          <h3 id="download-pack-name">BetterMC5Remake</h3>
         </div>
         <div class="download-version"><span>最新版本</span><strong id="download-version">—</strong></div>
       </div>

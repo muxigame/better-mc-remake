@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text;
 
 namespace BatterMC.Core;
@@ -81,9 +81,26 @@ public static class NeoForgeInstaller
 
         status?.Report($"下载 NeoForge {nf} 安装器");
         Log.Info($"下载 NeoForge 安装器：{url}");
+
+        // 先问 maven 要大小和校验值：有了这两样，取消之后才能断点续传，
+        // 也才敢信盘上那份残片。两个都是尽力而为，拿不到就退回整份重下。
+        var size = await downloader.TryGetLengthAsync(url, ct).ConfigureAwait(false);
+        var sha1 = await downloader.TryGetSha1Async(url, ct).ConfigureAwait(false);
+        if (size > 0 || sha1 is not null)
+            Log.Info($"安装器元数据：大小 {(size > 0 ? size.ToString() : "未知")}，sha1 {sha1 ?? "未知"}");
+        else
+            Log.Info("maven 没给出安装器的大小和校验值，这一份不支持续传");
+
         await downloader.DownloadAllAsync(new[]
         {
-            new DownloadItem { Url = url, TargetPath = installerJar, Display = $"NeoForge {nf} 安装器" },
+            new DownloadItem
+            {
+                Url = url,
+                TargetPath = installerJar,
+                ExpectedSize = size,
+                ExpectedSha1 = sha1,
+                Display = $"NeoForge {nf} 安装器",
+            },
         }, progress, ct).ConfigureAwait(false);
 
         PrepareGameDir(version, paths);

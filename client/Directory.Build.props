@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
@@ -8,7 +8,13 @@
     <Product>BatterMC5Remake</Product>
     <Company>Batter MC</Company>
     <Copyright>Batter MC</Copyright>
-    <Version>1.1.8</Version>
+    <!-- 版本号只有一个来源：client/tauri/package.json。
+         这里、tauri.conf.json 和安装包全部从它派生。
+         以前四处各存一份，漏改一处的后果实测过：1.1.9 那版安装包是 1.1.9、
+         里面的 sidecar 还是 1.1.8，而界面显示的是 sidecar 的版本号。
+         用后行断言只截出版本号本身，避免 MSBuild 属性函数里用不了的索引器。 -->
+    <_VersionSource>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)tauri/package.json'))</_VersionSource>
+    <Version>$([System.Text.RegularExpressions.Regex]::Match($(_VersionSource), '(?&lt;="version"\s*:\s*")[0-9][^"]*(?=")').Value)</Version>
 
     <!-- 调试符号内嵌到 dll 里，发布目录就不会散落一堆 .pdb -->
     <DebugType>embedded</DebugType>

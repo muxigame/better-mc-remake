@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using BatterMC.Protocol;
@@ -36,9 +36,10 @@ public static class ConfigOverlay
     {
         var file = paths.ResolveGameFile(spec.Path);
         var existed = File.Exists(file);
+        var total = spec.Enforce.Count + spec.RemoveFromList.Sum(kv => kv.Value.Count);
 
         if (!existed && !spec.CreateIfMissing)
-            return new OverlayResult(spec.Path, 0, spec.Enforce.Count, false, null);
+            return new OverlayResult(spec.Path, 0, total, false, null);
 
         var original = existed ? File.ReadAllText(file) : "";
 
@@ -47,7 +48,10 @@ public static class ConfigOverlay
         switch (spec.Format)
         {
             case OverlayFormat.Properties:
-                updated = ApplyProperties(original, spec.Enforce, out changed); break;
+                updated = ApplyProperties(original, spec.Enforce, out changed);
+                updated = RemoveListEntries(updated, spec.RemoveFromList, out var removed);
+                changed += removed;
+                break;
             case OverlayFormat.Json:
                 updated = ApplyJson(original, spec.Enforce, out changed); break;
             case OverlayFormat.Toml:
@@ -59,10 +63,10 @@ public static class ConfigOverlay
         if (!existed || !string.Equals(original, updated, StringComparison.Ordinal))
         {
             AtomicFile.WriteAllText(file, updated);
-            Log.Info($"硬配置 {spec.Path}：纠正 {changed}/{spec.Enforce.Count} 项（{(existed ? "更新" : "新建")}）");
+            Log.Info($"硬配置 {spec.Path}：纠正 {changed}/{total} 项（{(existed ? "更新" : "新建")}）");
         }
 
-        return new OverlayResult(spec.Path, changed, spec.Enforce.Count, !existed, null);
+        return new OverlayResult(spec.Path, changed, total, !existed, null);
     }
 
     // ---------------------------------------------------------------- properties
@@ -110,6 +114,72 @@ public static class ConfigOverlay
         }
 
         return string.Join(newline, lines);
+    }
+
+    /// <summary>
+    /// 从列表型的值里摘掉点名的条目，其余部分一个字符都不动。
+    ///
+    /// 只认 options.txt 这种「值本身是 JSON 数组」的键，典型就是 resourcePacks。
+    /// 不重新序列化整个数组：Minecraft 用 Gson 写这行，中文会写成 \uXXXX，
+    /// 我们再序列化一遍就会跟它来回打架，每次启动都判定成有改动。
+    /// </summary>
+    public static string RemoveListEntries(
+        string content, Dictionary<string, List<string>> removals, out int changed)
+    {
+        changed = 0;
+        if (removals.Count == 0) return content;
+
+        var sep = SniffSeparator(content);
+        var newline = DetectNewline(content);
+        var lines = SplitLines(content);
+
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var line = lines[i];
+            var trimmed = line.TrimStart();
+            if (trimmed.Length == 0 || trimmed[0] == '#' || trimmed[0] == '!') continue;
+
+            var idx = line.IndexOf(sep);
+            if (idx <= 0) continue;
+
+            var key = line[..idx].Trim();
+            if (!removals.TryGetValue(key, out var drop) || drop.Count == 0) continue;
+
+            var value = line[(idx + 1)..];
+            // 不是数组就别碰，免得把玩家改坏的行搅得更烂
+            if (!value.TrimStart().StartsWith('[')) continue;
+
+            foreach (var entry in drop)
+            {
+                while (true)
+                {
+                    value = DropArrayToken(value, entry, out var removed);
+                    if (!removed) break;
+                    changed++;
+                }
+            }
+
+            lines[i] = line[..(idx + 1)] + value;
+        }
+
+        return string.Join(newline, lines);
+    }
+
+    /// <summary>删掉数组文本里的一个 "条目"，连同它相邻的一个逗号。</summary>
+    private static string DropArrayToken(string arrayText, string entry, out bool removed)
+    {
+        removed = false;
+        var token = "\"" + entry + "\"";
+        var at = arrayText.IndexOf(token, StringComparison.Ordinal);
+        if (at < 0) return arrayText;
+
+        var start = at;
+        var end = at + token.Length;
+        if (end < arrayText.Length && arrayText[end] == ',') end++;
+        else if (start > 0 && arrayText[start - 1] == ',') start--;
+
+        removed = true;
+        return arrayText[..start] + arrayText[end..];
     }
 
     private static char SniffSeparator(string content)
@@ -255,12 +325,23 @@ public static class ConfigOverlay
             foreach (var kv in group)
             {
                 var leaf = kv.Key.Contains('/') ? kv.Key[(kv.Key.LastIndexOf('/') + 1)..] : kv.Key;
-                lines.Insert(insertAt++, $"{leaf} = {TomlLiteral(kv.Value)}");
+                lines.Insert(insertAt++, $"{TomlKey(leaf)} = {TomlLiteral(kv.Value)}");
                 changed++;
             }
         }
 
         return string.Join(newline, lines);
+    }
+
+    /// <summary>
+    /// 裸键只能用 A-Z a-z 0-9 _ -，别的必须加引号。
+    /// NeoForge 的配置键经常带空格（"enable mod ui"），直接裸写会让整份配置解析失败。
+    /// </summary>
+    private static string TomlKey(string leaf)
+    {
+        if (leaf.Length > 0 && leaf.All(c => char.IsAsciiLetterOrDigit(c) || c == '_' || c == '-'))
+            return leaf;
+        return "\"" + EscapeToml(leaf) + "\"";
     }
 
     private static string TableOf(string path)

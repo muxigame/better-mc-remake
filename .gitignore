@@ -31,3 +31,6 @@
 Thumbs.db
 .idea/
 .vscode/
+
+# 由 build.ps1 从 client/sidecar/icon.ico 拷贝生成
+/client/sidecar/web/icon.ico

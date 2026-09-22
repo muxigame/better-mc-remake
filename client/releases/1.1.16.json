@@ -1,0 +1,21 @@
+{
+  "version": "1.1.16",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BatterMC5Remake-setup.exe",
+  "signatureFile": "BatterMC5Remake-setup.exe.sig",
+  "sha256": "0b8284ccf972c4c4c78b2914712dc268fdd3bf67b3adacc92173227f01829c2c",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZkYxRlRhYlBkU1JudTNRS09XSWF3OUdnV3orTk5TUVYwa1RocEdBQzR6U2xBbkxMQkhvWVZ6WDVhVWFSeVd3ekp3Z1lsd084dTJ1ZTQ4aGFSbWlhYWdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDkyNjQwCWZpbGU6QmF0dGVyTUM1UmVtYWtlXzEuMS4xNl94NjQtc2V0dXAuZXhlCXZlcnNpb246MS4xLjE2Cm5nbUQ4NVB1RnFJWWxTNkNOZ1JHVzdzWnl0cUVOaWRlLzh3NFFwMlNDOTRJWGRBajJna3B6WmowbUhFandDbm1WbnlnOWpUOFdEdEp5dXl4U1UxV0FBPT0K",
+  "size": 33823525,
+  "pubDate": "2026-09-22T15:57:20.6258071+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.16/BatterMC5Remake-setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.16/BatterMC5Remake-setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.16/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.16/BatterMC5Remake-setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.16/BatterMC5Remake-setup.exe.sig",
+  "notes": "修复帕斯特之梦把快捷栏、菜单、加载界面和生命值条改成紫色的问题：启动时会把它的自定义原版 UI 关掉，并从资源包列表里摘掉对应条目，你自己勾的资源包和光影不受影响。\n硬配置下发支持从列表型设置里只摘掉指定条目，不再整项覆盖。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace BatterMC.Protocol;
@@ -164,6 +164,12 @@ public sealed class ManifestControl
 
     public string ManifestUrl { get; set; } = "";
     public string FilesBaseUrl { get; set; } = "";
+
+    /// <summary>
+    /// Minecraft 本体（资源对象、运行库、客户端 jar）的镜像根地址。
+    /// 为空表示直连 Mojang/NeoForge。服务端可以随时切换或关掉，不用发客户端。
+    /// </summary>
+    public string? MirrorBaseUrl { get; set; }
     public LauncherRelease? Launcher { get; set; }
 
     public static ManifestControl? FromJson(string json) =>
@@ -200,6 +206,13 @@ public sealed class ConfigOverlaySpec
     /// Properties 直接用键名本身。
     /// </summary>
     public Dictionary<string, JsonElement> Enforce { get; set; } = new();
+    /// <summary>
+    /// 列表型键里要摘掉的条目：键名 → 要移除的元素。只对 Properties 生效，
+    /// 用于 options.txt 这种「值本身是一个 JSON 数组」的键（resourcePacks）。
+    /// 整键强制会把玩家自己选的资源包一起抹掉，所以只点名删指定条目。
+    /// </summary>
+    public Dictionary<string, List<string>> RemoveFromList { get; set; } = new();
+
     /// <summary>文件不存在时是否创建。properties/json 可以创建，toml 建议交给模组自己生成。</summary>
     public bool CreateIfMissing { get; set; } = true;
 }

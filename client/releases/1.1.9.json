@@ -1,0 +1,21 @@
+{
+  "version": "1.1.9",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BatterMC5Remake-setup.exe",
+  "signatureFile": "BatterMC5Remake-setup.exe.sig",
+  "sha256": "79c7dbaf18cc4f83ba6125a3b0bd740243775e6aef04996f6955b4b684dc8f41",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3Zk5rVk11REdad3RIZ3E1TFExNGNGTzMvRVY3cDR5bngxcjFub3hVNHFSOXAxUmQ4SzdXbFRPVVZBQlNZbklkR0tZa0lxc281OXZJeVA1WTdGd0F0QUE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDgxMzkxCWZpbGU6QmF0dGVyTUM1UmVtYWtlXzEuMS45X3g2NC1zZXR1cC5leGUJdmVyc2lvbjoxLjEuOQpETE11Wlg0a0NhTGMxam9uRnY2NGl5c2NDZ2pWcVUzNU1uMWFGNGJ2bndBZmo5U3ZNc2tFRFcvN216VTE1eUo5YXhrbVFFYitVSUhnTi9ZRk9KYS9BUT09Cg==",
+  "size": 32618578,
+  "pubDate": "2026-09-22T12:50:34.675268+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.9/BatterMC5Remake-setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.9/BatterMC5Remake-setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.9/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.9/BatterMC5Remake-setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.9/BatterMC5Remake-setup.exe.sig",
+  "notes": "点击开始游戏后先与服务器建立并验证连接，连接就绪才启动游戏，不再出现读条走完才发现进不去服务器。\n连接阶段会逐条尝试可用线路，并显示当前正在连接哪一条。\n线路类型显示修正：此前无论实际走的是局域网、IPv6 还是中继，界面一律显示「自动线路」。\n新增端侧隧道支持，游戏全程只连本机端口，公网线路的选择、保活与切换都在启动器侧完成。\n新增 --routes 诊断命令，进不去服务器时可直接跑一条命令把线路探测结果发回。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

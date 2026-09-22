@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text;
 using BatterMC.Protocol;
 
@@ -10,11 +10,13 @@ public sealed class GameLauncher
 {
     private readonly LauncherPaths _paths;
     private readonly LauncherSettings _settings;
+    private readonly LocalState? _state;
 
-    public GameLauncher(LauncherPaths paths, LauncherSettings settings)
+    public GameLauncher(LauncherPaths paths, LauncherSettings settings, LocalState? state = null)
     {
         _paths = paths;
         _settings = settings;
+        _state = state;
     }
 
     /// <summary>游戏窗口出现（GL 上下文就绪）时触发，UI 用它决定什么时候隐藏启动器。</summary>
@@ -97,6 +99,7 @@ public sealed class GameLauncher
         foreach (var a in args) psi.ArgumentList.Add(a);
 
         LogCommandLine(java, args, classpath);
+        ApplyGpuPreference(java.Path);
 
         using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
         await using var writer = new StreamWriter(
@@ -155,6 +158,40 @@ public sealed class GameLauncher
         return new LaunchResult(exit, gameLog, exit == 0 ? null : DiagnoseCrash(exit, tailLines, sw.Elapsed));
     }
 
+    /// <summary>
+    /// 在启动前告诉 Windows 这次要用哪块显卡。
+    ///
+    /// 设置是按可执行文件路径记的，而我们用的 JRE 路径会随版本变，所以每次都重写一遍，
+    /// 顺手把上一个路径的条目删掉——不然玩家注册表里会攒一堆指向已删除 java.exe 的设置。
+    /// </summary>
+    private void ApplyGpuPreference(string javaPath)
+    {
+        var choice = _settings.EffectiveGpuChoice();
+        var previous = _state?.GpuPreferenceTarget;
+        if (!string.IsNullOrWhiteSpace(previous)
+            && !string.Equals(previous, javaPath, StringComparison.OrdinalIgnoreCase))
+        {
+            GpuPreference.Forget(previous!);
+        }
+
+        if (choice == GpuChoice.Auto)
+        {
+            GpuPreference.Apply(javaPath, GpuChoice.Auto);
+            if (_state is not null) _state.GpuPreferenceTarget = null;
+            Log.Info("显卡策略：交给 Windows 决定");
+            return;
+        }
+
+        if (!GpuPreference.Apply(javaPath, choice)) return;
+        if (_state is not null) _state.GpuPreferenceTarget = javaPath;
+
+        // 读回来确认，写进去了不代表生效——权限或策略都可能把它挡掉
+        var actual = GpuPreference.Read(javaPath);
+        var label = choice == GpuChoice.HighPerformance ? "独立显卡（高性能）" : "集成显卡（节能）";
+        if (actual == choice) Log.Info($"显卡策略：{label}");
+        else Log.Warn($"显卡策略 {label} 未能写入，本次交由 Windows 决定");
+    }
+
     private static bool IsWindowReadyLine(string line)
         => line.Contains("Backend library: LWJGL", StringComparison.Ordinal)
         || line.Contains("Narrator library for x64 successfully loaded", StringComparison.Ordinal)
@@ -172,7 +209,11 @@ public sealed class GameLauncher
 
     private IEnumerable<string> MemoryAndGcArgs()
     {
-        var mb = _settings.EffectiveMaxMemoryMb();
+        var limits = PackMemoryLimits.Read(_paths);
+        var mb = _settings.EffectiveMaxMemoryMb(limits);
+        if (_settings.MaxMemoryMb > 0 && _settings.MaxMemoryMb != mb)
+            Log.Warn($"手填的 {_settings.MaxMemoryMb} MB 超出可用范围，按 {mb} MB 启动"
+                   + $"（整合包声明 {limits.MinMb}–{limits.MaxMb} MB）");
         Log.Info($"堆上限 {mb} MB");
         yield return $"-Xmx{mb}M";
         // 不设 -Xms：让 G1 自己长。预分配整块堆在 Windows 上会拖慢启动，

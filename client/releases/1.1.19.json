@@ -1,0 +1,21 @@
+{
+  "version": "1.1.19",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BMC [Remake] setup.exe",
+  "signatureFile": "BMC [Remake] setup.exe.sig",
+  "sha256": "960009372230b77f7af737676077726db28b6479a43be083c3bad97619bbbb4a",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZkxxdjFQcnRQZUVZSGRUMHFDTk5vTkh4NEp2ZjI0bXlvUEZ1dDBncmxHSTkrRGdIWG1qNUJUKzFlQWpiMWNJZGdqSXIyaHBwUDR6V0lTa09lWHFVUWdBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMTAyOTg5CWZpbGU6Qk1DIFtSZW1ha2VdXzEuMS4xOV94NjQtc2V0dXAuZXhlCXZlcnNpb246MS4xLjE5CmQ4b2hnNXJlbW1RVlVwbjk2MlBrZDQyM01OT1JReU5GVndIeS8ycUErNHlvYzB0YWJ1azl5dGNNZ05UcUtOUHlPM1RnaDhUTU1WQi9JNUFaQ015UUJRPT0K",
+  "size": 33888885,
+  "pubDate": "2026-09-22T18:49:49.9251430+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.19/BMC [Remake] setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.19/BMC [Remake] setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.19/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.19/BMC%20%5BRemake%5D%20setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.19/BMC%20%5BRemake%5D%20setup.exe.sig",
+  "notes": "大幅提高 P2P 直连的打洞成功率：搜索范围扩大约六倍，并按实测的连接保持时间放慢节奏铺开，整体耗时与此前相当。\n修复打洞期间因大量无响应端口导致接收异常、偶发中断的问题。\n只由地址可被对方预测的一侧去搜索通路，另一侧不再做无谓的端口尝试，避免白白消耗运营商端口反而更难被找到。\n修复 Windows 10 上 P2P 直连始终不可用的问题：改为随包自带不依赖系统 TLS 的 QUIC 运行库。\n连接日志会写出本机 NAT 类型和 QUIC 是否可用，进不去服务器时更容易定位。\n中转节点新增隧道端口，没有 IPv6 且打洞失败的玩家也能走端侧隧道，读条期间不会掉线。\n隧道凭据改为启动时自动获取，不再需要手动配置。\n新增 --routes --tunnel 诊断命令，进不去服务器时可直接跑一条命令把结果发回。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

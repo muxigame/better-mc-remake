@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace BatterMC.Core;
@@ -41,8 +41,50 @@ public sealed class LauncherSettings
     /// <summary>跳过文件校验直接启动。仅用于救急，界面上会红字警告。</summary>
     public bool SkipVerify { get; set; }
 
+    /// <summary>
+    /// 端侧隧道的共享密钥。为空时退化成直连校验：仍然会在启动游戏前确认线路
+    /// 真的能问到服务端版本号，只是不经隧道。
+    /// </summary>
+    public string? TunnelToken { get; set; }
+
+    /// <summary>服务端侧隧道工具的监听端口。</summary>
+    public int TunnelPort { get; set; } = 25540;
+
+    /// <summary>
+    /// 打洞用的反射器地址，逗号分隔。客户端靠它得知自己在公网上的出口地址。
+    ///
+    /// 必须是两台**不同 IP** 的服务器：同一个 socket 问两台，答案一致说明是端点
+    /// 无关型 NAT（对端照着打就行），不一致说明换个目标就换映射端口，对端必须在
+    /// 邻近端口扫描才能命中。只问一台是区分不出来的。
+    ///
+    /// 只收发几十字节，放在哪台服务器都行。
+    /// </summary>
+    public string PunchReflector { get; set; } = "110.42.51.3,191.40.37.147";
+
+    /// <summary>
+    /// 玩家点名要的光影预设：包名，空串 = 无光影，null = 还没选过（首次安装落默认值）。
+    /// 真正生效的值在 config/iris.properties 里，这份只是启动时用来把它写回去 ——
+    /// 那个文件是 Seed 策略，服务端发新版会整份重投，不记一份玩家的选择就会被冲掉。
+    /// </summary>
+    public string? ShaderPack { get; set; }
+
     /// <summary>自定义游戏目录。留空 = 启动器目录下的 Better MC Remake [FORGE]\。</summary>
     public string? GameDirOverride { get; set; }
+
+    /// <summary>
+    /// 用哪块显卡跑游戏："performance"（独显）/ "power"（核显）/ "auto"（交给 Windows）。
+    ///
+    /// 默认独显。双显卡笔记本上 Windows 经常把 Java 丢给核显，玩家只会看到帧数上不去，
+    /// 不会有任何报错，自己也想不到去系统设置里改。
+    /// </summary>
+    public string Gpu { get; set; } = "performance";
+
+    public GpuChoice EffectiveGpuChoice() => Gpu?.Trim().ToLowerInvariant() switch
+    {
+        "power" => GpuChoice.PowerSaving,
+        "auto" => GpuChoice.Auto,
+        _ => GpuChoice.HighPerformance,
+    };
 
     [JsonIgnore] public string? LoadedFrom { get; private set; }
 
@@ -82,18 +124,30 @@ public sealed class LauncherSettings
     /// <summary>
     /// 自动内存：物理内存的一半，夹在 4G–8G 之间，并且至少给系统留 4G。
     /// 405 个模组的包低于 4G 基本必崩，高于 8G 对 G1 反而是负担。
+    ///
+    /// 玩家手填的值同样要夹 —— 在 12G 的机器上填 16G，游戏一进去就被整合包的
+    /// memorysettings 拦下来弹警告屏，更糟的是堆挤掉原生内存，JVM 会直接 abort。
+    /// 上限取"物理内存留够系统"和"整合包自己声明的阈值"里更小的那个。
     /// </summary>
-    public int EffectiveMaxMemoryMb()
+    public int EffectiveMaxMemoryMb(PackMemoryLimits limits = default)
     {
-        if (MaxMemoryMb > 0) return MaxMemoryMb;
         long totalMb;
         try { totalMb = (long)(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024 * 1024)); }
         catch { totalMb = 8192; }
         if (totalMb <= 0) totalMb = 8192;
+
+        // 系统自己要用，堆不能顶到物理内存
+        var ceiling = Math.Max(2048, totalMb - 2048);
+        if (limits.MaxMb > 0) ceiling = Math.Min(ceiling, limits.MaxMb);
+        var floor = Math.Max(2048, (long)limits.MinMb);
+        if (floor > ceiling) floor = ceiling;
+
+        if (MaxMemoryMb > 0) return (int)Math.Clamp(MaxMemoryMb, floor, ceiling);
+
         var half = totalMb / 2;
         var value = Math.Clamp(half, 4096, 8192);
         var leaveForSystem = totalMb - 4096;
         if (leaveForSystem > 2048 && value > leaveForSystem) value = leaveForSystem;
-        return (int)Math.Max(2048, value);
+        return (int)Math.Clamp(value, floor, ceiling);
     }
 }

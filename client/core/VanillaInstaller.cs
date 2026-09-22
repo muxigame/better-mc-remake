@@ -42,7 +42,7 @@ public static class VanillaInstaller
         }
 
         // --- 库 ---
-        status?.Report("校验 Minecraft 运行库…");
+        status?.Report("Minecraft 运行库…");
         foreach (var lib in version.Libraries)
         {
             var target = Path.Combine(paths.LibrariesDir, lib.Path.Replace('/', Path.DirectorySeparatorChar));
@@ -63,7 +63,7 @@ public static class VanillaInstaller
         }
 
         // --- 资源索引 ---
-        status?.Report("校验游戏资源…");
+        status?.Report("Minecraft 游戏资源…");
         var indexPath = Path.Combine(paths.AssetsDir, "indexes", version.AssetIndex.Id + ".json");
         if (!File.Exists(indexPath) ||
             (version.AssetIndex.Size > 0 && new FileInfo(indexPath).Length != version.AssetIndex.Size))

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.Http.Headers;
@@ -24,6 +24,8 @@ internal sealed class RpcHost : IDisposable
     private readonly HttpClient _accountHttp = new() { Timeout = TimeSpan.FromSeconds(15) };
     private readonly object _outputLock = new();
     private readonly object _activityLock = new();
+    private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    private DateTimeOffset _lastRefresh;
     private bool _clientUpdating;
 
     private CancellationTokenSource? _work;
@@ -44,6 +46,7 @@ internal sealed class RpcHost : IDisposable
         _settings = settings;
         _state = state;
         TryLoadCachedManifest();
+        TryLoadAccountSession();
         Log.Line += OnLogLine;
     }
 
@@ -64,6 +67,7 @@ internal sealed class RpcHost : IDisposable
         Log.Line -= OnLogLine;
         _downloader.Dispose();
         _accountHttp.Dispose();
+        _refreshLock.Dispose();
         _work?.Dispose();
     }
 
@@ -153,6 +157,7 @@ internal sealed class RpcHost : IDisposable
             _updateError = ex.Message;
             Log.Warn($"启动时获取更新信息失败：{ex.Message}");
         }
+        await RestoreAccountAsync().ConfigureAwait(false);
         return BuildState();
     }
 
@@ -185,8 +190,10 @@ internal sealed class RpcHost : IDisposable
             ["installedVersion"] = _state.InstalledPackVersion,
             ["lastSync"] = _state.LastSync?.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
             ["settings"] = SettingsNode(),
-            ["autoMemoryMb"] = _settings.EffectiveMaxMemoryMb(),
+            ["autoMemoryMb"] = _settings.EffectiveMaxMemoryMb(PackMemoryLimits.Read(_paths)),
+            ["memoryCeilingMb"] = MemoryCeilingMb(),
             ["totalMemoryMb"] = TotalMemoryMb(),
+            ["gpus"] = DetectedGpus(),
             ["account"] = _account?.DeepClone(),
             ["player"] = _player?.DeepClone(),
             ["updateServer"] = new JsonObject
@@ -224,9 +231,114 @@ internal sealed class RpcHost : IDisposable
             node["optional"] = BuildOptionalGroups(_manifest.Files);
         }
 
+        node["components"] = ComponentsNode();
+        node["shaders"] = ShadersNode();
+
         if (_pendingLauncherUpdate is not null)
             node["launcherUpdate"] = LauncherUpdateNode(_pendingLauncherUpdate);
         return node;
+    }
+
+    /// <summary>
+    /// 状态栏那几个点：整合包 / Minecraft 本体 / 加载器 / 启动器各自装没装、是不是最新。
+    ///
+    /// 安装是分步的 —— 整合包文件、Minecraft 本体、NeoForge 是三件独立的事，
+    /// 任何一件没做完游戏都起不来，用一个"已安装"糊在一起看不出卡在哪儿。
+    /// 全是本地文件检查，不联网。
+    /// </summary>
+    private JsonObject ComponentsNode()
+    {
+        static JsonObject Item(string label, string state, string? version) => new()
+        {
+            ["label"] = label,
+            ["state"] = state,
+            ["version"] = version,
+        };
+
+        var packVersion = _manifest?.Pack.Version;
+        var installed = _state.InstalledPackVersion;
+        var packState = string.IsNullOrWhiteSpace(installed)
+            ? "missing"
+            : packVersion is not null && !installed.Equals(packVersion, StringComparison.OrdinalIgnoreCase)
+                ? "update"
+                : "ok";
+
+        var mcState = "missing";
+        var loaderState = "missing";
+        try
+        {
+            var id = _manifest?.Minecraft.VersionId;
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                // 本体：版本目录下的客户端 jar 在不在
+                var jar = Path.Combine(_paths.VersionsDir, id, id + ".jar");
+                if (File.Exists(jar)) mcState = "ok";
+
+                // 加载器：NeoForge 那堆 artifact 齐不齐，缺一个都起不来
+                var versionJson = _paths.ResolveGameFile(_manifest!.Minecraft.VersionJson);
+                if (File.Exists(versionJson))
+                {
+                    var version = VersionJson.Load(versionJson);
+                    if (NeoForgeInstaller.IsInstalled(version, _paths, out _)) loaderState = "ok";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"读取安装状态失败：{ex.Message}");
+        }
+
+        return new JsonObject
+        {
+            ["pack"] = Item("BMC [Remake]", packState, packVersion),
+            ["minecraft"] = Item("Minecraft", mcState, _manifest?.Minecraft.Version),
+            ["loader"] = Item(LoaderLabel(_manifest?.Minecraft.Loader), loaderState, _manifest?.Minecraft.LoaderVersion),
+            ["launcher"] = Item("启动器", _pendingLauncherUpdate is not null ? "update" : "ok", GameLauncher.ThisVersion()),
+        };
+    }
+
+    private static string LoaderLabel(string? loader) => loader?.ToLowerInvariant() switch
+    {
+        "neoforge" => "NeoForge",
+        "forge" => "Forge",
+        "fabric" => "Fabric",
+        null or "" => "加载器",
+        _ => loader!,
+    };
+
+    /// <summary>
+    /// 光影：可选的包、当前实际生效的那个。
+    ///
+    /// 当前值直接读 iris.properties —— 玩家在游戏里换了光影，启动器下次刷新就能看出来，
+    /// 并顺手记进设置，这样下次启动写回去的也是他刚换的那个，不会被打回旧预设。
+    /// 装完之前不读文件：那会儿文件还是整合包出厂值，读了会把默认预设顶掉。
+    /// </summary>
+    private JsonObject ShadersNode()
+    {
+        var installed = !string.IsNullOrWhiteSpace(_state.InstalledPackVersion);
+        var file = _paths.ResolveGameFile(ShaderPresets.ConfigPath);
+        var current = _settings.ShaderPack ?? ShaderPresets.DefaultPack;
+
+        if (installed && File.Exists(file))
+        {
+            current = ShaderPresets.Read(_paths).AsSettingValue();
+            if (!string.Equals(current, _settings.ShaderPack, StringComparison.Ordinal))
+            {
+                _settings.ShaderPack = current;
+                _settings.Save(_paths.SettingsFile);
+            }
+        }
+
+        var available = ShaderPresets.Available(_paths);
+        // 玩家自己丢进去又删掉的包，别让设置卡在一个不存在的名字上
+        if (current.Length > 0 && !available.Contains(current, StringComparer.OrdinalIgnoreCase))
+            available.Insert(0, current);
+
+        return new JsonObject
+        {
+            ["current"] = current,
+            ["available"] = new JsonArray(available.Select(x => (JsonNode)x).ToArray()),
+        };
     }
 
     private JsonArray BuildOptionalGroups(IEnumerable<ManagedFile> files)
@@ -270,13 +382,16 @@ internal sealed class RpcHost : IDisposable
         ["extraJvmArgs"] = _settings.ExtraJvmArgs,
         ["windowWidth"] = _settings.WindowWidth,
         ["windowHeight"] = _settings.WindowHeight,
-        ["fullscreen"] = _settings.Fullscreen,
+        // 游戏里按过 F11 的话以 options.txt 为准，顺手记回设置
+        ["fullscreen"] = EffectiveFullscreen(),
         ["autoJoinServer"] = _settings.AutoJoinServer,
         ["updateBaseUrl"] = _settings.UpdateBaseUrl,
         ["authBaseUrl"] = _settings.AuthBaseUrl,
         ["keepLauncherOpen"] = _settings.KeepLauncherOpen,
         ["skipVerify"] = _settings.SkipVerify,
+        ["gpu"] = _settings.Gpu,
         ["enabledOptional"] = new JsonArray(_settings.EnabledOptional.Select(x => (JsonNode)x).ToArray()),
+        ["shaderPack"] = _settings.ShaderPack ?? ShaderPresets.DefaultPack,
     };
 
     private JsonNode SaveSettings(JsonObject p)
@@ -287,7 +402,9 @@ internal sealed class RpcHost : IDisposable
 
         // Game login identity is derived from the authenticated muxi UID only.
         if (p.ContainsKey("javaPath")) _settings.JavaPath = Str("javaPath");
-        if (Int("maxMemoryMb") is { } mm) _settings.MaxMemoryMb = Math.Max(0, mm);
+        // 0 = 自动。非 0 就地夹进可用区间，免得存了个进游戏要挨警告屏的值
+        if (Int("maxMemoryMb") is { } mm)
+            _settings.MaxMemoryMb = mm <= 0 ? 0 : Math.Clamp(mm, 2048, MemoryCeilingMb());
         if (Str("extraJvmArgs") is { } ja) _settings.ExtraJvmArgs = ja;
         if (Int("windowWidth") is { } ww) _settings.WindowWidth = Math.Clamp(ww, 640, 7680);
         if (Int("windowHeight") is { } wh) _settings.WindowHeight = Math.Clamp(wh, 480, 4320);
@@ -297,8 +414,20 @@ internal sealed class RpcHost : IDisposable
         if (Str("authBaseUrl") is { } auth && !string.IsNullOrWhiteSpace(auth)) _settings.AuthBaseUrl = auth.Trim().TrimEnd('/');
         if (Bool("keepLauncherOpen") is { } ko) _settings.KeepLauncherOpen = ko;
         if (Bool("skipVerify") is { } sv) _settings.SkipVerify = sv;
+        if (Str("gpu") is { } gpu && gpu is "performance" or "power" or "auto") _settings.Gpu = gpu;
+        // 空串是合法值：表示关掉光影。所以只认"键在不在"，不能用非空判断。
+        if (p.ContainsKey("shaderPack"))
+        {
+            _settings.ShaderPack = (Str("shaderPack") ?? "").Trim();
+            ShaderPresets.Apply(_paths, _settings.ShaderPack);
+        }
         if (p["enabledOptional"] is JsonArray arr)
+        {
             _settings.EnabledOptional = arr.Select(x => x?.GetValue<string>()).Where(x => !string.IsNullOrEmpty(x)).Select(x => x!).ToList();
+            // 开关立刻生效：禁用只是给文件加个 .disabled 后缀，不用等下一次同步，也不用重下
+            if (_manifest is not null)
+                OptionalContent.Apply(_paths, _manifest.Files, _settings.EnabledOptional);
+        }
 
         _settings.Save(_paths.SettingsFile);
         return BuildState();
@@ -355,12 +484,74 @@ internal sealed class RpcHost : IDisposable
                     ["detail"] = detail,
                     ["fraction"] = -1,
                 }));
-                proxy = await MinecraftRouteProxy.StartAsync(_manifest.Servers, routeProgress, ct)
+                // 控制面优先。清单里的线路是发布那一刻定死的，而服务器那台的 IPv6
+                // 是临时地址、会轮换，运营商重拨还可能整个前缀都变。只有那台机器
+                // 自己知道它此刻是什么地址，所以每次启动都来问一次最新的。
+                // 问不到就退回清单——控制面挂了不该连累玩家进不去游戏。
+                var servers = _manifest.Servers;
+                var snapshot = await ControlPlaneClient
+                    .FetchAsync(_settings.UpdateBaseUrl, "default", TimeSpan.FromSeconds(8), ct)
                     .ConfigureAwait(false);
-                var selected = proxy.Selection.Selected;
+                if (snapshot is { Online: true } && snapshot.Candidates.Count > 0)
+                {
+                    servers = WithControlPlaneRoutes(_manifest.Servers, snapshot.Candidates);
+                    Log.Info($"线路候选来自控制面：{snapshot.Candidates.Count} 条，" +
+                             $"数据新鲜度 {snapshot.AgeSeconds:0.#}s");
+                }
+                else
+                {
+                    Log.Warn("控制面没有可用候选，回退到清单里的线路");
+                }
+
+                proxy = await MinecraftRouteProxy.StartAsync(servers, routeProgress, ct)
+                    .ConfigureAwait(false);
+
+                // 先把连接真正建起来，建好了才启动游戏。
+                //
+                // 以前是懒连接：选完线就开游戏，真正连远端要等 Minecraft 自己发起，
+                // 于是"线路其实不通"这件事要到读条走完、玩家点进服务器才暴露。现在
+                // 在这里就问一次服务端版本号，问不到就换下一条，全部失败则直接报错，
+                // 不让玩家白等几分钟。
+                Emit("status", new JsonObject
+                {
+                    ["phase"] = "正在和服务器建立连接",
+                    ["detail"] = "逐条尝试可用线路",
+                    ["fraction"] = -1,
+                });
+                var connectProgress = new Progress<string>(detail => Emit("status", new JsonObject
+                {
+                    ["phase"] = "正在和服务器建立连接",
+                    ["detail"] = detail,
+                    ["fraction"] = -1,
+                }));
+
+                // 凭据优先用本地配置（运维可以钉死一个），否则现取。取不到也不影响
+                // 进服：EstablishBestAsync 会直接落到直连/中转那一级。
+                var tunnelToken = !string.IsNullOrWhiteSpace(_settings.TunnelToken)
+                    ? _settings.TunnelToken
+                    : await ControlPlaneClient.FetchClientTokenAsync(
+                        _settings.UpdateBaseUrl, "default", TimeSpan.FromSeconds(8), ct)
+                        .ConfigureAwait(false);
+                var established = await proxy.EstablishBestAsync(
+                    tunnelToken, _settings.UpdateBaseUrl, "default",
+                    _settings.PunchReflector, _settings.TunnelPort, connectProgress, ct)
+                    .ConfigureAwait(false);
+
+                proxy.RouteChanged += replacement => Emit("routeSelected", new JsonObject
+                {
+                    ["kind"] = replacement.Kind.ToString(),
+                    ["label"] = replacement.Route.Candidate.Label ?? replacement.Route.Candidate.Id,
+                    ["remote"] = replacement.Route.Endpoint.ToString(),
+                    ["latencyMs"] = Math.Round(replacement.Route.Latency.TotalMilliseconds),
+                    ["local"] = proxy.LocalAddress,
+                    ["available"] = proxy.Selection.Reachable.Count,
+                });
+
+                var selected = established.Route;
                 Emit("routeSelected", new JsonObject
                 {
-                    ["kind"] = selected.Candidate.Kind.ToString(),
+                    // 上报解析后的类型：候选声明为 Auto 时，原值对玩家毫无信息量
+                    ["kind"] = established.Kind.ToString(),
                     ["label"] = selected.Candidate.Label ?? selected.Candidate.Id,
                     ["remote"] = selected.Endpoint.ToString(),
                     ["latencyMs"] = Math.Round(selected.Latency.TotalMilliseconds),
@@ -378,7 +569,7 @@ internal sealed class RpcHost : IDisposable
 
             try
             {
-                var launcher = new GameLauncher(_paths, _settings);
+                var launcher = new GameLauncher(_paths, _settings, _state);
                 launcher.GameWindowReady += () => Emit("gameWindowReady", new JsonObject());
                 Emit("status", new JsonObject
                 {
@@ -411,6 +602,34 @@ internal sealed class RpcHost : IDisposable
         {
             FinishGameOperation();
         }
+    }
+
+    /// <summary>
+    /// 用控制面下发的候选替换主服务器的 routes，其余字段（名字、兜底地址）保持不变
+    /// ——servers.dat 和"所有线路都失败"时的提示仍然要用清单里那个公开地址。
+    /// </summary>
+    private static List<ServerEntry> WithControlPlaneRoutes(
+        List<ServerEntry> servers, List<RouteCandidate> candidates)
+    {
+        var result = new List<ServerEntry>(servers.Count);
+        var replaced = false;
+        var hasPrimary = servers.Any(server => server.Primary);
+        foreach (var server in servers)
+        {
+            var isTarget = !replaced && (server.Primary || !hasPrimary);
+            if (!isTarget) { result.Add(server); continue; }
+            replaced = true;
+            result.Add(new ServerEntry
+            {
+                Name = server.Name,
+                Host = server.Host,
+                Port = server.Port,
+                Primary = server.Primary,
+                Forced = server.Forced,
+                Routes = candidates,
+            });
+        }
+        return result;
     }
 
     private static IEnumerable<ServerEntry> ProxiedServers(IEnumerable<ServerEntry> servers, int localPort)
@@ -724,6 +943,7 @@ internal sealed class RpcHost : IDisposable
                 throw new InvalidOperationException("muxi 账户没有返回访问令牌");
             }
             await LoadAccountAsync().ConfigureAwait(false);
+            PersistAccountSession();
             await WriteBrowserResultAsync(stream, true).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested)
@@ -807,33 +1027,174 @@ internal sealed class RpcHost : IDisposable
             }
             catch { }
         }
-        _accountToken = null;
-        _accountRefreshToken = null;
-        _account = null;
-        _player = null;
+        DropAccountSession();
         Emit("state", BuildState());
         return BuildState();
     }
 
+    /// <summary>
+    /// 用 refresh token 换一套新令牌。
+    ///
+    /// 返回 false 只代表上游明确拒绝了这个令牌（过期，或已经被上一次刷新轮换掉）；
+    /// 网络不通会原样抛出，调用方据此区分"要重新登录"和"暂时连不上"——
+    /// 把后者也当成过期，断网时就会白白把玩家踢下线。
+    /// </summary>
     private async Task<bool> RefreshAccountAsync()
     {
-        if (string.IsNullOrEmpty(_accountRefreshToken)) return false;
-        using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        // 刷新必须串起来：上游每刷一次就把旧 refresh token 吊销，两处并发各刷一次的话，
+        // 后一个拿着已经作废的令牌去换，换回来一个 invalid_grant，玩家就被莫名登出了。
+        await _refreshLock.WaitAsync().ConfigureAwait(false);
+        try
         {
-            ["grant_type"] = "refresh_token",
-            ["client_id"] = "better-mc-launcher",
-            ["refresh_token"] = _accountRefreshToken,
-        });
-        using var response = await _accountHttp.PostAsync(AccountApi("/oauth/token"), content).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode) return false;
-        var json = JsonNode.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false))?.AsObject();
-        _accountToken = json?["access_token"]?.GetValue<string>();
-        _accountRefreshToken = json?["refresh_token"]?.GetValue<string>();
-        return !string.IsNullOrEmpty(_accountToken) && !string.IsNullOrEmpty(_accountRefreshToken);
+            // 刚有人刷过就直接用他换来的那套，别再换一次
+            if (!string.IsNullOrEmpty(_accountToken)
+                && DateTimeOffset.UtcNow - _lastRefresh < TimeSpan.FromSeconds(30)) return true;
+
+            if (string.IsNullOrEmpty(_accountRefreshToken)) return false;
+            using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "refresh_token",
+                ["client_id"] = "better-mc-launcher",
+                ["refresh_token"] = _accountRefreshToken,
+            });
+            using var response = await _accountHttp.PostAsync(AccountApi("/oauth/token"), content).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) return false;
+            var json = JsonNode.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false))?.AsObject();
+            _accountToken = json?["access_token"]?.GetValue<string>();
+            _accountRefreshToken = json?["refresh_token"]?.GetValue<string>();
+            var ok = !string.IsNullOrEmpty(_accountToken) && !string.IsNullOrEmpty(_accountRefreshToken);
+            if (ok)
+            {
+                _lastRefresh = DateTimeOffset.UtcNow;
+                // 旧的已经被上游吊销了，这里不立刻落盘，进程一退玩家就登不回来
+                PersistAccountSession();
+            }
+            return ok;
+        }
+        finally
+        {
+            _refreshLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// 检测到的显卡，给设置界面显示用。
+    ///
+    /// 每次构造状态都重新枚举：外接显卡坞插拔、驱动更新都会改变这个列表，
+    /// 而这只是读几个注册表键，不值得缓存。
+    /// </summary>
+    private JsonArray DetectedGpus()
+    {
+        var list = new JsonArray();
+        try
+        {
+            var adapters = GpuPreference.Detect();
+            foreach (var gpu in adapters)
+            {
+                list.Add(new JsonObject
+                {
+                    ["name"] = gpu.Name,
+                    ["vram"] = gpu.VramBytes,
+                    ["vramText"] = gpu.VramText,
+                    // 这块卡对应设置里的哪个值。Windows 只有高性能/节能两档，
+                    // 界面按名字选，映射在这里定死，别让前端自己猜。
+                    ["choice"] = GpuPreference.ChoiceFor(adapters, gpu) == GpuChoice.HighPerformance
+                        ? "performance" : "power",
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"枚举显卡失败：{ex.Message}");
+        }
+        return list;
+    }
+
+    private void TryLoadAccountSession()
+    {
+        var session = AccountStore.Load(_paths.AccountFile);
+        if (session is null) return;
+        _accountToken = session.AccessToken;
+        _accountRefreshToken = session.RefreshToken;
+    }
+
+    private void PersistAccountSession()
+    {
+        if (string.IsNullOrEmpty(_accountToken) || string.IsNullOrEmpty(_accountRefreshToken)) return;
+        try
+        {
+            AccountStore.Save(_paths.AccountFile, new AccountSession
+            {
+                AccessToken = _accountToken,
+                RefreshToken = _accountRefreshToken,
+                SavedAt = DateTimeOffset.UtcNow,
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"保存登录态失败，下次可能需要重新登录：{ex.Message}");
+        }
+    }
+
+    private void DropAccountSession()
+    {
+        _accountToken = null;
+        _accountRefreshToken = null;
+        _account = null;
+        _player = null;
+        AccountStore.Clear(_paths.AccountFile);
+    }
+
+    /// <summary>
+    /// 用磁盘上的令牌把上次的登录接回来。
+    ///
+    /// access token 只有一小时，玩家几乎总是在它过期之后才再打开启动器，所以这里
+    /// 大概率要走一次刷新。刷新失败要分两种情况：上游明确说令牌死了，那就清干净让
+    /// 玩家重登；网络不通则原样留着，下次再试——连不上账号服务不是登出的理由。
+    /// </summary>
+    private async Task RestoreAccountAsync()
+    {
+        if (string.IsNullOrEmpty(_accountToken) && string.IsNullOrEmpty(_accountRefreshToken)) return;
+        try
+        {
+            try
+            {
+                await LoadAccountAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+                if (!await RefreshAccountAsync().ConfigureAwait(false))
+                {
+                    Log.Info("本地登录令牌已失效，需要重新登录");
+                    DropAccountSession();
+                    return;
+                }
+                await LoadAccountAsync().ConfigureAwait(false);
+            }
+
+            var gameName = OfflineAuth.UidLoginName(AuthenticatedUid());
+            if (OfflineAuth.IsValidUsername(gameName))
+            {
+                _settings.Username = gameName;
+                _settings.Save(_paths.SettingsFile);
+            }
+            Log.Info("已恢复上次的 muxi 账户登录");
+        }
+        catch (Exception ex)
+        {
+            // 多半是连不上账号服务。令牌保持原样，界面暂时显示未登录，点开始游戏时还会再试一次。
+            _account = null;
+            _player = null;
+            Log.Warn($"暂时无法恢复登录态，已保留本地令牌：{ex.Message}");
+        }
     }
 
     private async Task RequireAccountAsync()
     {
+        // 冷启动时 init 那次恢复可能因为断网没成，这里再试一次，别让玩家白登一遍
+        if (_account is null && !string.IsNullOrEmpty(_accountRefreshToken))
+            await RestoreAccountAsync().ConfigureAwait(false);
+
         if (string.IsNullOrEmpty(_accountToken) || _account is null)
             throw new InvalidOperationException("请先登录 muxi 账户");
         try
@@ -844,9 +1205,7 @@ internal sealed class RpcHost : IDisposable
         {
             if (!await RefreshAccountAsync().ConfigureAwait(false))
             {
-                _accountToken = null;
-                _accountRefreshToken = null;
-                _account = null;
+                DropAccountSession();
                 Emit("state", BuildState());
                 throw new InvalidOperationException("muxi 账户 登录已过期，请重新登录");
             }
@@ -910,6 +1269,32 @@ internal sealed class RpcHost : IDisposable
         ["minSupportedVersion"] = release.MinSupportedVersion,
         ["updateReason"] = release.UpdateReason,
     };
+
+    /// <summary>
+    /// 玩家最多能分配多少堆：给系统留 2G，再不超过整合包自己声明的阈值
+    /// （config/memorysettings.json 的 maximumClient，超了游戏会弹警告屏）。
+    /// </summary>
+    /// <summary>
+    /// 全屏的真相是 options.txt —— 玩家在游戏里按 F11 改了，启动器要跟着显示，
+    /// 否则下次启动会被写回旧值，玩家会觉得这个开关是坏的。
+    /// </summary>
+    private bool EffectiveFullscreen()
+    {
+        var inGame = GameOptions.ReadFullscreen(_paths);
+        if (inGame is not { } value || value == _settings.Fullscreen) return _settings.Fullscreen;
+        _settings.Fullscreen = value;
+        _settings.Save(_paths.SettingsFile);
+        return value;
+    }
+
+    private int MemoryCeilingMb()
+    {
+        var total = TotalMemoryMb();
+        var ceiling = total > 0 ? Math.Max(2048, total - 2048) : 8192;
+        var limits = PackMemoryLimits.Read(_paths);
+        if (limits.MaxMb > 0) ceiling = Math.Min(ceiling, limits.MaxMb);
+        return ceiling;
+    }
 
     private static int TotalMemoryMb()
     {

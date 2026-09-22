@@ -1,0 +1,21 @@
+{
+  "version": "1.1.12",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BatterMC5Remake-setup.exe",
+  "signatureFile": "BatterMC5Remake-setup.exe.sig",
+  "sha256": "e2e2c3952423146b1be4833e2114e0d2417fb7dde629e2ca85c2b1ad2290999a",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZktuWjcyQ3dxK0RKTGY2WUo2UStLWTRTb0lZYkZyUElkQnJXczFPSThPdDV1Skova2tycmduNlNvQkpvOHh5d2RoVlVTb093Z1dKcXc1WTB6N1dUVUFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDg0MTc5CWZpbGU6QmF0dGVyTUM1UmVtYWtlXzEuMS4xMl94NjQtc2V0dXAuZXhlCXZlcnNpb246MS4xLjEyCnFLZ3RDQ2dOczg1dUtoY05FY0ZzNStkaXduSTdJTjVJSGx5ZHFzbEJmTzRuTG90UHdsOGJ4Ty9Vb1dnYkh0dXdZQ1hkb3BKb1c3NWJUcDlhQVVuL0JRPT0K",
+  "size": 32624610,
+  "pubDate": "2026-09-22T13:37:02.739305+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.12/BatterMC5Remake-setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.12/BatterMC5Remake-setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.12/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.12/BatterMC5Remake-setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.12/BatterMC5Remake-setup.exe.sig",
+  "notes": "新增 P2P 直连：优先在你和服务器之间直接打通连接，游戏流量不再经过中转服务器；打不通时自动回退到隧道或中转。\n线路候选改为每次启动从服务器实时获取，服务器 IPv6 变化后客户端能立刻跟上。\n点击开始游戏后先与服务器建立并验证连接，连接就绪才启动游戏，不再出现读条走完才发现进不去服务器。\n连接阶段会显示当前正在尝试哪条线路。\n线路类型显示修正：此前无论实际走的是局域网、IPv6 还是中继，界面一律显示「自动线路」。\n修正启动器版本号显示：此前更新到新版后界面仍显示旧版本号。\n新增 --routes 诊断命令，进不去服务器时可直接跑一条命令把线路探测结果发回。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

@@ -1,0 +1,21 @@
+{
+  "version": "1.1.15",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BatterMC5Remake-setup.exe",
+  "signatureFile": "BatterMC5Remake-setup.exe.sig",
+  "sha256": "5427a9f8a6eda040fc02901701143701f80fc10bb04cc963abe1fe16ea794e68",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZkliWUdzelpwUzN4aU1Nd29Cb0QwM0FGWW16YU1zVGZhMERmaHA2dVhmbFViTUdXZ0laNW5jVHR5WUQ1VkFQYkxjVFZVWVlTTGV0R0ZhNlJFTXhGMkFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDg3NTk5CWZpbGU6QmF0dGVyTUM1UmVtYWtlXzEuMS4xNV94NjQtc2V0dXAuZXhlCXZlcnNpb246MS4xLjE1CmJrTllZRjFsNktNc1MvMEJwUDRiMHFHR05oUjZaZGpkZTRLbERoakltNHBnZWxxaDM1M2J0L2lFczBhME1aRm9vVlkvaUxNWUUzc2VmSkFjTjJpK0JBPT0K",
+  "size": 33793481,
+  "pubDate": "2026-09-22T14:33:30.987399+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.15/BatterMC5Remake-setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.15/BatterMC5Remake-setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.15/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.15/BatterMC5Remake-setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.15/BatterMC5Remake-setup.exe.sig",
+  "notes": "修复 Windows 10 上 P2P 直连始终不可用的问题：改为随包自带不依赖系统 TLS 的 QUIC 运行库，Win10 现在也能打洞直连。\n连接日志会明确写出 QUIC 是否可用及原因，进不去服务器时更容易定位。\n修复只有中转线路可用时启动直接失败的问题（1.1.13）。\n中转节点新增隧道端口，没有 IPv6 且打洞失败的玩家也能走端侧隧道，读条期间不会掉线。\n隧道凭据改为启动时自动获取，不再需要手动配置。\n线路候选改为每次启动从服务器实时获取，服务器 IPv6 变化后客户端能立刻跟上。\n点击开始游戏后先与服务器建立并验证连接，连接就绪才启动游戏。\n新增 --routes --tunnel 诊断命令，进不去服务器时可直接跑一条命令把结果发回。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

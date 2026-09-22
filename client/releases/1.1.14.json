@@ -1,0 +1,21 @@
+{
+  "version": "1.1.14",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BatterMC5Remake-setup.exe",
+  "signatureFile": "BatterMC5Remake-setup.exe.sig",
+  "sha256": "7ae82f8fe6769c2354003c34a1729d9781b40801f0c36466bba511c21204ff3d",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZkJyQ0RVdFZaTGd0cEdJbHZ0NGpLQUJSMG9tZSsxTk93ZGRCM1BDY2lsNCs5dE5NNWRwTWtNUWFXUmdzS3IvTnJrMDEyVXRESHF6MjN1b29YVVV2NkFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMDg2MjExCWZpbGU6QmF0dGVyTUM1UmVtYWtlXzEuMS4xNF94NjQtc2V0dXAuZXhlCXZlcnNpb246MS4xLjE0ClFvTm1HREV4ZFFMWWkzVzJjOWZnaU1BVFMvNXZnQnpvNkx3N0ZBVVorbHJWUmpnMFNPOEY2c3pQWUFnb2pEVVJaZWVranROdlBLN3VudHA4OXE2TUJnPT0K",
+  "size": 32828688,
+  "pubDate": "2026-09-22T14:10:28.338538+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.14/BatterMC5Remake-setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.14/BatterMC5Remake-setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.14/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.14/BatterMC5Remake-setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.14/BatterMC5Remake-setup.exe.sig",
+  "notes": "修复 1.1.13 的严重问题：只有中转线路可用时，启动会直接失败进不去游戏。现在隧道建不起来会自动退回中转。\n修复 P2P 直连在安装版里始终不可用的问题（缺少 QUIC 运行库），现在装好即可尝试打洞直连。\n中转节点新增隧道端口，没有 IPv6 且打洞失败的玩家也能走端侧隧道，读条期间不会掉线。\n隧道凭据改为启动时自动获取，不再需要手动配置。\n线路候选改为每次启动从服务器实时获取，服务器 IPv6 变化后客户端能立刻跟上。\n点击开始游戏后先与服务器建立并验证连接，连接就绪才启动游戏。\n连接阶段会显示当前正在尝试哪条线路。\n新增 --routes --tunnel 诊断命令，进不去服务器时可直接跑一条命令把结果发回。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

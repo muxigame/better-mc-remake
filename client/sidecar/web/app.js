@@ -1,5 +1,5 @@
 /* ============================================================
-   BatterMC5Remake 启动器 — 前端
+   BetterMC5Remake 启动器 — 前端
    Tauri 负责窗口与 IPC，游戏逻辑运行在 .NET sidecar。
    ============================================================ */
 
@@ -11,6 +11,8 @@ const invoke = tauri && tauri.core && tauri.core.invoke;
 
 let state = {};
 let busy = false;
+let gameRunning = false;
+let abortConfirm = null;
 let accountAuthPending = false;
 let packInstallPending = false;
 let optionalItems = [];
@@ -91,7 +93,8 @@ function handleEvent(name, p) {
       break;
 
     case 'gameWindowReady':
-      setProgress('游戏已启动', '窗口已出现', 1);
+      setProgress('游戏运行中', '启动器可以最小化，不影响游戏', 1);
+      setGameRunning(true);
       if (!(state.settings || {}).keepLauncherOpen) invoke('minimize').catch(() => {});
       break;
 
@@ -110,6 +113,103 @@ function handleEvent(name, p) {
   }
 }
 
+/*
+   用实测到的显卡名字填下拉框。
+
+   Windows 只认"高性能"和"节能"两档，不能按名字点名某块卡，所以这里是把这两档用
+   真实的显卡名呈现出来——双显卡机器上两者等价。哪块卡算哪一档由 sidecar 定
+   （见 GpuPreference.ChoiceFor），前端不自己猜。
+
+   同一档位可能对应多块卡（核显 + 独显 + 外接显卡坞），只保留第一块，不然会出现两个
+   选项点下去效果一样。
+*/
+/* 光影下拉。
+
+   列表来自 sidecar 扫描的 shaderpacks 目录，空串代表关闭光影。
+   当前值是 sidecar 从 iris.properties 里读出来的真实值，所以玩家在游戏里换完光影，
+   启动器一刷新就同步过来，不需要在这边猜。
+*/
+/* 状态栏的组件状态点。
+
+   安装是分三步的：整合包文件、Minecraft 本体、NeoForge。以前状态栏只有一个
+   "已安装/尚未安装"，卡在哪一步看不出来。现在一个组件一个点，出问题一眼看到是哪块。
+
+   ok=绿（装好且最新）  update=黄（能用，有新版）  missing=红（还没装）
+*/
+var COMPONENT_ORDER = ['pack', 'minecraft', 'loader', 'launcher'];
+var COMPONENT_HINT = { ok: '已安装', update: '有可用更新', missing: '尚未安装' };
+
+function renderComponents(components) {
+  const box = $('status-components');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!components) return;
+
+  COMPONENT_ORDER.forEach((key) => {
+    const c = components[key];
+    if (!c) return;
+
+    const wrap = document.createElement('span');
+    wrap.className = 'status-comp';
+    const state = c.state === 'ok' || c.state === 'update' ? c.state : 'missing';
+    wrap.title = c.label + '：' + (COMPONENT_HINT[state] || '');
+
+    const led = document.createElement('span');
+    led.className = 'status-led ' + state;
+    wrap.appendChild(led);
+
+    const text = document.createElement('span');
+    text.textContent = c.version ? c.label + ' ' + c.version : c.label;
+    wrap.appendChild(text);
+
+    box.appendChild(wrap);
+  });
+}
+
+function renderShaderOptions(shaders, current) {
+  const sel = $('shaderpack');
+  const list = shaders && Array.isArray(shaders.available) ? shaders.available : [];
+  sel.innerHTML = '';
+
+  const options = [{ value: '', label: '不使用光影' }];
+  for (const name of list) options.push({ value: name, label: name });
+
+  for (const o of options) {
+    const el = document.createElement('option');
+    el.value = o.value;
+    el.textContent = o.label;
+    sel.appendChild(el);
+  }
+  sel.value = options.some((o) => o.value === current) ? current : '';
+}
+
+function renderGpuOptions(gpus, current) {
+  const sel = $('gpu');
+  const list = Array.isArray(gpus) ? gpus : [];
+  const options = [];
+  const taken = new Set();
+
+  for (const gpu of list) {
+    const value = gpu.choice === 'power' ? 'power' : 'performance';
+    if (taken.has(value)) continue;
+    taken.add(value);
+    options.push({ value, label: gpu.name });
+  }
+  if (options.length === 0) options.push({ value: 'performance', label: '默认显卡' });
+  options.push({ value: 'auto', label: '由 Windows 决定' });
+
+  sel.innerHTML = '';
+  for (const o of options) {
+    const el = document.createElement('option');
+    el.value = o.value;
+    el.textContent = o.label;
+    sel.appendChild(el);
+  }
+  // 存的是档位不是名字：换机器、换驱动名字都会变，档位不会。
+  // 存的值在这台机器上没有对应选项时，退回第一个而不是留个空白。
+  sel.value = options.some((o) => o.value === current) ? current : options[0].value;
+}
+
 function routeLabel(kind) {
   return ({
     LanDirect: '局域网直连',
@@ -124,6 +224,7 @@ function routeLabel(kind) {
 }
 
 function onGameExited(p) {
+  setGameRunning(false);
   setBusy(false);
   if (p.code === 0) {
     $('hero-meta').textContent = '游戏已退出';
@@ -137,8 +238,42 @@ function onGameExited(p) {
 
 /* ───────────────────────── 界面状态 ───────────────────────── */
 
+/*
+   游戏起来之后那条进度条已经走满，再挂着只是占地方；玩家这时真正需要的是一个
+   能把卡住的游戏关掉的入口。所以窗口一出现就把进度条换成运行状态和中止按钮。
+   后端的 cancel 本来就会 Kill 整棵进程树，这里只是把它接出来。
+*/
+function setGameRunning(value) {
+  gameRunning = !!value;
+  clearAbortConfirm();
+  $('progress-track').hidden = gameRunning;
+  $('btn-cancel').classList.toggle('mc-btn-danger', gameRunning);
+  $('btn-cancel').textContent = gameRunning ? '中止游戏' : '取消';
+}
+
+function clearAbortConfirm() {
+  if (!abortConfirm) return;
+  clearTimeout(abortConfirm);
+  abortConfirm = null;
+}
+
+/* 游戏在跑的时候误点一下就是丢掉没存的进度，所以要点第二次才真的动手。 */
+function onCancelClicked() {
+  if (gameRunning && !abortConfirm) {
+    $('btn-cancel').textContent = '再点一次确认中止';
+    abortConfirm = setTimeout(() => {
+      abortConfirm = null;
+      if (gameRunning) $('btn-cancel').textContent = '中止游戏';
+    }, 4000);
+    return;
+  }
+  clearAbortConfirm();
+  rpc('cancel').catch(() => {});
+}
+
 function setBusy(value) {
   busy = !!value || packInstallPending;
+  if (!busy && gameRunning) setGameRunning(false);
   $('idle').hidden = busy;
   $('working').hidden = !busy;
   syncClientActions();
@@ -230,13 +365,20 @@ function render(s) {
   $('autojoin').checked = !!st.autoJoinServer;
   $('keepopen').checked = !!st.keepLauncherOpen;
   $('skipverify').checked = !!st.skipVerify;
+  renderGpuOptions(state.gpus, st.gpu || 'performance');
+  // 显示以 iris.properties 的实际值为准，设置里那份只是兜底
+  renderShaderOptions(state.shaders, (state.shaders && state.shaders.current) || st.shaderPack || '');
   $('update-url').value = st.updateBaseUrl || '';
   $('auth-url').value = st.authBaseUrl || '';
   $('jvmargs').value = st.extraJvmArgs || '';
 
   const mem = st.maxMemoryMb || 0;
-  $('memory-range').max = Math.max(16384, state.totalMemoryMb || 16384);
-  $('memory-range').value = mem;
+  // 上限由 sidecar 给：给系统留 2G，且不超过整合包声明的阈值。
+  // 以前这里写死最低 16384，12G 的机器也能拉到 16G，进游戏必挨警告屏。
+  const ceiling = state.memoryCeilingMb || state.totalMemoryMb || 8192;
+  $('memory-range').max = ceiling;
+  $('memory-input').max = ceiling;
+  $('memory-range').value = Math.min(mem, ceiling);
   $('memory-input').value = mem || '';
   updateMemoryDesc();
 
@@ -244,9 +386,9 @@ function render(s) {
 
   const pack = state.pack;
   if (pack) {
-    $('hero-meta').textContent = pack.minecraft + ' · ' + pack.loader;
-    $('status-pack').textContent = pack.name + ' ' + pack.version;
-    $('about-pack').textContent = pack.name + ' ' + pack.version;
+    // 版本号都挪到状态栏了，这行留给线路和运行状态用（.hero-meta 有 min-height，不会跳）
+    $('hero-meta').textContent = '';
+    $('about-pack').textContent = 'BMC [Remake] ' + pack.version;
     $('about-mc').textContent = pack.minecraft;
     $('about-loader').textContent = pack.loader;
     $('about-files').textContent = pack.fileCount + ' 个';
@@ -261,7 +403,6 @@ function render(s) {
     const update = state.updateServer || {};
     if (update.error) {
       $('hero-meta').textContent = '更新服务器连接失败';
-      $('status-pack').textContent = '无法获取整合包信息';
       $('download-state').textContent = '无法读取在线版本';
     } else {
       $('hero-meta').textContent = '正在连接更新服务器…';
@@ -269,9 +410,11 @@ function render(s) {
   }
 
   const installed = state.installedVersion;
-  if (installed && pack && installed === pack.version) $('status-sync').textContent = '已是最新';
-  else if (installed) $('status-sync').textContent = '本地 ' + installed + '，待更新';
-  else $('status-sync').textContent = '尚未安装';
+  // 状态栏改成一组带颜色的点，安装到哪一步一眼能看出来
+  // 服务器地址不往界面上写：玩家不需要，外人更不需要。
+  // 要查地址去日志，那儿是诊断用的。
+  $('autojoin-desc').textContent = '跳过多人列表，直连主服务器';
+  renderComponents(state.components);
 
   $('download-installed').textContent = installed || '未安装';
   if (installed && pack && installed === pack.version) {
@@ -285,18 +428,12 @@ function render(s) {
     $('btn-install-pack').textContent = '下载并安装';
   }
 
-  const primary = (state.servers || []).find((x) => x.primary);
-  $('autojoin-desc').textContent = primary
-    ? '跳过多人列表，直连 ' + primary.host + ':' + primary.port
-    : '跳过多人列表，直连主服务器';
 
   $('about-launcher').textContent = state.launcherVersion || '—';
   $('about-root').textContent = state.root || '—';
   $('about-gamedir').textContent = state.gameDir || '—';
   $('about-ram').textContent = state.totalMemoryMb ? (state.totalMemoryMb + ' MB') : '—';
 
-  if (state.pack) $('java-hint').textContent =
-    '本整合包需要 Java ' + state.pack.javaMajor + '。找不到会自动下载一份，不影响你机器上原有的 Java。';
 
   renderOptional(state.optional || [], st.enabledOptional || []);
   if (state.launcherUpdate) showLauncherUpdate(state.launcherUpdate);
@@ -415,7 +552,15 @@ async function play() {
     setProgress('准备中', '', -1);
     await rpc('launch', {});
   } catch (e) {
+    // 玩家自己点的中止会以"已取消"回来，不是故障，别弹红字也别把日志抽屉拉开
+    const aborted = e.message === '已取消';
+    const wasRunning = gameRunning;
     setBusy(false);
+    if (aborted) {
+      $('hero-meta').textContent = wasRunning ? '游戏已中止' : '已取消';
+      toast(wasRunning ? '已中止游戏' : '已取消启动', 'good');
+      return;
+    }
     toast(e.message, 'error', 14000);
     openLog();
   }
@@ -507,7 +652,7 @@ function bind() {
   $('btn-account-register').onclick = accountRegister;
   $('btn-account-logout').onclick = () => rpc('accountLogout').then(render).catch((e) => toast(e.message, 'error'));
 
-  $('btn-cancel').onclick = () => rpc('cancel').catch(() => {});
+  $('btn-cancel').onclick = onCancelClicked;
 
   $('btn-log').onclick = () => { $('logdrawer').hidden = !$('logdrawer').hidden; };
   $('btn-log-close').onclick = () => { $('logdrawer').hidden = true; };
@@ -550,14 +695,19 @@ function bind() {
     save({ maxMemoryMb: parseInt($('memory-range').value, 10) || 0 });
   });
   $('memory-input').addEventListener('change', () => {
-    const v = parseInt($('memory-input').value, 10) || 0;
-    $('memory-range').value = Math.min(v, parseInt($('memory-range').max, 10));
+    const max = parseInt($('memory-range').max, 10);
+    let v = parseInt($('memory-input').value, 10) || 0;
+    // 手填超过上限就当场回正，别让玩家以为自己设上了
+    if (v > max) { v = max; $('memory-input').value = String(v); toast('最多只能分配 ' + max + ' MB'); }
+    $('memory-range').value = v;
     updateMemoryDesc();
     save({ maxMemoryMb: v });
   });
 
   $('win-w').addEventListener('change', () => save({ windowWidth: parseInt($('win-w').value, 10) }));
   $('win-h').addEventListener('change', () => save({ windowHeight: parseInt($('win-h').value, 10) }));
+  $('gpu').addEventListener('change', () => save({ gpu: $('gpu').value }));
+  $('shaderpack').addEventListener('change', () => save({ shaderPack: $('shaderpack').value }));
   $('fullscreen').addEventListener('change', () => save({ fullscreen: $('fullscreen').checked }));
   $('autojoin').addEventListener('change', () => save({ autoJoinServer: $('autojoin').checked }));
   $('keepopen').addEventListener('change', () => save({ keepLauncherOpen: $('keepopen').checked }));

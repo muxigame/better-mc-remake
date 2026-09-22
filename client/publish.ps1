@@ -25,6 +25,13 @@ function Import-DotEnv([string]$Path) {
     }
 }
 
+function ConvertTo-OssUrlPath([string]$Object) {
+    # 对象名里现在有空格和方括号（"BMC [Remake] setup.exe"）。直接拼进 URL，
+    # 空格会让多数 HTTP 客户端直接拒掉请求，方括号在路径里也是保留字符。
+    # 逐段转义：斜杠是路径分隔符要留着，段内其余字符一律百分号编码。
+    ($Object -split '/' | ForEach-Object { [System.Uri]::EscapeDataString($_) }) -join '/'
+}
+
 function Test-OssObjectExists([string]$OssUtil, [string]$Object, [object[]]$Common) {
     $previous = $ErrorActionPreference
     try {
@@ -56,8 +63,8 @@ if (-not $ClientPrefix.EndsWith('/')) { $ClientPrefix += '/' }
 if (-not $PublicBaseUrl) { $PublicBaseUrl = "https://$Bucket.oss-$Region.aliyuncs.com" }
 $PublicBaseUrl = $PublicBaseUrl.TrimEnd('/')
 
-$installer = Join-Path $OutDir 'client\BatterMC5Remake-setup.exe'
-$signatureFile = Join-Path $OutDir 'client\BatterMC5Remake-setup.exe.sig'
+$installer = Join-Path $OutDir 'client\BMC [Remake] setup.exe'
+$signatureFile = Join-Path $OutDir 'client\BMC [Remake] setup.exe.sig'
 $metadata = Join-Path $OutDir 'client\launcher-release.json'
 foreach ($path in @($installer,$signatureFile,$metadata)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "发布文件不存在：$path" }
@@ -66,7 +73,8 @@ foreach ($path in @($installer,$signatureFile,$metadata)) {
 $meta = Get-Content -LiteralPath $metadata -Raw -Encoding UTF8 | ConvertFrom-Json
 $version = [string]$meta.version
 if ($version -notmatch '^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9._-]+)?$') { throw "客户端版本号不合法：$version" }
-$sha = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+# 方括号是 PowerShell 通配符，产物名里有，必须走 -LiteralPath
+$sha = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($sha -ne [string]$meta.sha256) { throw "安装包 SHA-256 与 launcher-release.json 不一致" }
 $sig = (Get-Content -LiteralPath $signatureFile -Raw -Encoding UTF8).Trim()
 if (-not $sig -or $sig -ne [string]$meta.signature) { throw "Updater 签名与 launcher-release.json 不一致" }
@@ -79,8 +87,8 @@ if ($ossutil) { $oss = $ossutil.Path } else {
 $common = @(); if ($Region) { $common += @('--region', $Region) }
 
 $releasePrefix = "${ClientPrefix}releases/$version/"
-$installerObject = $releasePrefix + 'BatterMC5Remake-setup.exe'
-$signatureObject = $releasePrefix + 'BatterMC5Remake-setup.exe.sig'
+$installerObject = $releasePrefix + 'BMC [Remake] setup.exe'
+$signatureObject = $releasePrefix + 'BMC [Remake] setup.exe.sig'
 $releaseObject = $releasePrefix + 'release.json'
 $latestObject = $ClientPrefix + 'latest/metadata.json'
 $installerTarget = "oss://$Bucket/$installerObject"
@@ -102,8 +110,8 @@ foreach ($target in @($installerTarget,$signatureTarget,$releaseTarget)) {
 $published = [ordered]@{
     version = $version
     architecture = [string]$meta.architecture
-    installer = 'BatterMC5Remake-setup.exe'
-    signatureFile = 'BatterMC5Remake-setup.exe.sig'
+    installer = 'BMC [Remake] setup.exe'
+    signatureFile = 'BMC [Remake] setup.exe.sig'
     sha256 = $sha
     signature = $sig
     size = [int64]$meta.size
@@ -112,8 +120,8 @@ $published = [ordered]@{
     ossObject = $installerObject
     signatureObject = $signatureObject
     releaseObject = $releaseObject
-    url = "$PublicBaseUrl/$installerObject"
-    signatureUrl = "$PublicBaseUrl/$signatureObject"
+    url = "$PublicBaseUrl/$(ConvertTo-OssUrlPath $installerObject)"
+    signatureUrl = "$PublicBaseUrl/$(ConvertTo-OssUrlPath $signatureObject)"
 }
 if (-not $NotesPath) { $NotesPath = Join-Path $PSScriptRoot 'release-notes.md' }
 if (Test-Path -LiteralPath $NotesPath -PathType Leaf) {

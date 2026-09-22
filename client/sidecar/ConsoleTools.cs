@@ -10,6 +10,10 @@ namespace BatterMC.Launcher;
 ///   --verify    只检查不动手：拉清单、算出要下载/删除什么、找 Java，然后打印
 ///   --install   真的执行一遍完整准备流程，但不启动游戏
 ///   --selftest  跑一遍内部逻辑自检（离线 UUID、硬配置改写、NBT、规则求值）
+///   --routes    在玩家网络上实测所有线路候选，加 --ping 还会经本地代理打一次
+///   --tunnel    按启动游戏时的顺序实走一遍：先 P2P 打洞，不成再端侧隧道。
+///               凭据不用给，会自动向控制面取；--no-p2p 可只验隧道。
+///               真实 Minecraft 状态查询；不碰整合包文件
 ///
 /// sidecar 默认没有控制台，所以先挂到调用方的控制台上。
 /// 出问题时让玩家跑一条命令把结果发过来，比让他描述「打不开」有用得多。
@@ -32,7 +36,8 @@ internal static partial class ConsoleTools
         var install = args.Any(a => a.Equals("--install", StringComparison.OrdinalIgnoreCase));
         var selftest = args.Any(a => a.Equals("--selftest", StringComparison.OrdinalIgnoreCase));
         var launch = args.Any(a => a.Equals("--launch", StringComparison.OrdinalIgnoreCase));
-        if (!verify && !install && !selftest && !launch) return false;
+        var routes = args.Any(a => a.Equals("--routes", StringComparison.OrdinalIgnoreCase));
+        if (!verify && !install && !selftest && !launch && !routes) return false;
 
         // 只有在输出没被重定向时才去抢一个控制台。
         // 如果调用方已经把 stdout 接到管道上（脚本里 `exe --verify > out.txt`），
@@ -47,6 +52,30 @@ internal static partial class ConsoleTools
         if (selftest)
         {
             Environment.ExitCode = SelfTest.Run();
+            Console.WriteLine();
+            return true;
+        }
+
+        if (routes)
+        {
+            Log.Line += (level, message) =>
+            {
+                if (level != "DEBUG") Console.WriteLine($"  [{level}] {message}");
+            };
+            try
+            {
+                var settings = LauncherSettings.Load(paths.SettingsFile);
+                Environment.ExitCode = RouteDiagnostics
+                    .RunAsync(args, paths, settings, CancellationToken.None)
+                    .GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine();
+                Console.WriteLine("线路诊断失败：" + ex.Message);
+                if (ex.InnerException is not null) Console.WriteLine("  内层：" + ex.InnerException.Message);
+                Environment.ExitCode = 1;
+            }
             Console.WriteLine();
             return true;
         }

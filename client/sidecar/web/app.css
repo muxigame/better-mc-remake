@@ -1,5 +1,5 @@
 /* ============================================================
-   BatterMC5Remake 启动器
+   BetterMC5Remake 启动器
    方块感来自硬边框、硬投影和零圆角，而不是像素字体 —
    这样中文不会糊，观感也不土。
    ============================================================ */
@@ -56,6 +56,27 @@ body {
   flex-direction: column;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/*
+   首页主视觉。图在落盘前已经裁掉 HUD 并压暗调色（见 scripts/make_hero.py），
+   这里再叠一层自上而下的渐变把下半屏收回底色——控制台那几个按钮和输入框
+   要压在纯色上，压在砖块纹理上会看不清。
+   放在 body 而不是 .stage 上，标题栏那条才不会露出接缝。
+*/
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg,
+      rgba(21, 20, 25, .16) 0%,
+      rgba(21, 20, 25, .34) 38%,
+      rgba(21, 20, 25, .84) 66%,
+      var(--bg) 90%),
+    url("hero.webp") center / cover no-repeat;
 }
 
 button { font-family: inherit; font-size: inherit; color: inherit; cursor: pointer; }
@@ -115,13 +136,11 @@ input  { font-family: inherit; font-size: inherit; }
 
 .titlebar-brand { display: flex; align-items: center; gap: 9px; }
 
-/* 图标里那个金色方块的平面版 */
+/* 应用图标本尊。icon.ico 由 build.ps1 从 sidecar/icon.ico 拷进来，
+   换图标只需要改那一个文件，这里跟着走。 */
 .brand-mark {
-  width: 15px; height: 15px;
-  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
-  box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, .35),
-    inset -1px -1px 0 rgba(0, 0, 0, .35);
+  width: 16px; height: 16px;
+  background: url("icon.ico") center / contain no-repeat;
 }
 
 .brand-text {
@@ -169,26 +188,25 @@ input  { font-family: inherit; font-size: inherit; }
   padding-top: 18px;
 }
 
+/*
+   字标。方块点阵 + 硬描边 + 右下挤出的立体面，照着上游整合包那张主视觉的观感来。
+
+   字形是 SVG 点阵，不是系统字体 —— Arial Black 那类是圆角且粗细变化的，
+   怎么调都不像方块。生成器在 scripts/make_wordmark.py，改字或改配色跑它重生成。
+   矢量方块任意尺寸都锐利，也不用为九个字母捆一个字体文件。
+*/
 .wordmark {
   margin: 0;
-  font-size: clamp(34px, 6.4vw, 56px);
-  font-weight: 800;
-  letter-spacing: .06em;
-  line-height: 1;
-  color: #fff;
-  display: flex;
-  /* MC 那种硬投影，不是模糊阴影 */
-  text-shadow: 3px 3px 0 rgba(0, 0, 0, .55);
+  line-height: 0;          /* img 是 inline，不归零下面会多出一条基线间隙 */
+  /* .hero 是收缩到内容宽度的 flex 列，百分比宽度在这里没有意义，用视口尺寸 */
+  width: clamp(300px, 55vw, 580px);
 }
-.wordmark .gold { color: var(--gold); }
-
-.wordmark-sub {
-  font-size: clamp(11px, 1.6vw, 14px);
-  font-weight: 600;
-  letter-spacing: .58em;
-  text-indent: .58em;
-  color: var(--text-dim);
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, .5);
+.wordmark img {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* 位图缩放会糊，这里是矢量，但显式声明一下意图 */
+  image-rendering: pixelated;
 }
 
 .hero-meta {
@@ -278,6 +296,8 @@ input  { font-family: inherit; font-size: inherit; }
 .mc-btn-ghost:hover { background: rgba(255, 255, 255, .06); }
 
 .mc-btn-small { height: 30px; padding: 0 12px; font-size: 12px; letter-spacing: .04em; font-weight: 500; }
+.mc-btn-danger { border-color: var(--danger); color: #ffb4b1; }
+.mc-btn-danger:hover { background: rgba(217, 83, 79, .16); border-color: var(--danger); }
 
 /* ── 进度 ── */
 
@@ -344,6 +364,20 @@ input  { font-family: inherit; font-size: inherit; }
 .status-left span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dot { opacity: .5; }
 .status-right { display: flex; gap: 4px; align-items: center; flex: 0 0 auto; }
+/* 状态栏的安装状态点。安装是分步的，一个组件一个点：
+   绿=好了，黄=能用但有更新，红=还没装。颜色之外再给个 title，色盲也读得到。 */
+.status-comp { display: inline-flex; align-items: center; gap: 5px; }
+.status-comp + .status-comp { margin-left: 4px; }
+.status-led {
+  width: 7px; height: 7px; border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--muted);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .35) inset;
+}
+.status-led.ok { background: #4ade80; }
+.status-led.update { background: #fbbf24; }
+.status-led.missing { background: #f87171; }
+
 
 .link-btn {
   background: none;
@@ -488,6 +522,19 @@ input.text, input.num {
 }
 input.text { width: 100%; }
 input.num { width: 76px; }
+
+select.sel {
+  height: 30px;
+  padding: 0 8px;
+  background: rgba(0, 0, 0, .34);
+  color: var(--text);
+  border: 1px solid var(--line);
+  font-family: var(--font);
+  font-size: 12px;
+}
+select.sel:focus { border-color: var(--gold); outline: none; }
+/* 展开的选项由系统画，深色背景下不给它指定颜色会变成白底白字 */
+select.sel option { background: var(--panel); color: var(--text); }
 input.text:focus, input.num:focus, .memory-control input:focus { border-color: var(--gold); }
 .times, .unit { color: var(--muted); font-size: 11px; }
 .mono { font-family: var(--mono); }

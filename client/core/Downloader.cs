@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Diagnostics;
 
@@ -21,6 +21,9 @@ public sealed class Downloader : IDisposable
 {
     private readonly HttpClient _http;
     private readonly int _parallelCap;
+
+    /// <summary>设了就优先走镜像，镜像没有的自动回落上游。为 null 则一律直连上游。</summary>
+    public DownloadMirror? Mirror { get; set; }
 
     public Downloader(HttpClient? http = null, int parallel = 32)
     {
@@ -143,6 +146,10 @@ public sealed class Downloader : IDisposable
         var part = item.TargetPath + ".part";
         Directory.CreateDirectory(Path.GetDirectoryName(item.TargetPath)!);
 
+        var upstream = item.Url;
+        var url = Mirror?.Rewrite(upstream) ?? upstream;
+        var usedMirror = url != upstream;
+
         for (var attempt = 1; ; attempt++)
         {
             long resumeFrom = 0;
@@ -160,10 +167,22 @@ public sealed class Downloader : IDisposable
                     else if (len > 0) File.Delete(part);
                 }
 
-                using var req = new HttpRequestMessage(HttpMethod.Get, item.Url);
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
                 if (resumeFrom > 0) req.Headers.Range = new RangeHeaderValue(resumeFrom, null);
 
                 using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+
+                // 镜像还没补上这个对象。这不是故障，不该消耗重试次数，直接改走上游。
+                if (usedMirror && (resp.StatusCode == HttpStatusCode.NotFound
+                                   || resp.StatusCode == HttpStatusCode.Forbidden))
+                {
+                    Log.Info($"镜像缺少 {item.Display}，回落上游");
+                    usedMirror = false;
+                    url = upstream;
+                    attempt--;
+                    if (File.Exists(part)) { try { File.Delete(part); } catch { } }
+                    continue;
+                }
 
                 if (resumeFrom > 0 && resp.StatusCode != HttpStatusCode.PartialContent)
                 {
@@ -208,6 +227,8 @@ public sealed class Downloader : IDisposable
             catch (Exception ex) when (attempt < maxAttempts)
             {
                 Log.Warn($"下载重试 {attempt}/{maxAttempts}：{item.Display} — {ex.Message}");
+                // 镜像超时或 5xx，后面几次直接找上游，别在坏掉的镜像上耗完重试次数
+                if (usedMirror) { usedMirror = false; url = upstream; }
                 // 校验失败说明 part 不可信，删掉从头下
                 try { if (File.Exists(part)) File.Delete(part); } catch { }
                 if (reportedThisAttempt != 0) onBytes(-reportedThisAttempt);
@@ -216,11 +237,68 @@ public sealed class Downloader : IDisposable
         }
     }
 
-    public async Task<byte[]> GetBytesAsync(string url, CancellationToken ct)
-        => await _http.GetByteArrayAsync(url, ct).ConfigureAwait(false);
+    public Task<byte[]> GetBytesAsync(string url, CancellationToken ct)
+        => ViaMirrorAsync(url, u => _http.GetByteArrayAsync(u, ct), ct);
 
-    public async Task<string> GetStringAsync(string url, CancellationToken ct)
-        => await _http.GetStringAsync(url, ct).ConfigureAwait(false);
+    public Task<string> GetStringAsync(string url, CancellationToken ct)
+        => ViaMirrorAsync(url, u => _http.GetStringAsync(u, ct), ct);
+
+    /// <summary>
+    /// 问一下远端这个文件多大。拿不到就返回 0 —— 调用方据此降级成"不可续传"，不该因此失败。
+    /// </summary>
+    public async Task<long> TryGetLengthAsync(string url, CancellationToken ct)
+    {
+        try
+        {
+            return await ViaMirrorAsync(url, async u =>
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Head, u);
+                using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+                resp.EnsureSuccessStatusCode();
+                return resp.Content.Headers.ContentLength ?? 0;
+            }, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Info($"拿不到 {url} 的长度：{ex.Message}");
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Maven 风格的 .sha1 伴生文件。内容通常就是 40 个十六进制字符，
+    /// 有些仓库后面还跟着文件名，所以只取开头那段。拿不到返回 null。
+    /// </summary>
+    public async Task<string?> TryGetSha1Async(string url, CancellationToken ct)
+    {
+        try
+        {
+            var text = await ViaMirrorAsync(url + ".sha1", u => _http.GetStringAsync(u, ct), ct).ConfigureAwait(false);
+            var digest = new string(text.Trim().TakeWhile(Uri.IsHexDigit).ToArray());
+            return digest.Length == 40 ? digest : null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Info($"拿不到 {url} 的 sha1：{ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>单个小文件也照样先走镜像，失败了再问上游。</summary>
+    private async Task<T> ViaMirrorAsync<T>(string url, Func<string, Task<T>> fetch, CancellationToken ct)
+    {
+        var mirrored = Mirror?.Rewrite(url);
+        if (mirrored is not null)
+        {
+            try { return await fetch(mirrored).ConfigureAwait(false); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Log.Info($"镜像取不到 {mirrored}，回落上游：{ex.Message}");
+            }
+            ct.ThrowIfCancellationRequested();
+        }
+        return await fetch(url).ConfigureAwait(false);
+    }
 
     public HttpClient Http => _http;
 

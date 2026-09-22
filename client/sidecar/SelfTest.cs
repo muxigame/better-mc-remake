@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using System.Net;
 using System.Net.Sockets;
@@ -31,6 +31,12 @@ internal static class SelfTest
         PropertiesOverlay();
         TomlOverlay();
         JsonOverlay();
+        ShaderPreset();
+        OptionalToggle();
+        MemoryClamp();
+        FullscreenOption();
+        DownloadResume();
+        PartSurvivesPrune();
         SeedRevisionSync();
         Section("平台 UID 游戏身份");
         Check("UID 数字作为真实登录名", GameSession.OfflineUid(10000).Username == "10000");
@@ -39,11 +45,15 @@ internal static class SelfTest
         var rejectedUid = false;
         try { GameSession.OfflineUid(9999); } catch (ArgumentOutOfRangeException) { rejectedUid = true; }
         Check("无效 UID 不得回退到用户名", rejectedUid);
+        AccountSessionRoundTrip();
+        MirrorRewrite();
+        GpuSelection();
         ClientUpdatePolicy();
         NbtRoundTrip();
         VersionRules();
         VersionCompare();
         ArgSplitting();
+        PunchPortSweep();
         NetworkRouteProxy().GetAwaiter().GetResult();
         InstallLifecycle().GetAwaiter().GetResult();
         PipelineCompletionMarker().GetAwaiter().GetResult();
@@ -55,6 +65,173 @@ internal static class SelfTest
     }
 
     // ---------------------------------------------------------------- 断言
+
+    /// <summary>
+    /// 显卡选择。写错了玩家不会看到任何报错，只会觉得"这游戏就是卡"，
+    /// 所以真的写一次注册表再读回来。
+    ///
+    /// 用的是一个不存在的 exe 路径，跑完就删——不碰任何真实程序的显卡设置。
+    /// </summary>
+    private static void GpuSelection()
+    {
+        Section("显卡选择");
+
+        var adapters = GpuPreference.Detect();
+        Check("能枚举到显示适配器", adapters.Count > 0,
+            "一块都没枚举到，注册表路径或过滤条件可能不对");
+        // 串流/远程桌面的虚拟显示器不该混进来，否则单显卡机器会被当成双显卡
+        Check("虚拟显示器已被滤掉",
+            !adapters.Any(a => a.Name.Contains("Virtual", StringComparison.OrdinalIgnoreCase)),
+            "混进了：" + string.Join("，", adapters.Select(a => a.Name)));
+        foreach (var a in adapters)
+            Console.WriteLine($"         · {a.Name}（{a.VramText}，{(a.LooksDiscrete ? "独显" : "核显")}）");
+
+        // 排序决定"高性能"档落在哪块卡上，排反了玩家点独显会被写成节能档
+        const long gb = 1024L * 1024 * 1024;
+        void RankCase(string title, GpuAdapter first, GpuAdapter second, string expectTop)
+        {
+            // 注册表返回顺序不保证，两种输入顺序都要排出同样的结果
+            foreach (var (label, order) in new (string, List<GpuAdapter>)[]
+            {
+                ("正序输入", new List<GpuAdapter> { first, second }),
+                ("逆序输入", new List<GpuAdapter> { second, first }),
+            })
+            {
+                GpuPreference.Rank(order);
+                Check($"{title}（{label}）",
+                    order[0].Name == expectTop
+                    && GpuPreference.ChoiceFor(order, order[0]) == GpuChoice.HighPerformance
+                    && GpuPreference.ChoiceFor(order, order[1]) == GpuChoice.PowerSaving,
+                    $"排在前面的是 {order[0].Name}，期望 {expectTop}");
+            }
+        }
+
+        RankCase("Intel 核显 + NVIDIA 独显",
+            new GpuAdapter("Intel(R) UHD Graphics 770", 128L * 1024 * 1024, "Intel"),
+            new GpuAdapter("NVIDIA GeForce RTX 4060 Laptop GPU", 8 * gb, "NVIDIA"),
+            "NVIDIA GeForce RTX 4060 Laptop GPU");
+
+        RankCase("AMD 核显 + AMD 独显",
+            new GpuAdapter("AMD Radeon(TM) Graphics", 512L * 1024 * 1024, "AMD"),
+            new GpuAdapter("AMD Radeon RX 7600M XT", 8 * gb, "AMD"),
+            "AMD Radeon RX 7600M XT");
+
+        // Arc 是 Intel 唯一的独显系列，不能因为厂商是 Intel 就判成核显
+        RankCase("Intel 核显 + Intel Arc 独显",
+            new GpuAdapter("Intel(R) Iris(R) Xe Graphics", 128L * 1024 * 1024, "Intel"),
+            new GpuAdapter("Intel(R) Arc(TM) A770 Graphics", 16 * gb, "Intel"),
+            "Intel(R) Arc(TM) A770 Graphics");
+
+        var fake = @"C:\muxi-selftest-\不存在的\java.exe";
+        try
+        {
+            Check("写入高性能偏好",
+                GpuPreference.Apply(fake, GpuChoice.HighPerformance)
+                && GpuPreference.Read(fake) == GpuChoice.HighPerformance);
+            Check("改成节能偏好",
+                GpuPreference.Apply(fake, GpuChoice.PowerSaving)
+                && GpuPreference.Read(fake) == GpuChoice.PowerSaving);
+            // Auto 的语义是"删掉这条"，留着反而会把选择钉死
+            Check("选自动时删除该条目",
+                GpuPreference.Apply(fake, GpuChoice.Auto) && GpuPreference.Read(fake) is null);
+
+            GpuPreference.Apply(fake, GpuChoice.HighPerformance);
+            GpuPreference.Forget(fake);
+            Check("清理旧路径不留残留", GpuPreference.Read(fake) is null);
+        }
+        finally
+        {
+            GpuPreference.Forget(fake);
+        }
+
+        // 设置里的字符串和枚举必须对得上，错了会默默按默认值走
+        var settings = new LauncherSettings();
+        Check("默认使用独立显卡", settings.EffectiveGpuChoice() == GpuChoice.HighPerformance);
+        settings.Gpu = "power";
+        Check("power 映射到节能", settings.EffectiveGpuChoice() == GpuChoice.PowerSaving);
+        settings.Gpu = "auto";
+        Check("auto 映射到自动", settings.EffectiveGpuChoice() == GpuChoice.Auto);
+        settings.Gpu = "乱填的值";
+        Check("无法识别的值回落到独立显卡", settings.EffectiveGpuChoice() == GpuChoice.HighPerformance);
+    }
+
+    /// <summary>
+    /// 镜像改写规则错了不会报错，只会让所有人悄悄回落到上游——也就是这套东西
+    /// 等于没做。所以每条规则都钉死在这里。
+    /// </summary>
+    private static void MirrorRewrite()
+    {
+        Section("Minecraft 本体镜像");
+        const string root = "https://cdn.example.com/bmc/mirror";
+        var mirror = new DownloadMirror(root + "/");
+
+        Equal("资源对象按主机名加路径改写",
+            root + "/resources.download.minecraft.net/ab/abc123",
+            mirror.Rewrite("https://resources.download.minecraft.net/ab/abc123") ?? "<null>");
+        Equal("原版库改写",
+            root + "/libraries.minecraft.net/com/mojang/logging/1.0/logging-1.0.jar",
+            mirror.Rewrite("https://libraries.minecraft.net/com/mojang/logging/1.0/logging-1.0.jar") ?? "<null>");
+        Equal("NeoForge 库改写",
+            root + "/maven.neoforged.net/releases/net/neoforged/neoforge/21.1.250/x.jar",
+            mirror.Rewrite("https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.250/x.jar") ?? "<null>");
+        Equal("客户端 jar 改写",
+            root + "/piston-data.mojang.com/v1/objects/deadbeef/client.jar",
+            mirror.Rewrite("https://piston-data.mojang.com/v1/objects/deadbeef/client.jar") ?? "<null>");
+
+        // 整合包文件本来就在我们的 OSS 上，再套一层会拼出一个不存在的地址
+        Check("不改写我们自己的分发地址",
+            mirror.Rewrite("https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/release/latest/files/mods/a.jar") is null);
+        Check("不改写未知主机", mirror.Rewrite("https://example.org/a.jar") is null);
+        // 按路径镜像会让不同查询串撞到同一个对象上
+        Check("带查询串的地址不改写",
+            mirror.Rewrite("https://api.adoptium.net/v3/assets/latest/21/hotspot?os=windows") is null);
+        Check("非 http(s) 不改写", mirror.Rewrite("ftp://libraries.minecraft.net/a.jar") is null);
+        Check("空地址不改写", mirror.Rewrite("") is null);
+    }
+
+    /// <summary>
+    /// 登录态必须能跨进程活下来，否则玩家每开一次启动器就得重登一次。
+    ///
+    /// 这段走的是 DPAPI（crypt32 的 P/Invoke），编译通过不代表调得通，
+    /// 所以这里真的写一次盘再读回来。顺便确认密文里看不见原始令牌——
+    /// 那个文件躺在 exe 旁边，便携模式下可能被同步到网盘。
+    /// </summary>
+    private static void AccountSessionRoundTrip()
+    {
+        Section("登录态持久化");
+        var file = Path.Combine(Path.GetTempPath(), "muxi-selftest-" + Guid.NewGuid().ToString("N")[..8] + ".bin");
+        const string refresh = "selftest-refresh-1234567890abcdef";
+        try
+        {
+            AccountStore.Save(file, new AccountSession
+            {
+                AccessToken = "selftest-access",
+                RefreshToken = refresh,
+                SavedAt = DateTimeOffset.UtcNow,
+            });
+            Check("登录态写得进磁盘", File.Exists(file));
+
+            var loaded = AccountStore.Load(file);
+            Check("刷新令牌原样读得回来", loaded?.RefreshToken == refresh);
+            Check("访问令牌原样读得回来", loaded?.AccessToken == "selftest-access");
+
+            var raw = File.ReadAllBytes(file);
+            Check("令牌没有明文落盘",
+                !Encoding.UTF8.GetString(raw).Contains(refresh, StringComparison.Ordinal));
+
+            // 密文被改过就该当成没登录，而不是抛异常把启动器带崩
+            raw[^1] ^= 0xFF;
+            File.WriteAllBytes(file, raw);
+            Check("密文损坏按未登录处理", AccountStore.Load(file) is null);
+
+            AccountStore.Clear(file);
+            Check("退出账号后文件不留痕", !File.Exists(file));
+        }
+        finally
+        {
+            try { if (File.Exists(file)) File.Delete(file); } catch { }
+        }
+    }
 
     private static async Task InstallLifecycle()
     {
@@ -212,6 +389,421 @@ internal static class SelfTest
     private static Dictionary<string, JsonElement> Enforce(string json)
         => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
 
+    /// <summary>
+    /// 取消下载后再来一次，必须从断点续传，而不是从头重下。
+    /// 起一个最小的 HTTP 服务（认 Range，慢速发），把取消落在传输中途。
+    /// </summary>
+    private static void DownloadResume()
+    {
+        Section("下载中断续传");
+        var tmp = Path.Combine(Path.GetTempPath(), "battermc-resume-" + Guid.NewGuid().ToString("N")[..8]);
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        using var serverStop = new CancellationTokenSource();
+        try
+        {
+            Directory.CreateDirectory(tmp);
+            var payload = new byte[512 * 1024];
+            new Random(20260923).NextBytes(payload);
+            var target = Path.Combine(tmp, "big.jar");
+            File.WriteAllBytes(Path.Combine(tmp, "expected.bin"), payload);
+            var sha = Hashing.Sha1File(Path.Combine(tmp, "expected.bin"));
+
+            var rangeRequests = 0;
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            _ = Task.Run(() => ServeRangeAsync(listener, payload, () => Interlocked.Increment(ref rangeRequests), serverStop.Token));
+
+            var item = new DownloadItem
+            {
+                Url = $"http://127.0.0.1:{port}/big.jar",
+                TargetPath = target,
+                ExpectedSize = payload.Length,
+                ExpectedSha1 = sha,
+                Display = "big.jar",
+            };
+
+            using var downloader = new Downloader();
+
+            // 第一次：收到一部分就取消
+            using var cts = new CancellationTokenSource();
+            var progress = new SyncProgress<DownloadProgress>(p =>
+            {
+                if (p.BytesDone >= 64 * 1024) cts.Cancel();
+            });
+            var cancelled = false;
+            try { downloader.DownloadAllAsync([item], progress, cts.Token).GetAwaiter().GetResult(); }
+            catch (OperationCanceledException) { cancelled = true; }
+            Check("取消会中断下载", cancelled);
+
+            var part = target + ".part";
+            var partLen = File.Exists(part) ? new FileInfo(part).Length : 0;
+            Check("取消后残片留在盘上", partLen > 0 && partLen < payload.Length, $"part={partLen} 全长={payload.Length}");
+            Check("取消后不会留下半个成品", !File.Exists(target));
+
+            // 第二次：必须带 Range 续传
+            Interlocked.Exchange(ref rangeRequests, 0);
+            downloader.DownloadAllAsync([item], new SyncProgress<DownloadProgress>(_ => { }), CancellationToken.None)
+                .GetAwaiter().GetResult();
+
+            Check("续传后文件完整", File.Exists(target) && Hashing.Sha1File(target).Equals(sha, StringComparison.OrdinalIgnoreCase));
+            Check("第二次是断点续传而不是从头下", Volatile.Read(ref rangeRequests) == 1, $"带 Range 的请求 {rangeRequests} 次");
+            Check("完成后残片已清理", !File.Exists(part));
+
+            // NeoForge 安装器没有清单条目，大小和校验值只能现问 maven
+            var probedSize = downloader.TryGetLengthAsync(item.Url, CancellationToken.None).GetAwaiter().GetResult();
+            var probedSha = downloader.TryGetSha1Async(item.Url, CancellationToken.None).GetAwaiter().GetResult();
+            Check("HEAD 能问出文件大小", probedSize == payload.Length, $"{probedSize}");
+            Check("能读到 maven 的 .sha1 伴生文件", string.Equals(probedSha, sha, StringComparison.OrdinalIgnoreCase), probedSha ?? "null");
+            Check("问不到元数据时返回空值而不是抛异常",
+                downloader.TryGetLengthAsync("http://127.0.0.1:1/nothing", CancellationToken.None).GetAwaiter().GetResult() == 0
+                && downloader.TryGetSha1Async("http://127.0.0.1:1/nothing", CancellationToken.None).GetAwaiter().GetResult() is null);
+        }
+        finally
+        {
+            serverStop.Cancel();
+            try { listener.Stop(); } catch { }
+            try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
+        }
+    }
+
+    /// <summary>同步上报的进度实现。Progress&lt;T&gt; 会把回调丢到同步上下文里异步执行，取消时机会飘。</summary>
+    private sealed class SyncProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
+    }
+
+    private static async Task ServeRangeAsync(TcpListener listener, byte[] payload, Action onRange, CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                using var client = await listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
+                using var stream = client.GetStream();
+
+                var buf = new byte[8192];
+                var n = await stream.ReadAsync(buf, ct).ConfigureAwait(false);
+                var head = Encoding.ASCII.GetString(buf, 0, n);
+
+                // maven 伴生的校验文件
+                if (head.Contains(".sha1", StringComparison.Ordinal))
+                {
+                    var digest = Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(payload)).ToLowerInvariant();
+                    var digestBody = Encoding.ASCII.GetBytes(digest + "\n");
+                    await stream.WriteAsync(Encoding.ASCII.GetBytes(
+                        $"HTTP/1.1 200 OK\r\nContent-Length: {digestBody.Length}\r\nConnection: close\r\n\r\n"), ct).ConfigureAwait(false);
+                    await stream.WriteAsync(digestBody, ct).ConfigureAwait(false);
+                    continue;
+                }
+
+                // HEAD 只回头不回体
+                if (head.StartsWith("HEAD ", StringComparison.Ordinal))
+                {
+                    await stream.WriteAsync(Encoding.ASCII.GetBytes(
+                        $"HTTP/1.1 200 OK\r\nContent-Length: {payload.Length}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n\r\n"), ct).ConfigureAwait(false);
+                    continue;
+                }
+
+                long from = 0;
+                var marker = head.IndexOf("bytes=", StringComparison.OrdinalIgnoreCase);
+                if (marker >= 0)
+                {
+                    var digits = new string(head[(marker + 6)..].TakeWhile(char.IsAsciiDigit).ToArray());
+                    if (long.TryParse(digits, out var parsed) && parsed > 0 && parsed < payload.Length)
+                    {
+                        from = parsed;
+                        onRange();
+                    }
+                }
+
+                var body = payload.AsMemory((int)from);
+                var header = from > 0
+                    ? $"HTTP/1.1 206 Partial Content\r\nContent-Length: {body.Length}\r\n"
+                      + $"Content-Range: bytes {from}-{payload.Length - 1}/{payload.Length}\r\nConnection: close\r\n\r\n"
+                    : $"HTTP/1.1 200 OK\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n";
+                await stream.WriteAsync(Encoding.ASCII.GetBytes(header), ct).ConfigureAwait(false);
+
+                // 慢速发，好让取消稳定落在传输中途
+                for (var off = 0; off < body.Length; off += 32 * 1024)
+                {
+                    var len = Math.Min(32 * 1024, body.Length - off);
+                    await stream.WriteAsync(body.Slice(off, len), ct).ConfigureAwait(false);
+                    await stream.FlushAsync(ct).ConfigureAwait(false);
+                    await Task.Delay(20, ct).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) { return; }
+            catch { /* 客户端取消会把连接掐断，继续等下一个 */ }
+        }
+    }
+
+    /// <summary>
+    /// 断点续传的前提是残片还在。prune 会扫 mods 目录清理多余文件，
+    /// 要是把 .part 也当垃圾清掉，玩家取消一次就得从头再下 1.5 GB。
+    /// </summary>
+    private static void PartSurvivesPrune()
+    {
+        Section("残片与 prune");
+        var tmp = Path.Combine(Path.GetTempPath(), "battermc-parttest-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            var paths = LauncherPaths.At(tmp);
+            paths.EnsureCreated();
+            using var downloader = new Downloader();
+            var settings = new LauncherSettings();
+            var manifest = new PackManifest
+            {
+                Prune = ["mods"],
+                Files =
+                [
+                    new ManagedFile { Path = "mods/big.jar", Size = 4096, Sha1 = new string('a', 40) },
+                ],
+            };
+
+            var part = paths.ResolveGameFile("mods/big.jar.part");
+            Directory.CreateDirectory(Path.GetDirectoryName(part)!);
+            File.WriteAllText(part, "下到一半被取消了");
+
+            var state = new LocalState { LastFilesBaseUrl = "https://example.invalid/files" };
+            var plan = new SyncEngine(paths, state, settings, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("清单里还要的文件，其残片必须留着续传",
+                !plan.Deletions.Contains("mods/big.jar.part"), string.Join(",", plan.Deletions));
+
+            // 清单里已经没有的目标，残片就是纯垃圾
+            var orphan = paths.ResolveGameFile("mods/gone.jar.part");
+            File.WriteAllText(orphan, "垃圾");
+            var plan2 = new SyncEngine(paths, state, settings, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("清单里已经没有的残片照清",
+                plan2.Deletions.Contains("mods/gone.jar.part"), string.Join(",", plan2.Deletions));
+        }
+        finally
+        {
+            try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
+        }
+    }
+
+    private static void FullscreenOption()
+    {
+        Section("全屏开关");
+        var tmp = Path.Combine(Path.GetTempPath(), "battermc-fstest-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            var paths = LauncherPaths.At(tmp);
+            paths.EnsureCreated();
+            var file = paths.ResolveGameFile(GameOptions.OptionsPath);
+            File.WriteAllText(file, "version:3955\nfullscreen:false\nrenderDistance:12\nlang:zh_cn\n");
+
+            Check("读出游戏里的全屏设置", GameOptions.ReadFullscreen(paths) == false);
+
+            GameOptions.ApplyFullscreen(paths, true);
+            var after = File.ReadAllText(file);
+            Check("写入后游戏侧也是开的", GameOptions.ReadFullscreen(paths) == true, after);
+            Check("只动 fullscreen 这一个键",
+                after.Contains("renderDistance:12") && after.Contains("lang:zh_cn") && after.Contains("version:3955"), after);
+
+            // 玩家在游戏里按 F11 关掉 —— 启动器要能读出来
+            File.WriteAllText(file, after.Replace("fullscreen:true", "fullscreen:false"));
+            Check("玩家在游戏里改了能读回来", GameOptions.ReadFullscreen(paths) == false);
+
+            Check("没有 options.txt 时返回未知",
+                GameOptions.ReadFullscreen(LauncherPaths.At(Path.Combine(tmp, "empty"))) is null);
+        }
+        finally
+        {
+            try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
+        }
+    }
+
+    private static void MemoryClamp()
+    {
+        Section("内存上限");
+        var tmp = Path.Combine(Path.GetTempPath(), "battermc-memtest-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            var paths = LauncherPaths.At(tmp);
+            paths.EnsureCreated();
+            var config = paths.ResolveGameFile("config/memorysettings.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(config)!);
+            File.WriteAllText(config, """
+                {
+                  "minimumClient": { "desc:": "...", "minimumClient": 3000 },
+                  "maximumClient": { "desc:": "...", "maximumClient": 10000 },
+                  "disableWarnings": { "desc:": "...", "disableWarnings": false }
+                }
+                """);
+
+            var limits = PackMemoryLimits.Read(paths);
+            Check("读出整合包声明的内存区间", limits.MinMb == 3000 && limits.MaxMb == 10000, limits.ToString());
+            Check("没有配置文件时按未知处理",
+                PackMemoryLimits.Read(LauncherPaths.At(Path.Combine(tmp, "empty"))).MaxMb == 0);
+
+            // 玩家手填 16G：真机 12G 也好 64G 也好，都不该超过整合包阈值
+            var greedy = new LauncherSettings { MaxMemoryMb = 16384 }.EffectiveMaxMemoryMb(limits);
+            Check("手填超过整合包阈值会被夹回来", greedy <= 10000, greedy + " MB");
+            Check("夹回来之后仍然是个能玩的值", greedy >= 3000, greedy + " MB");
+
+            // 填得太小同样不行，低于阈值游戏也会弹警告屏
+            var stingy = new LauncherSettings { MaxMemoryMb = 512 }.EffectiveMaxMemoryMb(limits);
+            Check("手填低于整合包下限会被抬上来", stingy >= 3000, stingy + " MB");
+
+            // 没有整合包信息时也不能顶到物理内存
+            var noLimits = new LauncherSettings { MaxMemoryMb = 999999 }.EffectiveMaxMemoryMb();
+            var total = (long)(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024 * 1024));
+            Check("没有整合包信息也要给系统留余量",
+                noLimits <= Math.Max(2048, total - 2048), $"{noLimits} MB / 物理 {total} MB");
+
+            // 自动挡不受影响
+            var auto = new LauncherSettings().EffectiveMaxMemoryMb(limits);
+            Check("自动挡仍落在区间内", auto >= 3000 && auto <= 10000, auto + " MB");
+        }
+        finally
+        {
+            try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
+        }
+    }
+
+    private static void OptionalToggle()
+    {
+        Section("可选内容开关");
+        var tmp = Path.Combine(Path.GetTempPath(), "battermc-opttest-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            var paths = LauncherPaths.At(tmp);
+            paths.EnsureCreated();
+            using var downloader = new Downloader();
+            const string path = "mods/optional-mod.jar";
+            var disabled = path + OptionalContent.DisabledSuffix;
+            var body = "jar bytes"u8.ToArray();
+
+            PackManifest Manifest(string sha) => new()
+            {
+                Prune = ["mods"],
+                Files =
+                [
+                    new ManagedFile { Path = path, Size = body.Length, Sha1 = sha, Policy = FilePolicy.Optional },
+                ],
+            };
+            var manifest = Manifest(new string('a', 40));
+
+            var on = new LauncherSettings { EnabledOptional = [path] };
+            var off = new LauncherSettings();
+            LocalState NewState() => new() { LastFilesBaseUrl = "https://example.invalid/files" };
+
+            // 玩家没勾：也不会去下，但更不该删已经装好的
+            var fresh = new SyncEngine(paths, NewState(), off, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("没装过又没开：不删任何东西", fresh.Deletions.Count == 0, string.Join(",", fresh.Deletions));
+            Check("可选内容照样跟着同步下来，只是以禁用态落地",
+                fresh.Downloads.Count == 1 && fresh.Downloads[0].TargetPath.EndsWith(OptionalContent.DisabledSuffix, StringComparison.Ordinal),
+                fresh.Downloads.Count == 1 ? fresh.Downloads[0].TargetPath : "没有下载项");
+
+            // 装好的状态：文件在，勾着
+            var enabledAbs = paths.ResolveGameFile(path);
+            Directory.CreateDirectory(Path.GetDirectoryName(enabledAbs)!);
+            File.WriteAllBytes(enabledAbs, body);
+            manifest = Manifest(Hashing.Sha1File(enabledAbs));
+
+            var keep = new SyncEngine(paths, NewState(), on, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("开着且内容正确：什么都不做", keep.IsEmpty, $"下载{keep.Downloads.Count} 删{keep.Deletions.Count} 改名{keep.Renames.Count}");
+
+            // 取消勾选：改名，不删、不重下
+            var turnOff = new SyncEngine(paths, NewState(), off, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("关掉只改名不删文件",
+                turnOff.Deletions.Count == 0 && turnOff.Downloads.Count == 0
+                && turnOff.Renames.Count == 1 && turnOff.Renames[0] == (path, disabled),
+                $"删{turnOff.Deletions.Count} 下{turnOff.Downloads.Count} 改名{turnOff.Renames.Count}");
+
+            // 落到磁盘上：禁用态
+            OptionalContent.Apply(paths, manifest.Files, off.EnabledOptional);
+            Check("禁用后文件还在，只是改了名",
+                !File.Exists(enabledAbs) && File.Exists(paths.ResolveGameFile(disabled)));
+
+            // 禁用态再同步：不能被 prune 当垃圾清掉，也不该重下
+            var whileOff = new SyncEngine(paths, NewState(), off, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("禁用态不会被 prune 清掉", whileOff.Deletions.Count == 0, string.Join(",", whileOff.Deletions));
+            Check("禁用态不会重复下载", whileOff.Downloads.Count == 0);
+
+            // 重新勾上：改回来，仍然不用下载
+            var turnOn = new SyncEngine(paths, NewState(), on, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("重新启用只改名回来",
+                turnOn.Downloads.Count == 0 && turnOn.Renames.Count == 1 && turnOn.Renames[0] == (disabled, path),
+                $"下{turnOn.Downloads.Count} 改名{turnOn.Renames.Count}");
+            OptionalContent.Apply(paths, manifest.Files, on.EnabledOptional);
+            Check("启用后文件名回到 .jar", File.Exists(enabledAbs));
+
+            // 玩家自己丢进 mods 的本地模组：启动器没装过，一根手指都不许动
+            var mine = paths.ResolveGameFile("mods/my-minimap.jar");
+            File.WriteAllText(mine, "player's own mod");
+            var myDisabled = paths.ResolveGameFile("mods/my-other-mod.jar.disabled");
+            File.WriteAllText(myDisabled, "player disabled it himself");
+
+            var untouched = new SyncEngine(paths, NewState(), on, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("玩家自己的模组不删", untouched.Deletions.Count == 0, string.Join(",", untouched.Deletions));
+            Check("玩家自己禁用的模组也不删", File.Exists(myDisabled));
+
+            // 启动器装过、但整合包后来移除了的文件：必须收回来
+            var retired = "mods/retired-by-server.jar";
+            File.WriteAllText(paths.ResolveGameFile(retired), "shipped before, dropped now");
+            var stateWithRecord = NewState();
+            stateWithRecord.InstalledFiles.Add(retired);
+            var cleanup = new SyncEngine(paths, stateWithRecord, on, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("清单里移除的模组会被收回",
+                cleanup.Deletions.Contains(retired), string.Join(",", cleanup.Deletions));
+            Check("收回时不误伤玩家的文件",
+                !cleanup.Deletions.Contains("mods/my-minimap.jar"), string.Join(",", cleanup.Deletions));
+
+            // 老客户端升级上来没有这份记账，靠哈希缓存兜底也能认出自己装过的东西
+            var legacy = NewState();
+            legacy.Hashes[retired] = new HashCacheEntry { Size = 1, MTimeTicks = 1, Sha1 = new string('c', 40) };
+            legacy.InstalledFiles.Clear();
+            foreach (var key in legacy.Hashes.Keys) legacy.InstalledFiles.Add(key);
+            var legacyPlan = new SyncEngine(paths, legacy, on, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("老安装靠哈希缓存也能认出自己装过的文件",
+                legacyPlan.Deletions.Contains(retired), string.Join(",", legacyPlan.Deletions));
+        }
+        finally
+        {
+            try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
+        }
+    }
+
+    private static void ShaderPreset()
+    {
+        Section("光影预设");
+
+        var iris = """
+            #This file stores configuration options for Iris
+            allowUnknownShaders=false
+            colorSpace=SRGB
+            enableShaders=true
+            maxShadowRenderDistance=16
+            shaderPack=Better MC - Low
+            """;
+
+        var on = ShaderPresets.Parse(iris);
+        Check("读出游戏里选的光影", on.Enabled && on.Pack == "Better MC - Low", on.ToString());
+        Check("对外表示就是包名", on.AsSettingValue() == "Better MC - Low", on.AsSettingValue());
+
+        var offText = iris.Replace("enableShaders=true", "enableShaders=false");
+        var off = ShaderPresets.Parse(offText);
+        Check("关掉光影时读出无光影", !off.Enabled && off.AsSettingValue() == "", off.ToString());
+
+        Check("没有配置文件按无光影算", ShaderPresets.Parse("").AsSettingValue() == "");
+
+        // 写入走的是硬配置那套键级替换，验证只动两个键、别的原样
+        var toUltra = ConfigOverlay.ApplyProperties(
+            iris, Enforce("""{"enableShaders":"true","shaderPack":"Better MC - Ultra"}"""), out _);
+        Check("切换光影只改 shaderPack", toUltra.Contains("shaderPack=Better MC - Ultra"), toUltra);
+        Check("切换光影保留其它设置",
+            toUltra.Contains("colorSpace=SRGB") && toUltra.Contains("maxShadowRenderDistance=16"), toUltra);
+        Check("切换光影保留注释", toUltra.Contains("#This file stores"), toUltra);
+        Check("切回去能再读出来", ShaderPresets.Parse(toUltra).Pack == "Better MC - Ultra");
+
+        // 关光影只写 enableShaders，shaderPack 留着，玩家再打开还是上次那个
+        var turnedOff = ConfigOverlay.ApplyProperties(iris, Enforce("""{"enableShaders":"false"}"""), out _);
+        Check("关光影不抹掉上次选的包", turnedOff.Contains("shaderPack=Better MC - Low"), turnedOff);
+        Check("关光影后读出来是无光影", ShaderPresets.Parse(turnedOff).AsSettingValue() == "", turnedOff);
+    }
+
     private static void PropertiesOverlay()
     {
         Section("硬配置 · properties");
@@ -241,6 +833,27 @@ internal static class SelfTest
         var tricky = "a=1\nurl=http://example.com:8099\n";
         var r3 = ConfigOverlay.ApplyProperties(tricky, Enforce("""{"a":2}"""), out _);
         Check("值里的冒号不影响解析", r3.Contains("url=http://example.com:8099") && r3.Contains("a=2"), r3);
+
+        // 列表型值：只摘掉点名的条目，玩家自己选的资源包一个都不能少
+        var packs = """
+            resourcePacks:["vanilla","mod/pasterdream:packs/paster_vanilla_ui","file/Mandala Utopia.zip"]
+            lang:zh_cn
+            """;
+        var removals = new Dictionary<string, List<string>>
+        {
+            ["resourcePacks"] = ["mod/pasterdream:packs/paster_vanilla_ui", "builtin/paster_vanilla_ui"],
+            ["lang"] = ["zh_cn"],
+        };
+        var r4 = ConfigOverlay.RemoveListEntries(packs, removals, out var dropped);
+
+        Check("摘掉点名的资源包", !r4.Contains("paster_vanilla_ui"), r4);
+        Check("其余资源包原样保留",
+            r4.Contains("""resourcePacks:["vanilla","file/Mandala Utopia.zip"]"""), r4);
+        Check("不在列表里的条目不计数", dropped == 1, dropped.ToString());
+        Check("非数组的值不碰", r4.Contains("lang:zh_cn"), r4);
+
+        var r5 = ConfigOverlay.RemoveListEntries(r4, removals, out var dropped2);
+        Check("已经摘干净就不再改", dropped2 == 0 && r5 == r4, r5);
     }
 
     private static void TomlOverlay()
@@ -290,6 +903,17 @@ internal static class SelfTest
         var withComment = "[a]\n  x = 1 # 这是注释\n";
         var r2 = ConfigOverlay.ApplyToml(withComment, Enforce("""{"a/x":9}"""), out _);
         Check("带行尾注释的键也能改", r2.Contains("x = 9"), r2);
+
+        // NeoForge 的键常带空格，既要能就地改，补键时也必须带引号，否则整份配置解析不了
+        var quoted = "[HUD]\n\t\"enable mod ui\" = true\n";
+        var r3 = ConfigOverlay.ApplyToml(quoted, Enforce("""
+            {
+              "HUD/enable mod ui": false,
+              "HUD/paster health hud": false
+            }
+            """), out _);
+        Check("带空格的引号键能就地改", r3.Contains("\"enable mod ui\" = false"), r3);
+        Check("补的带空格键自带引号", r3.Contains("\"paster health hud\" = false"), r3);
     }
 
     private static void JsonOverlay()
@@ -618,6 +1242,49 @@ internal static class SelfTest
             target.Stop();
             try { await targetLoop; } catch { }
         }
+    }
+
+    /// <summary>
+    /// 打洞的端口扫描。
+    ///
+    /// 对端如果是地址相关型 NAT，它报上来的映射端口和它实际朝我们发包时用的不是
+    /// 同一个，照着报的那个打必然打偏。这里把"报错的端口"直接构造出来：告诉 A
+    /// 一个偏了 40 的端口，只有扫描真的展开了，A 才可能找到 B。
+    /// </summary>
+    private static void PunchPortSweep()
+    {
+        Console.WriteLine("打洞端口扫描");
+        var secret = PunchProtocol.DeriveSecret("selftest-token");
+        using var a = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        using var b = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        a.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        b.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        var aPort = ((IPEndPoint)a.LocalEndPoint!).Port;
+        var bPort = ((IPEndPoint)b.LocalEndPoint!).Port;
+
+        const ulong session = 0xB0B0_1234_5678_9ABCUL;
+        var punchAt = DateTimeOffset.UtcNow.AddMilliseconds(200);
+        var budget = TimeSpan.FromSeconds(3);
+
+        // A 拿到的端口偏低 40：对端先探反射器拿到映射，几秒后才朝我们发包，那时
+        // 顺序分配的 NAT 已经往上走了——真实端口一定高于报上来的那个，所以扫描
+        // 窗口也是向上偏的。这里照着真实方向构造。
+        var wrong = new IPEndPoint(IPAddress.Loopback, bPort - 40);
+        var right = new IPEndPoint(IPAddress.Loopback, aPort);
+
+        // 单边分工：A 的地址对 B 是已知的，所以由 A 去找 B；B 只管朝已知地址发，不扫。
+        var ta = UdpPuncher.PunchAsync(a, [wrong], session, secret, punchAt, budget,
+            sweepPorts: true, null, CancellationToken.None);
+        var tb = UdpPuncher.PunchAsync(b, [right], session, secret, punchAt, budget,
+            sweepPorts: false, null, CancellationToken.None);
+        Task.WaitAll([ta, tb], TimeSpan.FromSeconds(20));
+
+        Check("错端口时扫描能打通", ta.Result.Success && tb.Result.Success,
+            $"A={ta.Result.Success}（发出 {ta.Result.Sent}） B={tb.Result.Success}");
+        Check("扫描确实展开了（发包数远超准确地址那一条）", ta.Result.Sent > 100,
+            $"A 只发了 {ta.Result.Sent} 个包");
+        Check("不该扫的那一侧没有多发包", tb.Result.Sent < 60,
+            $"B 发了 {tb.Result.Sent} 个包，本不该扫描");
     }
 
     private static int ReserveClosedPort()

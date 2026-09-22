@@ -1,6 +1,6 @@
 [package]
 name = "battermc5remake"
-version = "1.1.8"
+version = "0.0.0"  # 占位：真正的版本号在 client/tauri/package.json，由 tauri.conf.json 引用
 description = "BatterMC5Remake launcher"
 authors = ["Batter MC"]
 edition = "2021"

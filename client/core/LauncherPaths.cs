@@ -17,6 +17,8 @@ public sealed class LauncherPaths
     public string SettingsFile => Path.Combine(DataDir, "settings.json");
     public string StateFile => Path.Combine(DataDir, "state.json");
     public string ManifestCacheFile => Path.Combine(DataDir, "manifest.cache.json");
+    /// <summary>DPAPI 加密的登录令牌。丢了只是要重登一次。</summary>
+    public string AccountFile => Path.Combine(DataDir, "account.bin");
     public string LogDir => Path.Combine(DataDir, "logs");
     public string CrashDir => Path.Combine(DataDir, "crash");
     public string TempDir => Path.Combine(DataDir, "temp");

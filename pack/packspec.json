@@ -3,8 +3,8 @@
   "pack": {
     "id": "battermc5remake",
     "name": "BatterMC5Remake",
-    "version": "1.3.2",
-    "changelog": "1.3.2\n- 接入 Simple Nicknames 中文显示昵称\n- Minecraft 使用固定平台 UID 登录\n- Entity Culling 玩家名牌兼容配置"
+    "version": "1.3.6",
+    "changelog": "1.3.6\n- 视角切换只保留第一人称和越肩视角，关掉原版的前后两个第三人称\n- 自动第三人称改为可选组件，默认不安装\n- 更真实的第一人称模型改为可选组件，默认不安装\n  （两项都可以在启动器的可选内容里随时勾选）"
   },
   "minecraft": {
     "version": "1.21.1",
@@ -42,6 +42,18 @@
     }
   ],
   "include": [
+    {
+      "glob": "mods/[自动第三人称]auto_third_person-neo-1.21.1-2.2.jar",
+      "policy": "Optional",
+      "group": "视角",
+      "label": "自动第三人称（骑乘、滑翔等场景自动切第三人称）"
+    },
+    {
+      "glob": "mods/[更真实的第一人称模型]firstperson-neoforge-2.7.2-mc1.21.1.jar",
+      "policy": "Optional",
+      "group": "视角",
+      "label": "更真实的第一人称模型（低头能看到自己身体）"
+    },
     {
       "glob": "mods/**",
       "policy": "Managed"
@@ -115,7 +127,32 @@
       "path": "options.txt",
       "format": "Properties",
       "enforce": {
-        "skipMultiplayerWarning": true
+        "skipMultiplayerWarning": true,
+        "key_iris.keybind.reload": "key.keyboard.unknown"
+      },
+      "removeFromList": {
+        "resourcePacks": [
+          "mod/pasterdream:packs/paster_vanilla_ui",
+          "builtin/paster_vanilla_ui"
+        ]
+      },
+      "createIfMissing": false
+    },
+    {
+      "path": "config/shouldersurfing-client.toml",
+      "format": "Toml",
+      "enforce": {
+        "perspective/third_person_front_enabled": false,
+        "perspective/third_person_back_enabled": false
+      },
+      "createIfMissing": false
+    },
+    {
+      "path": "config/PasterDream-Client.toml",
+      "format": "Toml",
+      "enforce": {
+        "HUD/enable mod ui": false,
+        "HUD/paster health hud": false
       },
       "createIfMissing": false
     }

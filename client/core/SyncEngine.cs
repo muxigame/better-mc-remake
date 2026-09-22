@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using BatterMC.Protocol;
 
 namespace BatterMC.Core;
@@ -13,9 +13,12 @@ public sealed class SyncPlan
 {
     public List<DownloadItem> Downloads { get; } = new();
     public List<string> Deletions { get; } = new();
+
+    /// <summary>可选内容开关引起的改名：从旧文件名到新文件名，相对游戏目录。</summary>
+    public List<(string From, string To)> Renames { get; } = new();
     public Dictionary<string, string> SeedRevisionTargets { get; } = new(StringComparer.OrdinalIgnoreCase);
     public long Bytes => Downloads.Sum(d => Math.Max(0, d.ExpectedSize));
-    public bool IsEmpty => Downloads.Count == 0 && Deletions.Count == 0;
+    public bool IsEmpty => Downloads.Count == 0 && Deletions.Count == 0 && Renames.Count == 0;
 }
 
 /// <summary>
@@ -24,10 +27,11 @@ public sealed class SyncPlan
 /// 三种策略：
 ///   Managed  — 服务器说了算，哈希不符就覆盖，玩家删了补回来
 ///   Seed     — 每个服务端 SHA 修订强制投放一次，之后重新交还给玩家
-///   Optional — 玩家勾了才装，取消勾选就删掉
+///   Optional — 跟 Managed 一样同步下来，玩家自己开关；关掉只是改名成 .disabled，不删文件
 ///
-/// 外加 prune：清单指定的目录里，不在清单上的文件一律删除。
-/// mods 必须 prune，否则玩家私自加的模组会让他连不上服务器。
+/// 外加 prune：清单指定的目录里，清掉"启动器装过、但清单里已经没有"的文件 ——
+/// 比如整合包移除了某个模组，得把它从玩家机器上收回来。
+/// 玩家自己放进去的文件不在记账里，一概不碰。
 /// config 默认不 prune —— 模组会在运行时自己生成配置文件，删了会天天重建。
 /// </summary>
 public sealed class SyncEngine
@@ -40,6 +44,7 @@ public sealed class SyncEngine
     public string? LastManifestUrl { get; private set; }
     public string? LastManifestError { get; private set; }
     public string? LastFilesBaseUrl { get; private set; }
+    public string? LastMirrorBaseUrl { get; private set; }
 
     public SyncEngine(LauncherPaths paths, LocalState state, LauncherSettings settings, Downloader downloader)
     {
@@ -76,6 +81,9 @@ public sealed class SyncEngine
                 LastManifestUrl = control.ManifestUrl;
                 LastFilesBaseUrl = control.FilesBaseUrl.TrimEnd('/');
                 _state.LastFilesBaseUrl = LastFilesBaseUrl;
+                LastMirrorBaseUrl = string.IsNullOrWhiteSpace(control.MirrorBaseUrl)
+                    ? null : control.MirrorBaseUrl!.TrimEnd('/');
+                _state.LastMirrorBaseUrl = LastMirrorBaseUrl;
                 LastManifestError = null;
                 Log.Info($"清单版本 {manifest.Pack.Version}，{manifest.Files.Count} 个文件；来源 {control.ManifestUrl}");
                 return manifest;
@@ -99,6 +107,7 @@ public sealed class SyncEngine
             {
                 LastManifestUrl = "cache";
                 LastFilesBaseUrl = _state.LastFilesBaseUrl;
+                LastMirrorBaseUrl = _state.LastMirrorBaseUrl;
                 Log.Warn($"离线模式：使用缓存的清单 {cached.Pack.Version}");
                 return cached;
             }
@@ -145,6 +154,7 @@ public sealed class SyncEngine
         var freshHashes = new ConcurrentDictionary<string, HashCacheEntry>(StringComparer.OrdinalIgnoreCase);
         var downloads = new ConcurrentBag<DownloadItem>();
         var deletions = new ConcurrentBag<string>();
+        var renames = new ConcurrentBag<(string From, string To)>();
         var seedRevisionTargets = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var seedBaselines = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var done = 0;
@@ -154,15 +164,35 @@ public sealed class SyncEngine
             new ParallelOptions { CancellationToken = ct, MaxDegreeOfParallelism = Environment.ProcessorCount },
             file =>
             {
-                var absolute = _paths.ResolveGameFile(file.Path);
                 var isOptional = file.Policy == FilePolicy.Optional;
                 var wanted = !isOptional || enabled.Contains(file.Path);
 
-                if (wanted) expected.TryAdd(file.Path, 0);
+                // 禁用的可选内容不删，只是带着 .disabled 后缀躺在原地，随时能切回来。
+                var relative = OptionalContent.PathFor(file.Path, wanted);
+                var absolute = _paths.ResolveGameFile(relative);
 
-                if (isOptional && !wanted)
+                // 两个名字都是"清单认可的文件"，prune 一个都不许碰
+                expected.TryAdd(file.Path, 0);
+                if (isOptional) expected.TryAdd(file.Path + OptionalContent.DisabledSuffix, 0);
+
+                if (isOptional)
                 {
-                    if (File.Exists(absolute)) deletions.Add(file.Path);
+                    // 开关状态变了：改名就行，不用重新下载
+                    var otherRel = OptionalContent.PathFor(file.Path, !wanted);
+                    var otherAbs = _paths.ResolveGameFile(otherRel);
+                    if (!File.Exists(absolute) && File.Exists(otherAbs))
+                    {
+                        renames.Add((otherRel, relative));
+                        // 内容对不对按改名后的那份算，免得白下一遍
+                        if (NeedsDownload(file, otherAbs, freshHashes))
+                            downloads.Add(MakeItem(file, absolute, baseUrl));
+                    }
+                    else
+                    {
+                        if (File.Exists(absolute) && File.Exists(otherAbs)) deletions.Add(otherRel);
+                        if (NeedsDownload(file, absolute, freshHashes))
+                            downloads.Add(MakeItem(file, absolute, baseUrl));
+                    }
                 }
                 else if (file.Policy == FilePolicy.Seed)
                 {
@@ -212,12 +242,20 @@ public sealed class SyncEngine
 
         plan.Downloads.AddRange(downloads.OrderBy(d => d.Display, StringComparer.OrdinalIgnoreCase));
         plan.Deletions.AddRange(deletions);
+        plan.Renames.AddRange(renames);
         foreach (var (path, revision) in seedRevisionTargets)
             plan.SeedRevisionTargets[path] = revision;
         foreach (var (path, revision) in seedBaselines)
             _state.MarkSeedRevision(path, revision);
 
-        // --- prune：清掉清单里没有的文件 ---
+        // 清单里的每一个文件都是启动器投放的，记下来。
+        // prune 只认这份记账：没装过的东西不归我们管。
+        foreach (var file in manifest.Files) _state.InstalledFiles.Add(file.Path);
+
+        // --- prune：清掉"我们装过、但清单里已经没有"的文件 ---
+        // 玩家自己往 mods 里放的本地模组一律不碰。它们大多是小地图、光影这类纯客户端
+        // 模组，并不会让他连不上服务器；就算真会，那也是他自己的选择，不该由启动器
+        // 悄悄删掉别人的文件来替他决定。
         foreach (var dir in manifest.Prune)
         {
             ct.ThrowIfCancellationRequested();
@@ -228,13 +266,29 @@ public sealed class SyncEngine
             {
                 var rel = Path.GetRelativePath(_paths.GameDir, f).Replace('\\', '/');
                 if (expected.ContainsKey(rel)) continue;
-                if (rel.EndsWith(".part", StringComparison.OrdinalIgnoreCase)) { plan.Deletions.Add(rel); continue; }
-                // 玩家手动禁用的模组（.jar.disabled）也算多余文件，一并清掉
+                if (rel.EndsWith(".part", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 清单里还要这个文件，说明这是上次没下完的残片 —— 留着给断点续传。
+                    // 清掉的话玩家取消一次下载，下次就得从头再来一遍。
+                    var pending = rel[..^".part".Length];
+                    if (expected.ContainsKey(pending)) continue;
+                    // 目标都不在清单里了，残片就是纯垃圾
+                    plan.Deletions.Add(rel);
+                    continue;
+                }
+
+                // 可选内容被关掉时带着 .disabled 后缀，按本名查记账
+                var canonical = rel.EndsWith(OptionalContent.DisabledSuffix, StringComparison.OrdinalIgnoreCase)
+                    ? rel[..^OptionalContent.DisabledSuffix.Length]
+                    : rel;
+                if (!_state.InstalledFiles.Contains(rel) && !_state.InstalledFiles.Contains(canonical)) continue;
+
                 plan.Deletions.Add(rel);
             }
         }
 
-        Log.Info($"同步计划：下载 {plan.Downloads.Count} 个（{Human(plan.Bytes)}），删除 {plan.Deletions.Count} 个");
+        Log.Info($"同步计划：下载 {plan.Downloads.Count} 个（{Human(plan.Bytes)}），"
+               + $"删除 {plan.Deletions.Count} 个，改名 {plan.Renames.Count} 个");
         return plan;
     }
 
@@ -277,7 +331,7 @@ public sealed class SyncEngine
         Display = file.Path,
     };
 
-    /// <summary>执行同步计划。先删后下，避免磁盘吃紧。</summary>
+    /// <summary>执行同步计划。先删、再改名、最后下载，避免磁盘吃紧也避免白下。</summary>
     public async Task ApplyAsync(SyncPlan plan, IProgress<SyncStatus>? progress, CancellationToken ct)
     {
         if (plan.Deletions.Count > 0)
@@ -295,8 +349,30 @@ public sealed class SyncEngine
                         Log.Info($"删除：{rel}");
                     }
                     _state.Hashes.Remove(rel);
+                    _state.InstalledFiles.Remove(rel);
                 }
                 catch (Exception ex) { Log.Warn($"删除失败 {rel}：{ex.Message}"); }
+            }
+        }
+
+        // 改名排在下载前面：可选内容切换状态时目标名字要先腾出来，
+        // 内容真有问题才会跟着来一次下载覆盖。
+        if (plan.Renames.Count > 0)
+        {
+            progress?.Report(SyncStatus.Of("切换可选内容", $"{plan.Renames.Count} 个"));
+            foreach (var (from, to) in plan.Renames)
+            {
+                try
+                {
+                    var src = _paths.ResolveGameFile(from);
+                    var dst = _paths.ResolveGameFile(to);
+                    if (!File.Exists(src)) continue;
+                    if (File.Exists(dst)) File.Delete(dst);
+                    Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
+                    File.Move(src, dst);
+                    Log.Info($"改名：{from} -> {to}");
+                }
+                catch (Exception ex) { Log.Warn($"改名失败 {from}：{ex.Message}"); }
             }
         }
 
@@ -316,7 +392,9 @@ public sealed class SyncEngine
             {
                 try
                 {
-                    var rel = Path.GetRelativePath(_paths.GameDir, d.TargetPath).Replace('\\', '/');
+                    // 记账键统一用清单里的路径：可选内容禁用时文件名带 .disabled，
+                    // 按物理名字记会和校验时的查法对不上，白白每次重算哈希。
+                    var rel = d.Display;
                     var fi = new FileInfo(d.TargetPath);
                     if (fi.Exists && !string.IsNullOrEmpty(d.ExpectedSha1))
                         _state.Hashes[rel] = new HashCacheEntry

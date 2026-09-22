@@ -65,6 +65,11 @@ if ($Target -in 'all', 'client') {
         throw '找不到 Cargo。请先安装 Rust MSVC 工具链：https://tauri.app/start/prerequisites/'
     }
 
+    # 自绘标题栏左上角那个图标直接用应用图标本尊。前端只能读 sidecar\web\ 下的文件，
+    # 所以从唯一真相 sidecar\icon.ico 拷一份过去，换图标永远只改那一个文件。
+    Copy-Item -LiteralPath client\sidecar\icon.ico `
+        -Destination client\sidecar\web\icon.ico -Force
+
     Step '安装 Tauri 前端依赖'
     Push-Location client\tauri
     try { npm ci }
@@ -101,14 +106,14 @@ if ($Target -in 'all', 'client') {
     $clientOut = Join-Path $OutDir 'client'
     New-Item -ItemType Directory -Path $clientOut -Force | Out-Null
 
-    $launcherExe = Join-Path $clientOut 'BatterMC5Remake.exe'
+    $launcherExe = Join-Path $clientOut 'BMC [Remake].exe'
     $portableBackend = Join-Path $clientOut 'battermc-backend.exe'
     Copy-Item -LiteralPath (Join-Path $tauriTarget 'battermc5remake.exe') -Destination $launcherExe -Force
     Copy-Item -LiteralPath (Join-Path $tauriTarget 'battermc-backend.exe') -Destination $portableBackend -Force
 
     $builtInstaller = Get-ChildItem (Join-Path $tauriTarget 'bundle\nsis') -Filter '*-setup.exe' |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    $installer = Join-Path $clientOut 'BatterMC5Remake-setup.exe'
+    $installer = Join-Path $clientOut 'BMC [Remake] setup.exe'
     if ($builtInstaller) { Copy-Item -LiteralPath $builtInstaller.FullName -Destination $installer -Force }
     if (-not $builtInstaller) { throw '没有找到 Tauri NSIS 安装包' }
 
@@ -116,17 +121,20 @@ if ($Target -in 'all', 'client') {
     if (-not (Test-Path -LiteralPath $builtSignaturePath -PathType Leaf)) {
         throw '没有生成 Tauri updater 签名；检查 TAURI_SIGNING_PRIVATE_KEY 配置'
     }
-    $signatureFile = Join-Path $clientOut 'BatterMC5Remake-setup.exe.sig'
+    $signatureFile = Join-Path $clientOut 'BMC [Remake] setup.exe.sig'
     Copy-Item -LiteralPath $builtSignaturePath -Destination $signatureFile -Force
     $signature = (Get-Content -LiteralPath $builtSignaturePath -Raw -Encoding UTF8).Trim()
 
-    $sha = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
-    $size = (Get-Item $installer).Length
+    # 产物名里有方括号（"BMC [Remake] setup.exe"），而方括号是 PowerShell 的通配符。
+    # 不加 -LiteralPath 的话路径会被当成字符类去匹配，匹配不到就静默返回 null，
+    # 然后在 .Hash 上炸成"不能对 Null 值表达式调用方法"。
+    $sha = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+    $size = (Get-Item -LiteralPath $installer).Length
     $release = [ordered]@{
         version      = $clientVersion
         architecture = 'tauri-2-with-dotnet-sidecar'
-        installer    = 'BatterMC5Remake-setup.exe'
-        signatureFile = 'BatterMC5Remake-setup.exe.sig'
+        installer    = 'BMC [Remake] setup.exe'
+        signatureFile = 'BMC [Remake] setup.exe.sig'
         signature    = $signature
         sha256       = $sha
         size         = $size
@@ -134,8 +142,8 @@ if ($Target -in 'all', 'client') {
     }
     $release | ConvertTo-Json | Set-Content (Join-Path $clientOut 'launcher-release.json') -Encoding utf8
 
-    Write-Host ("  Tauri EXE  {0:N1} MB" -f ((Get-Item $launcherExe).Length / 1MB)) -ForegroundColor Green
-    Write-Host ("  .NET sidecar {0:N1} MB" -f ((Get-Item $portableBackend).Length / 1MB)) -ForegroundColor Green
+    Write-Host ("  Tauri EXE  {0:N1} MB" -f ((Get-Item -LiteralPath $launcherExe).Length / 1MB)) -ForegroundColor Green
+    Write-Host ("  .NET sidecar {0:N1} MB" -f ((Get-Item -LiteralPath $portableBackend).Length / 1MB)) -ForegroundColor Green
     Write-Host ("  NSIS 安装包 {0:N1} MB" -f ($size / 1MB)) -ForegroundColor Green
     Write-Host "  Updater 签名已生成" -ForegroundColor Green
     Write-Host "  SHA-256 $sha" -ForegroundColor DarkGray

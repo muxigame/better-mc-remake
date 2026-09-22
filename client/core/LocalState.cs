@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace BatterMC.Core;
@@ -28,6 +28,15 @@ public sealed class LocalState
     /// </summary>
     public Dictionary<string, HashCacheEntry> Hashes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// 启动器自己投放过的文件（相对路径）。prune 只清理这里面的东西 ——
+    /// 玩家自己往 mods 里放的模组我们没装过，也就没资格替他删。
+    ///
+    /// 跟 <see cref="Hashes"/> 分开存：那个是可以随时丢弃重建的缓存，
+    /// resetVerification 会清空它；这份是记账，清空了就再也认不出哪些文件是我们的。
+    /// </summary>
+    public HashSet<string> InstalledFiles { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>已经投放过的 Seed 文件，避免玩家删掉后又被重新投放。</summary>
     public List<string> SeededFiles { get; set; } = new();
 
@@ -43,6 +52,17 @@ public sealed class LocalState
 
     /// <summary>最后一次由官方控制面下发的游戏文件根地址，用于离线 manifest 缓存。</summary>
     public string? LastFilesBaseUrl { get; set; }
+
+    /// <summary>最后一次下发的 Minecraft 本体镜像根地址。控制面连不上时照样用得上。</summary>
+    public string? LastMirrorBaseUrl { get; set; }
+
+    /// <summary>
+    /// 最后一次写过显卡偏好的 java 路径。
+    ///
+    /// JRE 升级会换目录，记着上一个才能把旧条目清掉——否则玩家注册表里会攒一堆
+    /// 指向早就删了的 java.exe 的设置。
+    /// </summary>
+    public string? GpuPreferenceTarget { get; set; }
 
     [JsonIgnore] private string? _file;
 
@@ -69,6 +89,14 @@ public sealed class LocalState
                     s.SeedRevisions = new Dictionary<string, string>(
                         s.SeedRevisions ?? new Dictionary<string, string>(),
                         StringComparer.OrdinalIgnoreCase);
+
+                    s.InstalledFiles = new HashSet<string>(
+                        s.InstalledFiles ?? new HashSet<string>(),
+                        StringComparer.OrdinalIgnoreCase);
+                    // 老客户端升级上来还没有这份记账：拿哈希缓存兜底，
+                    // 那里面的键正好就是启动器同步过的每一个清单文件。
+                    if (s.InstalledFiles.Count == 0 && s.Hashes.Count > 0)
+                        foreach (var key in s.Hashes.Keys) s.InstalledFiles.Add(key);
                     return s;
                 }
             }

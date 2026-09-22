@@ -1,4 +1,4 @@
-using BatterMC.Protocol;
+﻿using BatterMC.Protocol;
 
 namespace BatterMC.Core;
 
@@ -48,6 +48,12 @@ public sealed class LaunchPipeline
         Report("连接更新服务器", settings.UpdateBaseUrl);
         var sync = new SyncEngine(paths, state, settings, _downloader);
         var manifest = await sync.FetchManifestAsync(settings.UpdateBaseUrl, ct).ConfigureAwait(false);
+
+        // Minecraft 本体走我们自己的镜像。上游在国内太慢，还有玩家直接连不上。
+        _downloader.Mirror = string.IsNullOrWhiteSpace(sync.LastMirrorBaseUrl)
+            ? null : new DownloadMirror(sync.LastMirrorBaseUrl!);
+        if (_downloader.Mirror is not null) Log.Info($"Minecraft 本体镜像：{_downloader.Mirror.Base}");
+        else Log.Info("未下发镜像地址，Minecraft 本体直连 Mojang / NeoForge");
         _ctx.Manifest = manifest;
 
         // 2. 在任何游戏下载/写入之前检查客户端支持策略，不能仅依赖 UI 禁用按钮。
@@ -99,15 +105,17 @@ public sealed class LaunchPipeline
 
         // 5. Minecraft 本体（官方 CDN）
         var vanillaPlan = await VanillaInstaller
-            .PlanAsync(version, paths, state, _downloader, new InlineProgress<string>(m => Report("校验游戏本体", m)), ct)
+            .PlanAsync(version, paths, state, _downloader, new InlineProgress<string>(m => Report("校验 Minecraft 本体", m)), ct)
             .ConfigureAwait(false);
 
         if (!vanillaPlan.IsEmpty)
         {
-            Report("补全 Minecraft 运行资源", $"{vanillaPlan.Items.Count} 个文件（{SyncEngine.Human(vanillaPlan.Bytes)}）");
+            // 这一批和整合包没关系，是 Minecraft 游戏本体。不写清楚玩家会以为在重下整合包。
+            Report("下载 Minecraft 本体",
+                $"游戏资源与运行库 {vanillaPlan.Items.Count} 个文件（{SyncEngine.Human(vanillaPlan.Bytes)}）");
             await _downloader.DownloadAllAsync(vanillaPlan.Items,
                 new InlineProgress<DownloadProgress>(p => Status?.Invoke(new SyncStatus(
-                    "补全 Minecraft 运行资源",
+                    "下载 Minecraft 本体",
                     $"{p.FilesDone}/{p.FilesTotal}  {SyncEngine.Human(p.BytesDone)} / {SyncEngine.Human(p.BytesTotal)}",
                     p.BytesTotal > 0 ? Math.Clamp((double)p.BytesDone / p.BytesTotal, 0, 1) : -1,
                     p.BytesDone, p.BytesTotal))), ct).ConfigureAwait(false);
@@ -157,6 +165,26 @@ public sealed class LaunchPipeline
             var failed = results.Where(r => r.Error is not null).ToList();
             foreach (var f in failed) Log.Warn($"硬配置失败 {f.Path}：{f.Error}");
         }
+
+
+        // 8.5 光影预设。必须排在硬配置后面：iris.properties 是 Seed 文件，
+        //     服务端发新版本会把它整份重投，玩家选的光影会被一起冲掉。
+        //     启动器记着玩家点名要的那个预设，同步完再写回去。
+        if (settings.ShaderPack is null)
+        {
+            // 第一次见到这个玩家：全新安装按默认值（不开光影），
+            // 老玩家则原样收编他现在用的光影，不动他的选择。
+            var firstInstall = string.IsNullOrWhiteSpace(state.InstalledPackVersion);
+            settings.ShaderPack = firstInstall
+                ? ShaderPresets.DefaultPack
+                : ShaderPresets.Read(paths).AsSettingValue();
+            settings.Save(paths.SettingsFile);
+        }
+        ShaderPresets.Apply(paths, settings.ShaderPack);
+
+        // 全屏同理：命令行的 --fullscreen 只能开不能关，options.txt 里的值才是
+        // 游戏真正认的那个，启动前按启动器里的开关写一次。
+        GameOptions.ApplyFullscreen(paths, settings.Fullscreen);
 
         // 9. 服务器列表
         if (manifest.Servers.Count > 0)
