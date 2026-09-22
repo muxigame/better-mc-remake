@@ -15,6 +15,8 @@
 
 用户提供的服务端源：`BMC5Server/BMC5Server/`（原始目录保留，不启动、不重建旧世界）。
 
+新增 `start-muxi.ps1` 会选择本机 Java 21，不使用原 `start.bat` 内过时的 `C:\Users\Roc` 路径，也不启动或终止 FRP。准备正式启动时，在服务端目录运行 `powershell -File .\start-muxi.ps1`；支持 `-JavaExe` 显式指定 Java 21。
+
 服务端专用配置：`BMC5Server/BMC5Server/config/muxi-identity-bridge.json`。其中 `serverKey` 与账户服务环境变量 `MUXI_MC_PROFILE_KEY` 一致，**不可放进客户端、公开整合包、Git 或截图**。
 
 ## 构建与安装

@@ -78,6 +78,7 @@ def main():
         atomic_bytes(root / 'mods' / dep['filename'], data, backups)
         atomic_bytes(root / 'config/simplenicknames/simplenicknames.toml', config, backups)
     atomic_bytes(args.server / 'mods/muxi-identity-1.0.0.jar', built.read_bytes(), backups)
+    atomic_bytes(args.server / 'start-muxi.ps1', (HERE / 'start-muxi.ps1').read_bytes(), backups)
     private_config = {
         'endpoint': 'https://account.muxigame.com/api/internal/minecraft/identity/',
         'serverKey': key,
