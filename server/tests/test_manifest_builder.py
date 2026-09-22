@@ -1,4 +1,5 @@
 import json
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,6 +8,20 @@ from app.manifest_builder import build_manifest, glob_to_regex
 
 
 class ManifestBuilderTests(unittest.TestCase):
+    def test_external_author_download_is_pinned_not_rehosted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp); root = base / 'source'; (root / 'mods').mkdir(parents=True)
+            (root / 'mods/nick.jar').write_bytes(b'pinned artifact')
+            spec = {'root': str(root), 'pack': {'id':'test','version':'1'},
+                    'include':[{'glob':'mods/**','policy':'Managed'}],
+                    'externalDownloads':{'mods/nick.jar':{
+                        'url':'https://cdn.modrinth.com/data/test/versions/v/nick.jar',
+                        'sha1':hashlib.sha1(b'pinned artifact').hexdigest()}}}
+            result, _ = build_manifest(spec, base / 'spec.json', None, log=lambda _: None)
+            self.assertTrue(result['files'][0]['externalDownload'])
+            self.assertTrue(result['files'][0]['url'].startswith('https://cdn.modrinth.com/'))
+            spec['externalDownloads']['mods/nick.jar']['sha1'] = '0' * 40
+            with self.assertRaises(ValueError): build_manifest(spec, base / 'spec.json', None, log=lambda _: None)
     def test_minecraft_globs(self):
         self.assertIsNotNone(glob_to_regex("mods/**").match("mods/a/b.jar"))
         self.assertIsNotNone(glob_to_regex("**/*.log").match("latest.log"))

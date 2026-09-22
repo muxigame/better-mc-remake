@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterator
+from .game_identity import uid_login_name, offline_uuid
 
 
 def utc_now() -> datetime:
@@ -74,15 +75,15 @@ class WebsiteAccount:
         subject = str(data.get("sub", ""))
         username = str(data.get("username") or data.get("preferred_username") or "")
         nickname = str(data.get("nickname") or data.get("name") or username)
-        game_name = str(data.get("game_name") or "")
         try:
             uid = int(data.get("muxi_uid"))
         except (TypeError, ValueError):
             uid = 0
         email = str(data.get("email")) if data.get("email") else None
         email_verified = bool(data.get("email_verified")) if email else False
-        if not subject or not username or not game_name or uid < 10000:
+        if not subject or not username or not 10000 <= uid <= 9999999999999999:
             raise ValueError("统一账户返回的用户信息不完整")
+        game_name = uid_login_name(uid)
         return cls(
             subject=subject,
             uid=uid,
@@ -102,7 +103,7 @@ class WebsiteAccount:
             "uid": self.uid,
             "username": self.username,
             "nickname": self.nickname,
-            "gameName": self.game_name,
+            "gameName": uid_login_name(self.uid),
             "email": self.email,
             "emailVerified": self.email_verified,
             "role": self.role,
@@ -121,12 +122,19 @@ class PlayerProfile:
     balance_cents: int
     created_at: str
     updated_at: str
+    display_name: str = ""
+    legacy_game_name: str | None = None
 
     def public(self) -> dict:
         return {
             "subject": self.subject,
             "uid": self.uid,
-            "gameName": self.game_name,
+            "gameName": uid_login_name(self.uid),
+            "loginName": uid_login_name(self.uid),
+            "offlineUuid": offline_uuid(self.uid),
+            "displayName": self.display_name or uid_login_name(self.uid),
+            "legacyGameName": self.legacy_game_name,
+            "identityMode": "platform-uid",
             "points": self.points,
             "balanceCents": self.balance_cents,
             "createdAt": self.created_at,
@@ -272,7 +280,7 @@ class WebsiteAuthStore:
                 (account.subject,),
             ).fetchone()
             if row is None:
-                game_name = account.game_name
+                game_name = uid_login_name(account.uid)
                 try:
                     db.execute(
                         """INSERT INTO player_profiles
@@ -296,38 +304,17 @@ class WebsiteAuthStore:
             return PlayerProfile(
                 subject=str(row["subject"]),
                 uid=int(row["uid"]),
-                game_name=str(row["game_name"]),
+                game_name=uid_login_name(account.uid),
                 points=int(row["points"]),
                 balance_cents=int(row["balance_cents"]),
                 created_at=str(row["created_at"]),
                 updated_at=str(row["updated_at"]),
+                display_name=account.nickname or account.username,
+                legacy_game_name=str(row["game_name"]) if str(row["game_name"]) != uid_login_name(account.uid) else None,
             )
 
     def update_game_name(self, account: WebsiteAccount, game_name: str) -> PlayerProfile:
-        # 确保资料存在，再只更新 Better MC 业务侧游戏名。
-        self.player_profile(account)
-        now = iso(utc_now())
-        with self._lock, self.connect() as db:
-            try:
-                db.execute(
-                    "UPDATE player_profiles SET game_name=?,uid=?,updated_at=? WHERE subject=?",
-                    (game_name, account.uid, now, account.subject),
-                )
-            except sqlite3.IntegrityError as error:
-                raise ValueError("该 Minecraft 游戏名已经被其他玩家使用") from error
-            row = db.execute(
-                "SELECT * FROM player_profiles WHERE subject=?",
-                (account.subject,),
-            ).fetchone()
-        return PlayerProfile(
-            subject=str(row["subject"]),
-            uid=int(row["uid"]),
-            game_name=str(row["game_name"]),
-            points=int(row["points"]),
-            balance_cents=int(row["balance_cents"]),
-            created_at=str(row["created_at"]),
-            updated_at=str(row["updated_at"]),
-        )
+        raise ValueError("游戏身份固定为平台 UID，请在统一账户中心修改昵称")
 
 
 class OidcClient:

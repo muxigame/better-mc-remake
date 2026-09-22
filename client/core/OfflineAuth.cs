@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -6,6 +7,8 @@ namespace BatterMC.Core;
 
 public sealed record GameSession(string Username, string UuidDashed, string UuidPlain, string AccessToken)
 {
+    public static GameSession OfflineUid(long uid) => Offline(OfflineAuth.UidLoginName(uid));
+
     public static GameSession Offline(string username)
     {
         var uuid = OfflineAuth.OfflineUuid(username);
@@ -15,6 +18,14 @@ public sealed record GameSession(string Username, string UuidDashed, string Uuid
 
 public static partial class OfflineAuth
 {
+    /// <summary>The authenticated platform UID, never a nickname or editable setting.</summary>
+    public static string UidLoginName(long uid)
+    {
+        if (uid < 10000 || uid > 9999999999999999L)
+            throw new ArgumentOutOfRangeException(nameof(uid), "平台 UID 超出 Minecraft 身份范围");
+        return uid.ToString(CultureInfo.InvariantCulture);
+    }
+
     [GeneratedRegex(@"^[A-Za-z0-9_]{3,16}$")]
     private static partial Regex ValidName();
 

@@ -254,6 +254,15 @@ def build_manifest(
     except OSError:
         pass
     files.sort(key=lambda item: item["path"].casefold())
+    for item in files:
+        external = spec.get("externalDownloads", {}).get(item["path"])
+        if external:
+            url = str(external.get("url", ""))
+            # Explicit, hash-pinned author hosting rather than rehosting ARR mods.
+            if not url.startswith("https://cdn.modrinth.com/data/") or item["sha1"] != external.get("sha1"):
+                raise ValueError("Invalid external download or SHA-1 mismatch: " + item["path"])
+            item["url"] = url
+            item["externalDownload"] = True
     apply_default_distribution_policies(files, spec, log)
     reconcile_overlay_policies(files, spec, log)
 

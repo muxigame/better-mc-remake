@@ -423,14 +423,7 @@ def player_profile(account=Depends(current_player_account)) -> dict:
 
 @app.patch("/api/v1/player/profile")
 def update_player_profile(payload: GameNameRequest, account=Depends(current_player_account)) -> dict:
-    game_name = payload.gameName.strip()
-    if not re.fullmatch(r"[A-Za-z0-9_]{3,16}", game_name):
-        raise HTTPException(status_code=422, detail="Minecraft 游戏名只能使用 3–16 位字母、数字和下划线")
-    try:
-        profile = web_auth_store.update_game_name(account, game_name)
-    except ValueError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    return {"user": account.public(), "player": profile.public()}
+    raise HTTPException(status_code=409, detail="游戏身份已固定为平台 UID；请在统一账户中心修改显示昵称。")
 
 
 @app.post("/api/v1/auth/logout")

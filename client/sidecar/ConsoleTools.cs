@@ -138,7 +138,12 @@ internal static partial class ConsoleTools
                 throw new InvalidOperationException(
                     $"settings.json 里的用户名不合法：\"{settings.Username}\"（要 3–16 位字母数字下划线）");
 
-            var session = GameSession.Offline(settings.Username);
+            // This CLI is an offline diagnostic tool; only numeric platform UID
+            // is accepted. End-user authentication happens in the GUI launcher.
+            if (!long.TryParse(settings.Username, System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out var uid))
+                throw new InvalidOperationException("游戏登录名必须为平台 UID，请通过启动器登录账户");
+            var session = GameSession.OfflineUid(uid);
             Console.WriteLine();
             Console.WriteLine($"启动游戏：{session.Username}  UUID {session.UuidDashed}");
             Console.WriteLine();

@@ -4,6 +4,10 @@
 artifacts
 BMC5Pack
 BMC5Server
+BMC5Server.zip
+pack/source
+pack/archive
+pack/staging
 Better MC Remake*
 client
 docs

@@ -39,18 +39,17 @@
     <p class="pc-load-state" id="player-load-state" role="status">正在读取玩家资料…</p>
     <div class="pc-content" id="player-content" hidden>
       <section class="pc-game" aria-labelledby="game-heading">
-        <div class="pc-section-title"><span class="pc-index">01</span><div><h2 id="game-heading">游戏资料</h2><p>在 Better MC 中使用的名字。</p></div></div>
-        <form id="game-name-form" class="pc-form">
-          <label for="game-name">Minecraft 游戏名</label>
-          <input id="game-name" name="gameName" type="text" minlength="3" maxlength="16" pattern="[A-Za-z0-9_]{3,16}" autocomplete="off" spellcheck="false" aria-describedby="game-name-help game-name-warning" required disabled>
-          <p class="pc-field-help" id="game-name-help">3–16 位字母、数字或下划线，与 muxi 用户名独立。</p>
-          <div class="pc-notice" id="game-name-warning">
-            <strong>改名前请留意</strong>
-            <p>当前服务器使用离线身份。改名会改变游戏 UUID，原有存档、背包和权限可能需要迁移。</p>
-          </div>
-          <div class="pc-form-actions"><button class="button button-primary" id="save-game-name" type="submit" disabled>保存修改</button><span id="save-hint">修改后，下次启动游戏时生效。</span></div>
+        <div class="pc-section-title"><span class="pc-index">01</span><div><h2 id="game-heading">游戏资料</h2><p>稳定的身份，自由的昵称。</p></div></div>
+        <div id="game-identity" class="pc-form">
+          <label for="game-name">游戏身份 · UID</label>
+          <input id="game-name" type="text" readonly aria-describedby="game-name-help">
+          <p class="pc-field-help" id="game-name-help">固定使用平台 UID 登录。修改用户名或昵称，不会改变游戏身份。</p>
+          <label for="game-display-name">游戏内昵称</label>
+          <input id="game-display-name" type="text" readonly>
+          <p class="pc-field-help">与 muxi 昵称同步，支持中文。进入服务器后自动显示。</p>
+          <div class="pc-notice" id="legacy-identity-notice" hidden><strong>首次切换 UID 身份</strong><p>旧登录名：<span id="legacy-game-name"></span>。旧玩家存档需单独迁移，本次不会自动覆盖。</p></div>
           <p id="profile-message" class="pc-message" role="status" aria-live="polite" hidden></p>
-        </form>
+        </div>
         <div class="pc-game-foot"><span>想调整平台上的名字？</span><a href="https://account.muxigame.com/account">修改昵称与用户名 ↗</a></div>
       </section>
 
@@ -70,12 +69,7 @@
     <div class="pc-foot"><span>BATTER MC</span><p>把世界留给故事。把复杂留给系统。</p><a href="/#download">获取客户端 ↗</a></div>
   </main>
 
-  <dialog id="rename-dialog" class="pc-dialog" aria-labelledby="rename-title" aria-describedby="rename-description">
-    <p class="eyebrow">CONFIRM CHANGE</p><h2 id="rename-title">确认修改游戏名？</h2>
-    <p id="rename-description">游戏名将改为 <strong id="rename-new-name"></strong>。当前离线身份的 UUID 也会改变，此操作不会自动迁移旧玩家数据。</p>
-    <div class="pc-dialog-actions"><button type="button" class="button button-outline" id="cancel-rename" autofocus>暂不修改</button><button type="button" class="button button-primary" id="confirm-rename">确认修改</button></div>
-  </dialog>
   <script src="/auth-nav.js?v=2" defer></script>
-  <script src="/account.js?v=player-center-2" defer></script>
+  <script src="/account.js?v=uid-identity-1" defer></script>
 </body>
 </html>

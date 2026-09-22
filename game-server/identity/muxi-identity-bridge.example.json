@@ -1,0 +1,5 @@
+{
+  "endpoint": "https://account.muxigame.com/api/internal/minecraft/identity/",
+  "serverKey": "REPLACE_WITH_DEDICATED_SERVER_KEY",
+  "refreshSeconds": 60
+}

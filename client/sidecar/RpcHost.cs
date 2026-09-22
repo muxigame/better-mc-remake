@@ -285,7 +285,7 @@ internal sealed class RpcHost : IDisposable
         bool? Bool(string key) => p[key] is { } n && n.GetValueKind() is JsonValueKind.True or JsonValueKind.False ? n.GetValue<bool>() : null;
         int? Int(string key) => p[key] is { } n && n.GetValueKind() == JsonValueKind.Number ? n.GetValue<int>() : null;
 
-        if (Str("username") is { } u) _settings.Username = u.Trim();
+        // Game login identity is derived from the authenticated muxi UID only.
         if (p.ContainsKey("javaPath")) _settings.JavaPath = Str("javaPath");
         if (Int("maxMemoryMb") is { } mm) _settings.MaxMemoryMb = Math.Max(0, mm);
         if (Str("extraJvmArgs") is { } ja) _settings.ExtraJvmArgs = ja;
@@ -337,7 +337,7 @@ internal sealed class RpcHost : IDisposable
                 SelfUpdater.IsRequired(mandatory, GameLauncher.ThisVersion()))
                 throw new InvalidOperationException($"必须先把启动器更新到 {mandatory.Version} 才能进游戏。");
 
-            var session = GameSession.Offline(_settings.Username);
+            var session = GameSession.OfflineUid(AuthenticatedUid());
             Log.Info($"玩家 {session.Username}，离线 UUID {session.UuidDashed}");
 
             MinecraftRouteProxy? proxy = null;
@@ -721,7 +721,7 @@ internal sealed class RpcHost : IDisposable
             await CompleteLauncherAuthFlowAsync(launcherFlow, launcherFlowSecret).ConfigureAwait(false);
         }
 
-        var gameName = _player?["gameName"]?.GetValue<string>() ?? "";
+        var gameName = OfflineAuth.UidLoginName(AuthenticatedUid());
         if (!OfflineAuth.IsValidUsername(gameName))
             throw new InvalidOperationException("Better MC 玩家游戏名无效");
         _settings.Username = gameName;
@@ -742,7 +742,7 @@ internal sealed class RpcHost : IDisposable
             throw new InvalidOperationException(json?["error_description"]?.GetValue<string>() ?? "统一账户会话无效");
         _account = json;
         await LoadPlayerProfileAsync().ConfigureAwait(false);
-        var gameName = _player?["gameName"]?.GetValue<string>() ?? "";
+        var gameName = OfflineAuth.UidLoginName(AuthenticatedUid());
         if (!OfflineAuth.IsValidUsername(gameName))
         {
             _account = null;
@@ -763,6 +763,17 @@ internal sealed class RpcHost : IDisposable
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(json?["detail"]?.GetValue<string>() ?? "无法读取 Better MC 玩家资料");
         _player = json?["player"]?.AsObject();
+        if (_player?["uid"]?.GetValue<long>() != AuthenticatedUid())
+            throw new InvalidOperationException("玩家资料 UID 与登录账户不匹配");
+    }
+
+    private long AuthenticatedUid()
+    {
+        if (string.IsNullOrEmpty(_accountToken) || _account?["muxi_uid"] is not JsonValue value
+            || !value.TryGetValue<long>(out var uid))
+            throw new InvalidOperationException("登录身份缺少有效平台 UID，请重新登录");
+        _ = OfflineAuth.UidLoginName(uid);
+        return uid;
     }
 
     private async Task<JsonNode> AccountLogoutAsync()
@@ -826,7 +837,7 @@ internal sealed class RpcHost : IDisposable
             }
             await LoadAccountAsync().ConfigureAwait(false);
         }
-        var gameName = _player?["gameName"]?.GetValue<string>() ?? "";
+        var gameName = OfflineAuth.UidLoginName(AuthenticatedUid());
         if (!OfflineAuth.IsValidUsername(gameName))
             throw new InvalidOperationException("账号玩家名无效，请联系管理员");
         _settings.Username = gameName;

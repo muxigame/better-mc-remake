@@ -3,8 +3,8 @@
   "pack": {
     "id": "battermc5remake",
     "name": "BatterMC5Remake",
-    "version": "1.3.1",
-    "changelog": "1.3.1\n- 配置与内置光影改为按发布修订一次性同步\n- 首次安装默认下载完整整合包\n- 发布端改为按 manifest SHA-1 增量上传"
+    "version": "1.3.2",
+    "changelog": "1.3.2\n- 接入 Simple Nicknames 中文显示昵称\n- Minecraft 使用固定平台 UID 登录\n- Entity Culling 玩家名牌兼容配置"
   },
   "minecraft": {
     "version": "1.21.1",
@@ -42,17 +42,50 @@
     }
   ],
   "include": [
-    { "glob": "mods/**", "policy": "Managed" },
-    { "glob": "config/**", "policy": "Seed" },
-    { "glob": "defaultconfigs/**", "policy": "Seed" },
-    { "glob": "configureddefaults/**", "policy": "Seed" },
-    { "glob": "options.txt", "policy": "Seed" },
-    { "glob": "shaderpacks/**", "policy": "Seed" },
-    { "glob": "resourcepacks/**", "policy": "Managed" },
-    { "glob": "kubejs/**", "policy": "Managed" },
-    { "glob": "tlm_custom_pack/**", "policy": "Managed" },
-    { "glob": "fancymenu_data/**", "policy": "Seed" },
-    { "glob": "versions/**", "policy": "Managed" }
+    {
+      "glob": "mods/**",
+      "policy": "Managed"
+    },
+    {
+      "glob": "config/**",
+      "policy": "Seed"
+    },
+    {
+      "glob": "defaultconfigs/**",
+      "policy": "Seed"
+    },
+    {
+      "glob": "configureddefaults/**",
+      "policy": "Seed"
+    },
+    {
+      "glob": "options.txt",
+      "policy": "Seed"
+    },
+    {
+      "glob": "shaderpacks/**",
+      "policy": "Seed"
+    },
+    {
+      "glob": "resourcepacks/**",
+      "policy": "Managed"
+    },
+    {
+      "glob": "kubejs/**",
+      "policy": "Managed"
+    },
+    {
+      "glob": "tlm_custom_pack/**",
+      "policy": "Managed"
+    },
+    {
+      "glob": "fancymenu_data/**",
+      "policy": "Seed"
+    },
+    {
+      "glob": "versions/**",
+      "policy": "Managed"
+    }
   ],
   "exclude": [
     "logs/**",
@@ -65,7 +98,9 @@
     "runtime/**",
     "**/*.part"
   ],
-  "prune": ["mods"],
+  "prune": [
+    "mods"
+  ],
   "overlays": [
     {
       "path": "config/iris.properties",
@@ -84,5 +119,11 @@
       },
       "createIfMissing": false
     }
-  ]
+  ],
+  "externalDownloads": {
+    "mods/simplenicknames-1.21.1-neoforge-0.8.0.jar": {
+      "url": "https://cdn.modrinth.com/data/EmdnQtis/versions/kVVMxHOA/simplenicknames-1.21.1-neoforge-0.8.0.jar",
+      "sha1": "fd762aac2257fb7af50a483cfba004741f38ab44"
+    }
+  }
 }

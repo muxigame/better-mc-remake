@@ -32,6 +32,13 @@ internal static class SelfTest
         TomlOverlay();
         JsonOverlay();
         SeedRevisionSync();
+        Section("平台 UID 游戏身份");
+        Check("UID 数字作为真实登录名", GameSession.OfflineUid(10000).Username == "10000");
+        Check("UID UUID 按 Java 离线算法", GameSession.OfflineUid(10000).UuidDashed == OfflineAuth.OfflineUuid("10000"));
+        Check("不同 UID 不共享游戏 UUID", GameSession.OfflineUid(10000).UuidDashed != GameSession.OfflineUid(10001).UuidDashed);
+        var rejectedUid = false;
+        try { GameSession.OfflineUid(9999); } catch (ArgumentOutOfRangeException) { rejectedUid = true; }
+        Check("无效 UID 不得回退到用户名", rejectedUid);
         ClientUpdatePolicy();
         NbtRoundTrip();
         VersionRules();

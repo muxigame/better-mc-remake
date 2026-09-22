@@ -1,0 +1,24 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+[[mods]]
+modId="muxi_identity"
+version="1.0.0"
+displayName="muxi UID Identity Bridge"
+description="Server-only platform UID and Simple Nicknames display bridge."
+[[dependencies.muxi_identity]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.250,)"
+side="SERVER"
+[[dependencies.muxi_identity]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+side="SERVER"
+[[dependencies.muxi_identity]]
+modId="simplenicknames"
+type="required"
+versionRange="[0.8.0,0.9)"
+ordering="AFTER"
+side="SERVER"

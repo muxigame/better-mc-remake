@@ -9,6 +9,7 @@
 /pack/.hashcache-*.json
 /BMC5Pack/
 /BMC5Server/
+/BMC5Server.zip
 /server/publish/*
 !/server/publish/manifest.json
 /server/data/

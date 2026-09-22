@@ -74,14 +74,14 @@ class AuthNavigationTests(unittest.TestCase):
             response = self.client.get(url)
             self.assertEqual(303, response.status_code)
             self.assertEqual('account.muxigame.com', urlsplit(response.headers['location']).hostname)
-            self.assertNotIn('game-name-form', response.text)
+            self.assertNotIn('game-identity', response.text)
 
     def test_success_returns_to_player_center(self):
         result = self.complete(self.start())
         self.assertEqual('/account.html', result.headers['location'])
         page = self.client.get('/account.html')
         self.assertEqual(200, page.status_code)
-        self.assertIn('game-name-form', page.text)
+        self.assertIn('game-identity', page.text)
         self.assertIn('no-store', page.headers['cache-control'])
         self.assertNotIn('player-balance', page.text)
 

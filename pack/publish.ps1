@@ -86,6 +86,11 @@ function Upload([string]$Source,[string]$Object,[string]$ContentType,[string]$Ca
     if($LASTEXITCODE -ne 0){throw "上传失败：$target"}
 }
 foreach($f in $changed){
+    if ($f.externalDownload) {
+        if (-not ([string]$f.url).StartsWith('https://cdn.modrinth.com/data/')) { throw 'Invalid external mod download origin' }
+        Write-Host "使用作者源站下载，不转载到 OSS：$($f.path)" -ForegroundColor DarkGray
+        continue
+    }
     $rel=([string]$f.path).Replace('\','/').TrimStart('/'); if($rel.Split('/') -contains '..'){throw "非法路径：$rel"}
     $source=Join-Path $PackFilesDir ($rel.Replace('/',[IO.Path]::DirectorySeparatorChar)); if(-not(Test-Path -LiteralPath $source -PathType Leaf)){throw "缺少待上传文件：$source"}
     Upload $source ($Prefix+'files/'+$rel) 'application/octet-stream' 'no-cache, must-revalidate'
