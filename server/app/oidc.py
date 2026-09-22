@@ -313,10 +313,6 @@ class WebsiteAuthStore:
                 legacy_game_name=str(row["game_name"]) if str(row["game_name"]) != uid_login_name(account.uid) else None,
             )
 
-    def update_game_name(self, account: WebsiteAccount, game_name: str) -> PlayerProfile:
-        raise ValueError("游戏身份固定为平台 UID，请在统一账户中心修改昵称")
-
-
 class OidcClient:
     def __init__(self, issuer: str, client_id: str, client_secret: str, redirect_uri: str):
         self.issuer = issuer.rstrip("/")

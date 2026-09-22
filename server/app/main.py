@@ -12,7 +12,6 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
 from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
 from .client_updates import update_required, validate_policy, version_key
@@ -126,10 +125,6 @@ def current_player_account(request: Request):
             except (RuntimeError, ValueError) as error:
                 raise HTTPException(status_code=401, detail="muxi 账户 会话无效") from error
     raise HTTPException(status_code=401, detail="请先登录")
-
-
-class GameNameRequest(BaseModel):
-    gameName: str
 
 
 def admin_account(account=Depends(current_account)):
@@ -419,11 +414,6 @@ def me(account=Depends(current_account)) -> dict:
 def player_profile(account=Depends(current_player_account)) -> dict:
     profile = web_auth_store.player_profile(account)
     return {"user": account.public(), "player": profile.public()}
-
-
-@app.patch("/api/v1/player/profile")
-def update_player_profile(payload: GameNameRequest, account=Depends(current_player_account)) -> dict:
-    raise HTTPException(status_code=409, detail="游戏身份已固定为平台 UID；请在统一账户中心修改显示昵称。")
 
 
 @app.post("/api/v1/auth/logout")

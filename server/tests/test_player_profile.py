@@ -3,8 +3,7 @@ import unittest
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
-from fastapi import HTTPException
-from app.main import GameNameRequest, update_player_profile
+from app.main import app
 from app.oidc import WebsiteAccount, WebsiteAuthStore
 from app.game_identity import uid_login_name, offline_uuid
 
@@ -38,11 +37,13 @@ class PlayerProfileTests(unittest.TestCase):
         self.assertEqual(120,p['points']);self.assertEqual(3456,p['balanceCents'])
         with self.store.connect() as db:
             self.assertEqual('OldName',db.execute('SELECT game_name FROM player_profiles').fetchone()[0])
-    def test_game_name_cannot_be_edited_by_old_api(self):
-        with self.assertRaises(HTTPException) as caught:
-            update_player_profile(GameNameRequest(gameName='NewName'),account=self.account)
-        self.assertEqual(409,caught.exception.status_code)
-        with self.assertRaises(ValueError): self.store.update_game_name(self.account,'NewName')
+    def test_game_name_write_api_is_removed(self):
+        methods = set()
+        for route in app.routes:
+            if getattr(route, 'path', None) == '/api/v1/player/profile':
+                methods.update(getattr(route, 'methods', set()) or set())
+        self.assertIn('GET', methods)
+        self.assertNotIn('PATCH', methods)
     def test_oidc_does_not_require_obsolete_game_name(self):
         p=WebsiteAccount.from_userinfo({'sub':'s','muxi_uid':10000,'username':'Roc','nickname':'洛可'})
         self.assertEqual('10000',p.game_name)
