@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Diagnostics;
 
 namespace BatterMC.Core;
 
@@ -19,11 +20,11 @@ public sealed record DownloadProgress(int FilesDone, int FilesTotal, long BytesD
 public sealed class Downloader : IDisposable
 {
     private readonly HttpClient _http;
-    private readonly int _parallel;
+    private readonly int _parallelCap;
 
-    public Downloader(HttpClient? http = null, int parallel = 8)
+    public Downloader(HttpClient? http = null, int parallel = 32)
     {
-        _parallel = Math.Clamp(parallel, 1, 32);
+        _parallelCap = Math.Clamp(parallel, 1, 32);
         _http = http ?? BuildClient();
     }
 
@@ -33,12 +34,34 @@ public sealed class Downloader : IDisposable
         {
             AutomaticDecompression = DecompressionMethods.All,
             PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            MaxConnectionsPerServer = 32,
+            MaxConnectionsPerServer = 64,
+            EnableMultipleHttp2Connections = true,
             ConnectTimeout = TimeSpan.FromSeconds(20),
         };
         var c = new HttpClient(handler) { Timeout = timeout ?? TimeSpan.FromMinutes(10) };
+        // Prefer one multiplexed HTTP/2 connection where the origin supports it,
+        // while still falling back cleanly for Maven/CDN endpoints that only do HTTP/1.1.
+        c.DefaultRequestVersion = HttpVersion.Version20;
+        c.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
         c.DefaultRequestHeaders.UserAgent.ParseAdd("BatterMC5Remake-Launcher/1.0");
         return c;
+    }
+
+    private int EffectiveParallelism(IReadOnlyList<DownloadItem> items)
+    {
+        if (items.Count <= 1) return Math.Max(1, items.Count);
+        var total = items.Sum(item => Math.Max(0, item.ExpectedSize));
+        var average = total / Math.Max(1, items.Count);
+
+        // Thousands of tiny Minecraft/pack objects are RTT-bound, not bandwidth-bound.
+        // Large archives need far less fan-out and benefit from lower disk contention.
+        var recommended = average switch
+        {
+            <= 256 * 1024 => 32,
+            <= 2 * 1024 * 1024 => 16,
+            _ => 8,
+        };
+        return Math.Clamp(Math.Min(_parallelCap, recommended), 1, items.Count);
     }
 
     /// <summary>
@@ -57,12 +80,33 @@ public sealed class Downloader : IDisposable
         int filesDone = 0;
         string current = items[0].Display;
         var errors = new List<Exception>();
-        var gate = new SemaphoreSlim(_parallel);
+        var parallel = EffectiveParallelism(items);
+        var gate = new SemaphoreSlim(parallel);
+        Log.Info($"下载调度：{items.Count} 个文件，{parallel} 路并发");
 
-        void Report() => progress?.Report(new DownloadProgress(
-            Volatile.Read(ref filesDone), items.Count,
-            Interlocked.Read(ref bytesDone), bytesTotal,
-            Volatile.Read(ref current)));
+        long lastReportMs = 0;
+
+        void Report(bool force = false)
+        {
+            if (progress is null) return;
+            var now = Environment.TickCount64;
+            if (!force)
+            {
+                var previous = Interlocked.Read(ref lastReportMs);
+                if (now - previous < 100) return;
+                if (Interlocked.CompareExchange(ref lastReportMs, now, previous) != previous) return;
+            }
+            else
+            {
+                Interlocked.Exchange(ref lastReportMs, now);
+            }
+            progress.Report(new DownloadProgress(
+                Volatile.Read(ref filesDone), items.Count,
+                Interlocked.Read(ref bytesDone), bytesTotal,
+                Volatile.Read(ref current)));
+        }
+
+        Report(force: true);
 
         var tasks = items.Select(async item =>
         {
@@ -87,6 +131,7 @@ public sealed class Downloader : IDisposable
         }).ToArray();
 
         await Task.WhenAll(tasks).ConfigureAwait(false);
+        Report(force: true);
 
         if (errors.Count > 0)
             throw new AggregateException($"有 {errors.Count} 个文件下载失败", errors);

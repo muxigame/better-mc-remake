@@ -109,3 +109,9 @@ test('download page does not show infrastructure explanation', () => {
   const html = fs.readFileSync(path.join(__dirname, '../sidecar/web/index.html'), 'utf8');
   assert.equal(html.includes('Minecraft 本体与运行库来自官方 CDN'), false);
 });
+
+test('signed-in identity and play button use separate rows', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../sidecar/web/app.css'), 'utf8');
+  assert.match(css, /\.account-ready\s*\{[^}]*display:\s*flex[^}]*flex-direction:\s*column/s);
+  assert.match(css, /\.account-ready\s+\.mc-btn\s*\{[^}]*width:\s*100%/s);
+});

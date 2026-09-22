@@ -213,11 +213,12 @@ input  { font-family: inherit; font-size: inherit; }
 .account-login .mc-btn { grid-column: 1 / -1; }
 .mc-btn-secondary { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.22); color: var(--text); }
 .mc-btn-secondary:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.34); }
-.account-ready { display: grid; grid-template-columns: 1fr 1.15fr; gap: 9px; align-items: center; }
+.account-ready { display: flex; flex-direction: column; gap: 9px; align-items: stretch; }
 .account-ready > div { min-width: 0; padding: 7px 10px; border-left: 2px solid var(--gold); background: rgba(0, 0, 0, .25); }
 .account-ready strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account-kicker { display: block; color: var(--muted); font-size: 9px; letter-spacing: .12em; margin-bottom: 3px; }
-.account-ready .link-btn { grid-column: 1 / -1; justify-self: center; }
+.account-ready .mc-btn { width: 100%; }
+.account-ready .link-btn { align-self: center; }
 
 .field { display: block; position: relative; }
 

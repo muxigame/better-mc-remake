@@ -104,10 +104,10 @@ public sealed class LaunchPipeline
 
         if (!vanillaPlan.IsEmpty)
         {
-            Report("补全游戏本体", $"{vanillaPlan.Items.Count} 个文件（{SyncEngine.Human(vanillaPlan.Bytes)}）");
+            Report("补全 Minecraft 运行资源", $"{vanillaPlan.Items.Count} 个文件（{SyncEngine.Human(vanillaPlan.Bytes)}）");
             await _downloader.DownloadAllAsync(vanillaPlan.Items,
                 new InlineProgress<DownloadProgress>(p => Status?.Invoke(new SyncStatus(
-                    "补全游戏本体",
+                    "补全 Minecraft 运行资源",
                     $"{p.FilesDone}/{p.FilesTotal}  {SyncEngine.Human(p.BytesDone)} / {SyncEngine.Human(p.BytesTotal)}",
                     p.BytesTotal > 0 ? Math.Clamp((double)p.BytesDone / p.BytesTotal, 0, 1) : -1,
                     p.BytesDone, p.BytesTotal))), ct).ConfigureAwait(false);
