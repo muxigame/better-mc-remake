@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
 from .client_updates import update_required, validate_policy, version_key
+from .tunnel_registry import router as tunnel_router
 
 
 SERVER_ROOT = Path(__file__).resolve().parent.parent
@@ -81,6 +82,7 @@ app = FastAPI(
     redoc_url=None,
 )
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+app.include_router(tunnel_router)
 
 
 @app.middleware("http")
@@ -149,6 +151,12 @@ def site_config() -> dict:
     config["filesBaseUrl"] = os.getenv(
         "BMC_FILES_BASE_URL",
         f'{config["ossBaseUrl"]}/{files_prefix}',
+    ).rstrip("/")
+    # Minecraft 本体（资源对象、运行库、客户端 jar）的镜像根。置空即让客户端直连
+    # Mojang / NeoForge——上游在国内很慢而且部分玩家连不上，所以默认指向我们的 OSS。
+    config["mirrorBaseUrl"] = os.getenv(
+        "BMC_MIRROR_BASE_URL",
+        config.get("mirrorBaseUrl", ""),
     ).rstrip("/")
     return config
 
@@ -312,6 +320,7 @@ def manifest() -> JSONResponse:
         {
             "manifestUrl": config["manifestUrl"],
             "filesBaseUrl": config["filesBaseUrl"],
+            "mirrorBaseUrl": config["mirrorBaseUrl"],
             "launcher": launcher_release(config),
         },
         headers={"Cache-Control": "public, max-age=30"},
