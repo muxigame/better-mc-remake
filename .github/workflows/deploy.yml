@@ -13,9 +13,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  REGISTRY: crpi-igfh7ap28r7cepq6.cn-shanghai.personal.cr.aliyuncs.com
-  SERVER_IMAGE: crpi-igfh7ap28r7cepq6.cn-shanghai.personal.cr.aliyuncs.com/roc-shen/mc-server
-  WEB_IMAGE: crpi-igfh7ap28r7cepq6.cn-shanghai.personal.cr.aliyuncs.com/roc-shen/mc-web
+  REGISTRY: crpi-x67c1bi6evtlgf1e.cn-hongkong.personal.cr.aliyuncs.com
+  SERVER_IMAGE: crpi-x67c1bi6evtlgf1e.cn-hongkong.personal.cr.aliyuncs.com/roc-shen-hk/mc-server
+  WEB_IMAGE: crpi-x67c1bi6evtlgf1e.cn-hongkong.personal.cr.aliyuncs.com/roc-shen-hk/mc-web
 
 jobs:
   build:

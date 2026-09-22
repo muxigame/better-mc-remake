@@ -8,7 +8,7 @@ fi
 
 image_tag="$1"
 registry_username="$2"
-registry="crpi-igfh7ap28r7cepq6.cn-shanghai.personal.cr.aliyuncs.com"
+registry="crpi-x67c1bi6evtlgf1e.cn-hongkong.personal.cr.aliyuncs.com"
 project_dir="/opt/better-mc-remake"
 
 if [[ ! "$image_tag" =~ ^[A-Za-z0-9_.-]+$ ]]; then

@@ -1,6 +1,6 @@
 services:
   server:
-    image: crpi-igfh7ap28r7cepq6.cn-shanghai.personal.cr.aliyuncs.com/roc-shen/mc-server:${BMC_IMAGE_TAG:?BMC_IMAGE_TAG is required}
+    image: crpi-x67c1bi6evtlgf1e.cn-hongkong.personal.cr.aliyuncs.com/roc-shen-hk/mc-server:${BMC_IMAGE_TAG:?BMC_IMAGE_TAG is required}
     container_name: better-mc-remake-server
     restart: unless-stopped
     env_file:
@@ -20,7 +20,7 @@ services:
       start_period: 10s
 
   web:
-    image: crpi-igfh7ap28r7cepq6.cn-shanghai.personal.cr.aliyuncs.com/roc-shen/mc-web:${BMC_IMAGE_TAG:?BMC_IMAGE_TAG is required}
+    image: crpi-x67c1bi6evtlgf1e.cn-hongkong.personal.cr.aliyuncs.com/roc-shen-hk/mc-web:${BMC_IMAGE_TAG:?BMC_IMAGE_TAG is required}
     container_name: better-mc-remake-web
     restart: unless-stopped
     depends_on:
