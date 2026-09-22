@@ -6,7 +6,8 @@
 
 | 目录 | 内容 |
 |---|---|
-| `BMC5Server\` | 服务端。320 个 mod + 17 个 Paxi 数据包，config 为 BMC5 官方全量 |
+| `..\bmc5server\` | 同级的真实 Minecraft 服务端；世界、配置和模组不进入本仓库 |
+| `..\muxi-game-core\` | 独立的通用服务端功能模组仓库；昵称身份同步是第一个功能 |
 | `BMC5Pack\` | 客户端源。405 mod jar + 497 config + 20 资源包 + 20 光影 + options.txt；`BMC5-v53.zip` 是 CurseForge 原包，PCL 可直接导入 |
 | `待处理_无1.21.1版\` | 没有 1.21.1 版本的 mod：内容型 3 待解决 / 工具型 27 / 已解决 22 / 冲突 1，见其 `清单.csv` |
 | `client\` | 独立客户端工程：Tauri 2 + .NET 9 sidecar；协议模型归客户端所有 |
@@ -19,10 +20,10 @@
 ## 启动
 
 ```
-BMC5Server\start.bat
+powershell -File ..\bmc5server\start-muxi.ps1
 ```
 
-**必须 Java 21**（`C:\Users\Roc\.jdks\corretto-21.0.4`），已写死在 start.bat 里。旧服的 Java 17 跑不了 1.21.1。
+**必须 Java 21**。`start-muxi.ps1` 自动检测本机 Java 21，也支持 `-JavaExe` 显式指定；不使用旧机器的硬编码路径，不启停 FRP。
 
 首次启动实测 `Done (9.723s)`，world 正常生成，已确认加载的额外维度：aether、deeperdarker (otherside)、twilightforest。
 
@@ -63,7 +64,7 @@ Relay 兜底，后续控制面可以直接下发同一 `routes` 结构的房主 
 - `client_only_removed.json` — 72 个，靠 Modrinth `server_side=unsupported` 元数据 + BMC4 经验名单自动判定
 - `removed_by_bootloop.txt` — 1 个（`distraction_free_recipes`），元数据没标但实际会让专用服崩溃，靠启动循环抓出来
 
-被剔的 jar 都在 `BMC5Server\removed_client_mods\`，没有删除。
+被剔的 jar 都在 `..\bmc5server\removed_client_mods\`，没有删除。
 
 ## 在官方底包之外加装的
 
@@ -87,7 +88,7 @@ Relay 兜底，后续控制面可以直接下发同一 `routes` 结构的房主 
 Architectury 13.0.11 是 BMC5 自带的，版本正好满足 KubeJS，无需额外处理。
 ConnectorExtras 自带 `kubejs-bridge`，走 Sinytra Connector 加载的 Fabric mod 也能被脚本覆盖。
 
-脚本目录：`BMC5Server\kubejs\`（`startup_scripts` / `server_scripts` / `assets` / `data`）。
+脚本目录：`..\bmc5server\kubejs\`（`startup_scripts` / `server_scripts` / `assets` / `data`）。
 加装后实测启动 `Done (8.437s)`。
 
 **Easy NPC 注意**：Modrinth 上的 `easy-npc` 是 bundle 包，本身不含代码，只给能自动解析依赖的启动器用。手动装必须放 Core + Config UI 两个 jar。用法：刷怪蛋或 `/easy_npc` 命令生成 NPC，用 NPC 配置法杖或命令开图形界面配对话、交易、皮肤（支持玩家名和 URL）、action。内置 Immersive Melodies / Armourer's Workshop / Epic Fight 集成，其中 Immersive Melodies 我们旧包里就有且已迁过来。
