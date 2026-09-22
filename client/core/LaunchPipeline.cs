@@ -73,19 +73,17 @@ public sealed class LaunchPipeline
         }
         else
         {
-            var plan = sync.Plan(manifest, new Progress<SyncStatus>(s => Status?.Invoke(s)), ct);
+            var plan = sync.Plan(manifest, new InlineProgress<SyncStatus>(s => Status?.Invoke(s)), ct);
             if (!plan.IsEmpty)
             {
                 Report("同步整合包",
                     $"下载 {plan.Downloads.Count} 个（{SyncEngine.Human(plan.Bytes)}），删除 {plan.Deletions.Count} 个");
-                await sync.ApplyAsync(plan, new Progress<SyncStatus>(s => Status?.Invoke(s)), ct).ConfigureAwait(false);
+                await sync.ApplyAsync(plan, new InlineProgress<SyncStatus>(s => Status?.Invoke(s)), ct).ConfigureAwait(false);
             }
             else
             {
                 Report("整合包已是最新", $"版本 {manifest.Pack.Version}");
             }
-            state.InstalledPackVersion = manifest.Pack.Version;
-            state.LastSync = DateTimeOffset.Now;
         }
 
         // 4. 版本 JSON
@@ -101,14 +99,14 @@ public sealed class LaunchPipeline
 
         // 5. Minecraft 本体（官方 CDN）
         var vanillaPlan = await VanillaInstaller
-            .PlanAsync(version, paths, state, _downloader, new Progress<string>(m => Report("校验游戏本体", m)), ct)
+            .PlanAsync(version, paths, state, _downloader, new InlineProgress<string>(m => Report("校验游戏本体", m)), ct)
             .ConfigureAwait(false);
 
         if (!vanillaPlan.IsEmpty)
         {
             Report("补全游戏本体", $"{vanillaPlan.Items.Count} 个文件（{SyncEngine.Human(vanillaPlan.Bytes)}）");
             await _downloader.DownloadAllAsync(vanillaPlan.Items,
-                new Progress<DownloadProgress>(p => Status?.Invoke(new SyncStatus(
+                new InlineProgress<DownloadProgress>(p => Status?.Invoke(new SyncStatus(
                     "补全游戏本体",
                     $"{p.FilesDone}/{p.FilesTotal}  {SyncEngine.Human(p.BytesDone)} / {SyncEngine.Human(p.BytesTotal)}",
                     p.BytesTotal > 0 ? Math.Clamp((double)p.BytesDone / p.BytesTotal, 0, 1) : -1,
@@ -123,7 +121,7 @@ public sealed class LaunchPipeline
             Log.Warn(reason);
             Report("下载 Java", reason);
             java = await JavaManager.DownloadAsync(paths, manifest.Java, _downloader,
-                new Progress<DownloadProgress>(p => Status?.Invoke(new SyncStatus(
+                new InlineProgress<DownloadProgress>(p => Status?.Invoke(new SyncStatus(
                     "下载 Java",
                     $"{SyncEngine.Human(p.BytesDone)} / {SyncEngine.Human(p.BytesTotal)}",
                     p.BytesTotal > 0 ? Math.Clamp((double)p.BytesDone / p.BytesTotal, 0, 1) : -1,
@@ -142,12 +140,12 @@ public sealed class LaunchPipeline
             Log.Info($"NeoForge 尚未安装（缺 {missingArtifacts}）");
             await NeoForgeInstaller.InstallAsync(
                 version, paths, java, manifest.Minecraft.InstallerUrl, _downloader,
-                new Progress<DownloadProgress>(p => Status?.Invoke(new SyncStatus(
+                new InlineProgress<DownloadProgress>(p => Status?.Invoke(new SyncStatus(
                     "安装 NeoForge",
                     $"{SyncEngine.Human(p.BytesDone)} / {SyncEngine.Human(p.BytesTotal)}",
                     p.BytesTotal > 0 ? Math.Clamp((double)p.BytesDone / p.BytesTotal, 0, 1) : -1,
                     p.BytesDone, p.BytesTotal))),
-                new Progress<string>(m => Report("安装 NeoForge", m, -1)),
+                new InlineProgress<string>(m => Report("安装 NeoForge", m, -1)),
                 ct).ConfigureAwait(false);
         }
 
@@ -167,6 +165,13 @@ public sealed class LaunchPipeline
             catch (Exception ex) { Log.Warn($"servers.dat 写入失败：{ex.Message}"); }
         }
 
+        // Download completion is not installation completion. Only mark the
+        // version ready after the runtime, loader and final setup succeeded.
+        if (!settings.SkipVerify || forceFullVerify)
+        {
+            state.InstalledPackVersion = manifest.Pack.Version;
+            state.LastSync = DateTimeOffset.Now;
+        }
         state.Save(paths.StateFile);
         Report("准备就绪", $"{manifest.Pack.Name} {manifest.Pack.Version}", 1);
     }

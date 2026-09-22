@@ -45,6 +45,9 @@ internal static class SelfTest
         VersionCompare();
         ArgSplitting();
         NetworkRouteProxy().GetAwaiter().GetResult();
+        InstallLifecycle().GetAwaiter().GetResult();
+        PipelineCompletionMarker().GetAwaiter().GetResult();
+        InstallerProcessLifetime().GetAwaiter().GetResult();
 
         Console.WriteLine();
         Console.WriteLine($"通过 {_passed}，失败 {_failed}");
@@ -52,6 +55,118 @@ internal static class SelfTest
     }
 
     // ---------------------------------------------------------------- 断言
+
+    private static async Task InstallLifecycle()
+    {
+        Section("安装结束状态回归");
+        var root = Path.Combine(Path.GetTempPath(), "bmc-install-state-" + Guid.NewGuid().ToString("N"));
+        var output = Console.Out;
+        var captured = new StringWriter();
+        var checks = new List<(string Name, bool Passed)>();
+        try
+        {
+            Console.SetOut(captured);
+            var paths = LauncherPaths.At(root);
+            using var host = new RpcHost(paths, new LauncherSettings(), new LocalState());
+            var result = await host.RunInstallOperationAsync(_ => Task.CompletedTask);
+            checks.Add(("成功 RPC 返回空闲，不反锁按钮", result["busy"]?.GetValue<bool>() == false));
+            var finalEvent = captured.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => System.Text.Json.Nodes.JsonNode.Parse(line))
+                .Last(node => node?["event"]?.GetValue<string>() == "state");
+            checks.Add(("最后状态事件与 RPC 一致", finalEvent?["payload"]?["busy"]?.GetValue<bool>() == false));
+            var failed = false;
+            try { await host.RunInstallOperationAsync(_ => Task.FromException(new IOException("test"))); }
+            catch (IOException) { failed = true; }
+            result = await host.RunInstallOperationAsync(_ => Task.CompletedTask);
+            checks.Add(("失败后可再次检查并修复", failed && result["busy"]?.GetValue<bool>() == false));
+            var cancelled = false;
+            try { await host.RunInstallOperationAsync(_ => Task.FromCanceled(new CancellationToken(true))); }
+            catch (OperationCanceledException) { cancelled = true; }
+            result = await host.RunInstallOperationAsync(_ => Task.CompletedTask);
+            checks.Add(("取消后不残留忙碌锁", cancelled && result["busy"]?.GetValue<bool>() == false));
+
+            // Reproduce a state write failure without touching real player data.
+            File.Delete(paths.StateFile);
+            Directory.CreateDirectory(paths.StateFile);
+            failed = false;
+            try { await host.RunInstallOperationAsync(_ => Task.CompletedTask); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { failed = true; }
+            Directory.Delete(paths.StateFile);
+            result = await host.RunInstallOperationAsync(_ => Task.CompletedTask);
+            checks.Add(("保存状态失败也释放忙碌锁", failed && result["busy"]?.GetValue<bool>() == false));
+        }
+        finally
+        {
+            Console.SetOut(output);
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+        foreach (var (name, passed) in checks) Check(name, passed);
+    }
+
+    private static async Task InstallerProcessLifetime()
+    {
+        Section("安装进程取消与超时");
+        static System.Diagnostics.Process StartOwnedChild()
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe"),
+                UseShellExecute = false, CreateNoWindow = true,
+                RedirectStandardOutput = true, RedirectStandardError = true,
+            };
+            psi.ArgumentList.Add("/c");
+            psi.ArgumentList.Add("ping -n 60 127.0.0.1 > nul");
+            return System.Diagnostics.Process.Start(psi)!;
+        }
+        using (var process = StartOwnedChild())
+        {
+            using var cancel = new CancellationTokenSource(200);
+            var cancelled = false;
+            try { await ChildProcessLifetime.WaitAsync(process, TimeSpan.FromSeconds(10), cancel.Token); }
+            catch (OperationCanceledException) { cancelled = true; }
+            Check("取消结束本次安装进程", cancelled && process.HasExited);
+        }
+        using (var process = StartOwnedChild())
+        {
+            var timedOut = false;
+            try { await ChildProcessLifetime.WaitAsync(process, TimeSpan.FromMilliseconds(200), CancellationToken.None); }
+            catch (TimeoutException) { timedOut = true; }
+            Check("超时不会无限等待安装器", timedOut && process.HasExited);
+        }
+    }
+
+    private sealed class InstallFixtureHttp : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            var body = request.RequestUri!.AbsolutePath.EndsWith("/api/v1/manifest", StringComparison.Ordinal)
+                ? """{"manifestUrl":"https://fixture.invalid/pack.json","filesBaseUrl":"https://fixture.invalid/files"}"""
+                : """{"pack":{"name":"Fixture","version":"9.9.9"},"minecraft":{"versionJson":"versions/missing.json"},"files":[]}""";
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) });
+        }
+    }
+
+    private static async Task PipelineCompletionMarker()
+    {
+        Section("下载与安装完成边界");
+        var root = Path.Combine(Path.GetTempPath(), "bmc-readiness-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var state = new LocalState();
+            using var downloader = new Downloader(new HttpClient(new InstallFixtureHttp()));
+            var context = new PipelineContext { Paths = LauncherPaths.At(root), Settings = new LauncherSettings(), State = state };
+            var pipeline = new LaunchPipeline(context, downloader);
+            var phases = new List<string>();
+            pipeline.Status += progress => phases.Add(progress.Phase);
+            var failed = false;
+            try { await pipeline.PrepareAsync(false, CancellationToken.None); }
+            catch (FileNotFoundException) { failed = true; }
+            Check("文件同步完成但运行环境失败不标记已安装", failed && state.InstalledPackVersion is null && state.LastSync is null);
+            Check("运行环境未成功不发准备就绪", phases.Contains("整合包已是最新") && !phases.Contains("准备就绪"));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
 
     private static void Check(string name, bool ok, string? detail = null)
     {

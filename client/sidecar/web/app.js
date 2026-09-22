@@ -12,6 +12,7 @@ const invoke = tauri && tauri.core && tauri.core.invoke;
 let state = {};
 let busy = false;
 let accountAuthPending = false;
+let packInstallPending = false;
 let optionalItems = [];
 let clientUpdate = null;
 
@@ -137,12 +138,12 @@ function onGameExited(p) {
 /* ───────────────────────── 界面状态 ───────────────────────── */
 
 function setBusy(value) {
-  busy = value;
-  $('idle').hidden = value;
-  $('working').hidden = !value;
+  busy = !!value || packInstallPending;
+  $('idle').hidden = busy;
+  $('working').hidden = !busy;
   syncClientActions();
-  $('btn-download-cancel').hidden = !value;
-  $('download-progress').hidden = !value;
+  $('btn-download-cancel').hidden = !busy;
+  $('download-progress').hidden = !busy;
   clientUpdate?.refreshActivity();
 }
 
@@ -179,6 +180,7 @@ function setProgress(phase, detail, fraction) {
 
   $('download-progress-phase').textContent = phase || '';
   $('download-progress-detail').textContent = detail || '';
+  if (packInstallPending) $('download-state').textContent = phase || '正在安装';
   const downloadFill = $('download-progress-fill');
   if (typeof fraction === 'number' && fraction >= 0) {
     downloadFill.classList.remove('indeterminate');
@@ -452,7 +454,9 @@ async function accountRegister() {
 }
 
 async function installPack() {
+  if (busy || packInstallPending) return;
   if (clientUpdate?.blocksUse()) { clientUpdate.refreshActivity(); return; }
+  packInstallPending = true;
   try {
     setBusy(true);
     setProgress('准备下载', '', -1);
@@ -460,9 +464,15 @@ async function installPack() {
     render(result);
     toast('整合包已经准备就绪', 'good');
   } catch (e) {
-    setBusy(false);
+    $('download-state').textContent = e.message === '已取消' ? '已取消安装' : '安装未完成';
     toast(e.message, 'error', 14000);
     openLog();
+  } finally {
+    // The RPC is terminal. A stale busy:true response, error or cancellation
+    // must never leave the install/play controls disabled.
+    packInstallPending = false;
+    state.busy = false;
+    setBusy(false);
   }
 }
 

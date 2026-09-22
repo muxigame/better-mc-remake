@@ -409,9 +409,7 @@ internal sealed class RpcHost : IDisposable
         }
         finally
         {
-            _busy = false;
-            _state.Save(_paths.StateFile);
-            Emit("busy", new JsonObject { ["busy"] = false });
+            FinishGameOperation();
         }
     }
 
@@ -435,14 +433,26 @@ internal sealed class RpcHost : IDisposable
         }
     }
 
-    private async Task<JsonNode> InstallAsync(bool forceVerify)
+    // Both the final event and the RPC reply must be created AFTER busy is
+    // cleared. Returning BuildState() from the try block captures busy=true,
+    // even though the finally block runs before the reply is transmitted.
+    internal async Task<JsonNode> RunInstallOperationAsync(Func<CancellationToken, Task> prepare)
     {
         BeginGameOperation();
-        _work?.Dispose();
-        _work = new CancellationTokenSource();
-        var ct = _work.Token;
-
         try
+        {
+            _work?.Dispose();
+            _work = new CancellationTokenSource();
+            await prepare(_work.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            FinishGameOperation();
+        }
+        return BuildState();
+    }
+
+    private Task<JsonNode> InstallAsync(bool forceVerify) => RunInstallOperationAsync(async ct =>
         {
             await RequireAccountAsync().ConfigureAwait(false);
             Emit("busy", new JsonObject { ["busy"] = true });
@@ -462,15 +472,20 @@ internal sealed class RpcHost : IDisposable
 
             await pipeline.PrepareAsync(forceVerify, ct).ConfigureAwait(false);
             _manifest = ctx.Manifest;
-            var current = BuildState();
-            Emit("state", current.DeepClone());
-            return current;
-        }
+        });
+
+    private void FinishGameOperation()
+    {
+        try { _state.Save(_paths.StateFile); }
         finally
         {
-            _busy = false;
-            _state.Save(_paths.StateFile);
-            Emit("busy", new JsonObject { ["busy"] = false });
+            // Even a full disk or failed state write must unlock the UI.
+            lock (_activityLock)
+            {
+                _busy = false;
+                Emit("busy", new JsonObject { ["busy"] = false });
+                Emit("state", BuildState());
+            }
         }
     }
 

@@ -87,7 +87,7 @@ if ($Target -in 'all', 'client') {
         Step '核心逻辑自检'
         & $backend --selftest
         if ($LASTEXITCODE -ne 0) { throw '自检失败' }
-        node --test client/tests/client-update.test.cjs
+        node --test client/tests/client-update.test.cjs client/tests/pack-install.test.cjs
         if ($LASTEXITCODE -ne 0) { throw 'Client update UI tests failed' }
     }
 

@@ -303,7 +303,7 @@ public sealed class SyncEngine
         if (plan.Downloads.Count > 0)
         {
             var total = plan.Bytes;
-            var reporter = new Progress<DownloadProgress>(p => progress?.Report(new SyncStatus(
+            var reporter = new InlineProgress<DownloadProgress>(p => progress?.Report(new SyncStatus(
                 "下载",
                 $"{p.FilesDone}/{p.FilesTotal}  {Human(p.BytesDone)} / {Human(p.BytesTotal)}",
                 p.BytesTotal > 0 ? Math.Clamp((double)p.BytesDone / p.BytesTotal, 0, 1) : -1,

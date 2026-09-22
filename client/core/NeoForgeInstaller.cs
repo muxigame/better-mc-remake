@@ -88,7 +88,7 @@ public static class NeoForgeInstaller
 
         PrepareGameDir(version, paths);
 
-        status?.Report($"安装 NeoForge {nf}（本地生成，需要一两分钟）");
+        status?.Report($"安装 NeoForge {nf}");
         Log.Info($"运行安装器：{java.Path} -jar {installerJar} --install-client {paths.GameDir}");
 
         var psi = new ProcessStartInfo
@@ -127,10 +127,18 @@ public static class NeoForgeInstaller
         process.OutputDataReceived += (_, e) => OnLine(e.Data);
         process.ErrorDataReceived += (_, e) => OnLine(e.Data);
 
-        process.Start();
+        if (!process.Start()) throw new InvalidOperationException("无法启动 NeoForge 安装器");
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
-        await process.WaitForExitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await ChildProcessLifetime.WaitAsync(process, TimeSpan.FromMinutes(15), ct).ConfigureAwait(false);
+        }
+        catch (TimeoutException error)
+        {
+            throw new TimeoutException(
+                $"NeoForge 安装超时，请检查网络后重试。日志：{Path.Combine(paths.TempDir, "installer.log")}", error);
+        }
 
         string[] tailLines;
         lock (tail) tailLines = tail.ToArray();
