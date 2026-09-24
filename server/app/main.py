@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -9,11 +10,13 @@ from urllib.parse import quote
 from urllib.request import Request as UrlRequest, urlopen
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
+from .skins import MAX_BYTES as SKIN_MAX_BYTES, SkinError, SkinStore
 from .client_updates import update_required, validate_policy, version_key
 from .tunnel_registry import router as tunnel_router
 
@@ -67,6 +70,7 @@ database_path = Path(database_setting)
 if not database_path.is_absolute():
     database_path = WORKSPACE_ROOT / database_path
 web_auth_store = WebsiteAuthStore(database_path)
+skin_store = SkinStore(database_path, database_path.parent / "skins")
 oidc_issuer = os.getenv("BMC_AUTH_ISSUER", "https://account.muxigame.com").rstrip("/")
 oidc_client = OidcClient(
     oidc_issuer,
@@ -422,6 +426,76 @@ def me(account=Depends(current_account)) -> dict:
 def player_profile(account=Depends(current_player_account)) -> dict:
     profile = web_auth_store.player_profile(account)
     return {"user": account.public(), "player": profile.public()}
+
+
+def player_skin_payload(uid: int) -> dict:
+    # 启动器的页面只允许 data: 图片，贴图直接随响应带回去，省一趟请求。
+    # default 是没上传时别人看到的样子（Steve），启动器拿它做预览。
+    def with_png(skin: dict | None) -> dict | None:
+        if skin is not None:
+            png = skin_store.texture(skin["hash"])
+            skin["png"] = base64.b64encode(png).decode("ascii") if png else None
+        return skin
+    return {"skin": with_png(skin_store.get(uid)), "default": with_png(skin_store.default())}
+
+
+@app.get("/api/v1/player/skin")
+def player_skin(account=Depends(current_player_account)) -> dict:
+    return player_skin_payload(account.uid)
+
+
+@app.put("/api/v1/player/skin")
+async def save_player_skin(request: Request, account=Depends(current_player_account)) -> dict:
+    try:
+        body = await request.json()
+    except (ValueError, UnicodeDecodeError) as error:
+        raise HTTPException(status_code=400, detail="请求格式不对") from error
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="请求格式不对")
+    model = str(body.get("model") or "default")
+    png = None
+    encoded = body.get("png")
+    if encoded:
+        encoded = str(encoded).split(",", 1)[-1] if str(encoded).startswith("data:") else str(encoded)
+        if len(encoded) > (SKIN_MAX_BYTES // 3 + 1) * 4:
+            raise HTTPException(status_code=400, detail="皮肤文件太大（上限 64 KB）")
+        try:
+            png = base64.b64decode(encoded, validate=True)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail="皮肤数据编码不对") from error
+    try:
+        await run_in_threadpool(skin_store.save, account.uid, model, png)
+    except SkinError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return await run_in_threadpool(player_skin_payload, account.uid)
+
+
+@app.delete("/api/v1/player/skin")
+def delete_player_skin(account=Depends(current_player_account)) -> dict:
+    skin_store.delete(account.uid)
+    return player_skin_payload(account.uid)
+
+
+# CustomSkinLoader 的 CustomSkinAPI：{root}{登录名}.json 与 {root}textures/{hash}，见 skins.py。
+# 贴图按内容命名，永远不变；档案短缓存，换了皮肤别人重进服就能看到。
+# 没上传过的玩家也有档案，指向默认的 Steve。
+@app.get("/api/v1/skins/csl/textures/{digest}")
+def csl_texture(digest: str) -> Response:
+    path = skin_store.texture_path(digest)
+    if path is None:
+        raise HTTPException(status_code=404, detail="没有这张贴图")
+    return FileResponse(path, media_type="image/png",
+                        headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+
+@app.get("/api/v1/skins/csl/{login_name}.json")
+def csl_profile(login_name: str) -> JSONResponse:
+    profile = skin_store.csl_profile(login_name)
+    if profile is None:
+        # 不是玩家 UID。CSL 把 404 当"这个源没有"，回落到原版默认皮肤
+        return JSONResponse({"detail": "不是玩家"}, status_code=404,
+                            headers={"Cache-Control": "public, max-age=30"})
+    return JSONResponse(profile, headers={"Cache-Control": "public, max-age=30"})
 
 
 @app.post("/api/v1/auth/logout")
