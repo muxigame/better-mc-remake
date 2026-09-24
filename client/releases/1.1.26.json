@@ -1,0 +1,21 @@
+{
+  "version": "1.1.26",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BMC [Remake] setup.exe",
+  "signatureFile": "BMC [Remake] setup.exe.sig",
+  "sha256": "952f2057f33b57f751e6619b9d8046dfaa4e1e602b7b230f9e6177a0778b1bf2",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZkVIZ09sNFVaRVFuQjBjdUFwelVKN2Y1enZuRDJLb1psN0N6YTlJWTVzYVovb3RkMmp2K09pL0M0cHp5UHRTR29NNDZQTHJLMnFEVCtHTnZOREplUlFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMTcwMDE1CWZpbGU6Qk1DIFtSZW1ha2VdXzEuMS4yNl94NjQtc2V0dXAuZXhlCXZlcnNpb246MS4xLjI2CmdDK284SkVtMGlweFhZRldWQ3gyUGEzcWZZOGVIejloSHI2S2s3NktsUGVyN2pRS3IrR0NUVXdkancrN0pibWhzS0JKQk5jSVhXSms1YklIaWxNWER3PT0K",
+  "size": 33929402,
+  "pubDate": "2026-09-23T13:27:06.334052+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.26/BMC [Remake] setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.26/BMC [Remake] setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.26/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.26/BMC%20%5BRemake%5D%20setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.26/BMC%20%5BRemake%5D%20setup.exe.sig",
+  "notes": "线路测速的等待上限缩短，明显不可用时更快切换；中转线路也会记录实测速率，便于定位是线路整体慢还是仅直连受限。\r\n连接建立阶段的线路测速失败时会说明实际测得的速率，并在明显不可用时提前放弃、更快切换到可用线路。\r\n默认视场角调整为正常值（原来偏窄，视野别扭）。这个默认值只会下发一次，之后你自己改成多少都不会再被改回去。\r\n修复 P2P 直连有时明明已经打通、却因双方判定不一致而作废的问题：一侧认为成功并尝试连接，另一侧却没有开始监听，白白等待一次握手超时。\r\n连接就绪前新增带宽实测：会用真实大流量压一遍线路，扛不住的线路在启动游戏前就被换掉。\r\n修复 P2P 直连在进入世界过程中被误判为失效、导致中途掉线的问题。\r\n大幅提高 P2P 直连的打洞成功率：搜索范围扩大约六倍，并按实测的连接保持时间放慢节奏铺开。\r\n修复 Windows 10 上 P2P 直连始终不可用的问题：改为随包自带不依赖系统 TLS 的 QUIC 运行库。\r\n连接日志会写出本机 NAT 类型、QUIC 是否可用和实测带宽，进不去服务器时更容易定位。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

@@ -1,0 +1,21 @@
+{
+  "version": "1.1.27",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BMC [Remake] setup.exe",
+  "signatureFile": "BMC [Remake] setup.exe.sig",
+  "sha256": "19ac60ca2c0f4d65d93d04381b82beda9352f098aa12c850082e2a8afbb51e7f",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZkJlRXNHK3FReXJ3bkNoS2F0S01jVmpya1o5UkZrNjZaTUlVc3hFU3VzNWN6NERIcmlta1l0dXBUZ2doQlFRTmtFMlR5Sk1neW00c0Exc2JqLzRXMkFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMTcwOTEyCWZpbGU6Qk1DIFtSZW1ha2VdXzEuMS4yN194NjQtc2V0dXAuZXhlCXZlcnNpb246MS4xLjI3ClhvMjJDRFNGMXFiQXZRWXU2MFBxUmNlR1lCYkNMS3FnTkI5YkVDSVpLcmlWbkM5UERtZC9WRm5GUytFYWJmWVlVRVA2d2lxSFpnMlBBcjhVQzRNM0F3PT0K",
+  "size": 33923696,
+  "pubDate": "2026-09-23T13:42:05.418957+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.27/BMC [Remake] setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.27/BMC [Remake] setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.27/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.27/BMC%20%5BRemake%5D%20setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.27/BMC%20%5BRemake%5D%20setup.exe.sig",
+  "notes": "线路带宽实测改为尽早判定：明显带不动的线路约 3 秒就换掉，不再让你等满 12 秒。\n走中转时不再做带宽实测：那部分流量本来就走我们的服务器，测它既费带宽也说明不了你那条线路的问题。\n修复带宽实测失败时可能把一条本来可用的隧道一并判死、把你推到更差线路上的问题。\n默认视场角调整为正常值。这个默认值只会下发一次，之后你自己改成多少都不会再被改回去。\n修复 P2P 直连有时明明已经打通、却因双方判定不一致而作废的问题。\n修复 Windows 10 上 P2P 直连始终不可用的问题。\n连接日志会写出本机 NAT 类型、QUIC 是否可用和实测带宽，进不去服务器时更容易定位。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

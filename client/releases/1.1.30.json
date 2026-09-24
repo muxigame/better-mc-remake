@@ -1,0 +1,21 @@
+{
+  "version": "1.1.30",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BMC [Remake] setup.exe",
+  "signatureFile": "BMC [Remake] setup.exe.sig",
+  "sha256": "ba911f16929409b7e1be7348f5ad0f60d706abd371e828bac644aa2e2adacde9",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3Zkh1T1UwRVdMYkZlYVUrYkNFbzVUVXl0THRFTDdIMmtrR09kL2sxUlNJNDFHTW54VnU3ZmZteEJNaGN2TGdTeHhFNS9MMWlaZUoyUXNhWGtvZjlESmd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMjIzNDMxCWZpbGU6Qk1DIFtSZW1ha2VdXzEuMS4zMF94NjQtc2V0dXAuZXhlCXZlcnNpb246MS4xLjMwCmYxMUY5dGJXSGxwWUNlY0dDL2VpcXk1Qm5aTkNWdFVOMHVodURBRG5qMGN6UXFhQm0yU0N2MFdpdjZpUUhiZTNvK2ozT0REMFlMYzhDeDlKZ2NPWENBPT0K",
+  "size": 33982193,
+  "pubDate": "2026-09-24T04:17:11.8394497+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.30/BMC [Remake] setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.30/BMC [Remake] setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.30/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.30/BMC%20%5BRemake%5D%20setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.30/BMC%20%5BRemake%5D%20setup.exe.sig",
+  "notes": "直连的建立时间从约 11~14 秒降到 7~9 秒。省下来的几秒全部是代码里写死的等待，不是网络：打洞成功之后原本无条件再等 2 秒（那 2 秒只为了确认对方也收到了回应，现在收到就走，只留 150 毫秒余量）；QUIC 握手原本要 1.1 秒，因为服务端在打洞成功之后才开始初始化加密层，而这时你的电脑已经在发第一个包了——发出去的包没人接，只能等一秒重发，现在服务端启动时就把这一步做完。\n手机热点、4G/5G 这类线路的直连成功率从 3/6 提升到 8/8。这类网络每连一个不同的目标都会换一个对外端口，连它自己都不知道会用哪个，只能靠对面猜。现在会同时开 16 个端口一起打，让对面有 16 倍的机会猜中。\n判断对方是这类线路时不再白等 1.5 秒。原先要先拿\"对方公布的端口\"试一段时间才展开搜索，而这类线路公布的端口对我们本来就是无效的。\n修复直连断开后不会恢复的问题。原先一条已经断掉的直连在程序看来仍然是\"活着\"的，要等 50 秒才会被换掉，而这 50 秒正好落在读条期间——读条走完点进服，用的是一条早就死了的通路。\n修复检测卡住之后永不超时的问题。隧道里的服务器状态查询没有设上限，遇到\"能连上但对方永远不回\"的情况会一直挂着：界面上一切正常，实际已经不再检查线路，真断了也不会切换。\n修复一次网络抖动就让服务端永久掉线的问题。向控制面上报状态的循环遇到请求超时会整条退出，之后进程还活着、其他功能照常，但控制面那边一直显示服务器离线，所有人只能走中转，直到服务端重启。\n新增向路由器申请入站端口（UPnP / NAT-PMP / PCP）。申请到就多一条更快的通路，申请不到或者被运营商拦掉就照常打洞，不影响原有流程。\n启动日志现在会打出一行分段耗时，每一步花了多少毫秒一目了然；时间戳精确到毫秒。连不上时把这一行发出来就能定位卡在哪一步。\n配置下发新增\"一次性\"模式：服务器调整了某项默认值只会写一次，之后你自己改过的就不再被覆盖回去。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

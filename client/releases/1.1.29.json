@@ -1,0 +1,21 @@
+{
+  "version": "1.1.29",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BMC [Remake] setup.exe",
+  "signatureFile": "BMC [Remake] setup.exe.sig",
+  "sha256": "58a40b61aa5d5fb01407dbf361a0edb9cef2d92b7e318df05ecd1a81b1b4bf9c",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZkVDRWlmOVlvd3Q2cVg4N1dKYS81NlBCMm9WY2tkVHFDaTNKUG5kMUhPMFRJaDYweHA1UkYvdFV2YkpNZUlRTmlhNHVzWUxpUzdrNDVkZ1ZuS2VGdmdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMTc4MjEzCWZpbGU6Qk1DIFtSZW1ha2VdXzEuMS4yOV94NjQtc2V0dXAuZXhlCXZlcnNpb246MS4xLjI5Ckl0czJ1b1hBNXJUV3p0QlRnWTN2SGRCbnN6azA1YTgxZEZGWlI2QjZRQ3FpOFlYNjhXZGxTUDczUWhtMHZpZG5YUkJzQ0w3Z09BRWM0RFo0NHBDakNBPT0K",
+  "size": 33952126,
+  "pubDate": "2026-09-23T15:43:33.9654876+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.29/BMC [Remake] setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.29/BMC [Remake] setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.29/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.29/BMC%20%5BRemake%5D%20setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.29/BMC%20%5BRemake%5D%20setup.exe.sig",
+  "notes": "修复打洞时 UDP 和 TCP 互相拆台的问题。两条路原本同时全速开打，TCP 那几百个连接会把对方家里路由器的会话表挤满，连带把同一时刻的 UDP 打洞包一起丢掉——表现是两边都在打、两边都收不到，直连彻底建不起来。现在 UDP 先独占前 4 秒，它通了 TCP 一个包都不会发。\n打洞的发包速率从每秒 480 个降到 80 个。原先那个速率在家用宽带上既超过某些线路给 UDP 的额度，在对方运营商眼里也就是一次端口扫描。\nTCP 打洞的连接数大幅下调，不会再对谁的网络造成冲击。\n修复端侧隧道无法建立、每次都退回中转的问题。这条路断了之后所有人的流量都压在中转上。\n直连打通后带宽不达标时，会改用同时打通的另一条通路，不再直接退回中转。\n打洞日志现在会写出双方的实际地址，连不上时能直接看出是哪一边的信息过期了。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

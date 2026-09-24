@@ -1,0 +1,21 @@
+{
+  "version": "1.1.31",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BMC [Remake] setup.exe",
+  "signatureFile": "BMC [Remake] setup.exe.sig",
+  "sha256": "95453e259862464df89a73fcf51fea1b9d5fd8f7662fea9bcf920d3be72cfd49",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZkU1KzI0M0pjdi9WUjhCVUZ4M1NHTG55NzU4ZXdEbEc2OUFJVGx0S2t1ZFRiQmd3aTBPN3Z2ZC9ZcFU4VUJvQ2RvWDhBUDc4djh3S1NnZjRhNmtibHdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMjI3MTE0CWZpbGU6Qk1DIFtSZW1ha2VdXzEuMS4zMV94NjQtc2V0dXAuZXhlCXZlcnNpb246MS4xLjMxCmtZZFlLR1lyNDkvQzFvdW5oVzJnejVsYzkwV01FV0g0NmdjWHFHVlVOeUZJU0p2c3R5WTg2RGNzLzNXRGFrbXM1emZyQzlnaDREOVE4bGtVZlFNYkJBPT0K",
+  "size": 33984820,
+  "pubDate": "2026-09-24T05:18:34.6650102+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.31/BMC [Remake] setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.31/BMC [Remake] setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.31/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.31/BMC%20%5BRemake%5D%20setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.31/BMC%20%5BRemake%5D%20setup.exe.sig",
+  "notes": "直连没谈成时不再白等 45 秒。原先一条被判定带宽不够的直连，程序会等着它「正常关闭」才去连中继，而一条已经不通的链路做这件事能耗掉几十秒——实测带宽检测 3 秒就放弃了，之后却还要 33 秒才退回中继。现在这条已经判死的连接扔到后台自己收摊，不再挡着你进服。\n直连建立的时间更稳了，去掉了一个偶发的 1 秒。两端在打通之后要把同一个端口从探测交给加密层，这中间有个两毫秒的缝；第一个握手包正好落进去就会被丢掉，然后要等一秒重发。实测这一步的耗时是两极的：四十毫秒或者一千零五十毫秒，五次里两次撞上慢的那一边。现在交接时让一小步，六次实测全部落在 110 毫秒左右。\n连不上时日志会直接说出原因。之前只会写一句「带不动」，现在会分别用四种包长压一遍这条通路，如果是大包过不去（家里的加速器、VPN、花生壳之类的隧道网卡会把可用包长压低，这种情况下直连必然带不动），日志里会写出能过和不能过的具体字节数，并指出该关掉什么再试。发现这种情况时还会自动二分探一次，把分界线夹到五十字节以内。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

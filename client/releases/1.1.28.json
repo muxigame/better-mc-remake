@@ -1,0 +1,21 @@
+{
+  "version": "1.1.28",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BMC [Remake] setup.exe",
+  "signatureFile": "BMC [Remake] setup.exe.sig",
+  "sha256": "fadae8b1c69c1a923bfdd471cd425205dd69b2a67d4f822a21998a83ee692505",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZkVJT3o4NEJHVG45Mm5uZjkzYnp1T2N5MTZTZjBpdTNtWFVHZWhoY1luVnV2NHY0UzdUby9MWmhoek56a3RGbVJNUUFXMDRuTDF5TFFMQkRmS2E2MlFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMTc2NzM4CWZpbGU6Qk1DIFtSZW1ha2VdXzEuMS4yOF94NjQtc2V0dXAuZXhlCXZlcnNpb246MS4xLjI4Cm1sU3R3a2hsVGhaRFplNkRMVmx0OUkycVFNeTlsNjhuL0NEWXN3TExaMmJoNGdyQ0pjZmNBT2c5SkdEcjdKMkhsK0pDSkxMcnE1Z2J1S3JjMHcrekNBPT0K",
+  "size": 33938912,
+  "pubDate": "2026-09-23T15:18:59.1089303+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.1.28/BMC [Remake] setup.exe",
+  "signatureObject": "bmc/client/releases/1.1.28/BMC [Remake] setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.1.28/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.28/BMC%20%5BRemake%5D%20setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.1.28/BMC%20%5BRemake%5D%20setup.exe.sig",
+  "notes": "修复端侧隧道无法建立、每次都退回中转的问题。这条路断了之后所有人的流量都压在中转上，现在恢复了。\n直连改为同时尝试 UDP 和 TCP 两条通路，谁先通用谁。有些线路会掐持续的 UDP 大流量，这类线路上多一条路可走。\n直连打通后带宽不达标时，会改用同时打通的另一条通路，不再直接退回中转。\n打洞的端口预测按实测重新标定：这类路由器的外部端口每秒往上走二十几个，原先的窗口太窄，基本打不中。\n打洞时的并发连接数封了顶，不会再因为短时间发起太多连接而拖垮自家路由器。\n诊断命令新增 --no-p2p：跳过打洞直接验隧道那一段，排查线路问题时用得上。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

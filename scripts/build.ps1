@@ -22,9 +22,14 @@ $ErrorActionPreference = 'Stop'
 $workspaceRoot = Split-Path $PSScriptRoot -Parent
 if (-not $OutDir) { $OutDir = Join-Path $workspaceRoot 'artifacts' }
 Set-Location $workspaceRoot
-[xml]$clientBuildProps = Get-Content (Join-Path $workspaceRoot 'client\Directory.Build.props')
-$clientVersion = [string]$clientBuildProps.Project.PropertyGroup.Version
-if (-not $clientVersion) { throw 'client/Directory.Build.props 缺少 Version' }
+# 版本号的唯一真相源是 client/tauri/package.json。Directory.Build.props 里的
+# Version 是一条指向它的 MSBuild 表达式，按字面 XML 读回来的是表达式本身——
+# 实测因此把 "$([System.Text...)" 当成版本号写进了 launcher-release.json，
+# 一路带到发布脚本才被版本号格式校验拦下。
+$clientVersion = [string](Get-Content -LiteralPath (Join-Path $workspaceRoot 'client\tauri\package.json') -Raw -Encoding UTF8 | ConvertFrom-Json).version
+if ($clientVersion -notmatch '^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9._-]+)?$') {
+    throw "client/tauri/package.json 里的版本号不合法：$clientVersion"
+}
 
 function Step($text) { Write-Host "`n=== $text ===" -ForegroundColor Cyan }
 
@@ -83,6 +88,20 @@ if ($Target -in 'all', 'client') {
     if ($LASTEXITCODE -ne 0) { throw 'sidecar 构建失败' }
 
     $backend = Join-Path $backendOut 'battermc-backend.exe'
+
+    # sidecar 的版本必须和声明的版本一致，否则装出来的是"1.1.30 的安装包 + 1.1.29 的
+    # sidecar"。这种事真出过一次：改了代码只跑 dotnet build、没跑这里的 publish，安装包里
+    # 带的还是上一版 sidecar，而界面显示的是新版本号——玩家反馈"更新了但问题还在"，
+    # 查了很久才发现是发版流程漏了一步。版本号靠 client/Directory.Build.props 里一条
+    # MSBuild 表达式从 package.json 读出来，这里只负责确认那条链真的生效了。
+    $sidecarVersion = (Get-Item -LiteralPath $backend).VersionInfo.ProductVersion
+    if (-not $sidecarVersion) { throw 'sidecar 没有版本信息，无法核对' }
+    $sidecarVersion = ($sidecarVersion -split '\+')[0].Trim()
+    if ($sidecarVersion -ne $clientVersion) {
+        throw "sidecar 版本 $sidecarVersion 和声明版本 $clientVersion 不一致；版本号唯一真相源是 client/tauri/package.json，检查 client/Directory.Build.props 的表达式"
+    }
+    Write-Host "  sidecar 版本核对通过：$sidecarVersion" -ForegroundColor DarkGray
+
     $tauriBinaries = Join-Path $workspaceRoot 'client\tauri\src-tauri\binaries'
     New-Item -ItemType Directory -Path $tauriBinaries -Force | Out-Null
     Copy-Item -LiteralPath $backend `
@@ -110,6 +129,16 @@ if ($Target -in 'all', 'client') {
     $portableBackend = Join-Path $clientOut 'battermc-backend.exe'
     Copy-Item -LiteralPath (Join-Path $tauriTarget 'battermc5remake.exe') -Destination $launcherExe -Force
     Copy-Item -LiteralPath (Join-Path $tauriTarget 'battermc-backend.exe') -Destination $portableBackend -Force
+
+    # msquic.dll 也要跟着走。安装包里它是 tauri 的 resource，装完就在主程序旁边；
+    # 但 artifacts 下这两个便携副本没人管，缺了它 QUIC 加载不起来，诊断命令会
+    # 报"QUIC 不可用"，看着像玩家环境的问题，其实是打包漏了。
+    $msquic = Join-Path $tauriTarget 'msquic.dll'
+    if (Test-Path -LiteralPath $msquic -PathType Leaf) {
+        Copy-Item -LiteralPath $msquic -Destination (Join-Path $clientOut 'msquic.dll') -Force
+    } else {
+        throw 'Tauri 输出里没有 msquic.dll；QUIC 会不可用'
+    }
 
     $builtInstaller = Get-ChildItem (Join-Path $tauriTarget 'bundle\nsis') -Filter '*-setup.exe' |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
