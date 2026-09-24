@@ -411,7 +411,11 @@ public sealed class SyncEngine
         }
 
         foreach (var (path, revision) in plan.SeedRevisionTargets)
+        {
+            // 文件刚换成整合包的版本，一次性下发的键要重新发
+            _state.ForgetOverlaySeeds(path);
             _state.MarkSeedRevision(path, revision);
+        }
     }
 
     public static string Human(long bytes)

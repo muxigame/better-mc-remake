@@ -710,12 +710,15 @@ internal static class SelfTest
             var noLimits = new LauncherSettings { MaxMemoryMb = 999999 }.EffectiveMaxMemoryMb();
             Check("手填再大也要给系统留余量", noLimits <= physical, $"{noLimits} MB / 物理 {total} MB");
 
-            // 自动挡：物理内存一半，4G–16G，至少给系统留 4G
+            // 自动挡：有条件就 12G，内存小的先给系统留 4G，最少 4G
             var auto = new LauncherSettings().EffectiveMaxMemoryMb(limits);
-            Check("自动挡落在 16G 封顶以内", auto >= 3000 && auto <= LauncherSettings.AutoMemoryCapMb && auto <= physical,
+            Check("自动挡落在 12G 以内", auto >= 3000 && auto <= LauncherSettings.AutoMemoryCapMb && auto <= physical,
                 $"{auto} MB / 物理 {total} MB");
-            if (total >= 32 * 1024)
-                Check("32G 以上的机器自动给满 16G", auto == LauncherSettings.AutoMemoryCapMb, auto + " MB");
+            Check("32G 的机器给 12G", LauncherSettings.AutoMemoryMb(32 * 1024) == 12288);
+            Check("16G 的机器给 12G", LauncherSettings.AutoMemoryMb(16 * 1024) == 12288);
+            Check("Windows 报 15.8G 的 16G 机器给 11.8G", LauncherSettings.AutoMemoryMb(16200) == 12104);
+            Check("12G 的机器给 8G，给系统留 4G", LauncherSettings.AutoMemoryMb(12 * 1024) == 8192);
+            Check("8G 的机器最少也给 4G", LauncherSettings.AutoMemoryMb(8 * 1024) == 4096);
 
             // 启动时把这次的堆写回 maximumClient，其余键原样保留
             PackMemoryLimits.WriteMaximum(paths, 16384);
@@ -1265,6 +1268,17 @@ internal static class SelfTest
 
             // 其它键一个都不许动
             Check("只碰点名的键", File.ReadAllText(options).Contains("lang:zh_cn"),
+                File.ReadAllText(options));
+
+            // 整合包的 options.txt 更新了、被整份换回文件里的 47：一次性的键要重新发，
+            // 不然 fov 那条记成"发过了"，大家的视场角就一直停在 47
+            state.MarkOverlaySeed("config/other.toml", "x", "1");
+            File.WriteAllText(options, "fov:-0.575\nguiScale:0\nlang:zh_cn\n");
+            state.ForgetOverlaySeeds("options.txt");
+            Check("整份替换后忘掉这个文件的记账", state.NeedsOverlaySeed("options.txt", "fov", "0.25"));
+            Check("别的文件的记账不动", !state.NeedsOverlaySeed("config/other.toml", "x", "1"));
+            ConfigOverlay.ApplyAll([spec], paths, state);
+            Check("替换之后一次性的键又发到位", File.ReadAllText(options).Contains("fov:0.25"),
                 File.ReadAllText(options));
         }
         finally

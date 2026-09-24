@@ -149,6 +149,18 @@ public sealed class LocalState
     public void MarkOverlaySeed(string relative, string key, string value)
         => OverlaySeeds[SeedKey(relative, key)] = value;
 
+    /// <summary>
+    /// 整份文件刚被整合包的版本整个替换掉了：之前一次性下发过的键也跟着没了，
+    /// 忘掉记账让它们再发一次。不这样的话，比如整合包的 options.txt 一更新，
+    /// 大家的视场角就退回文件里的 47，而 fov=70 那条已经记成"发过了"，再也补不回来。
+    /// </summary>
+    public void ForgetOverlaySeeds(string relative)
+    {
+        var prefix = relative + "#";
+        foreach (var key in OverlaySeeds.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList())
+            OverlaySeeds.Remove(key);
+    }
+
     public bool TryGetSeedRevision(string relative, out string revision)
         => SeedRevisions.TryGetValue(relative, out revision!);
 

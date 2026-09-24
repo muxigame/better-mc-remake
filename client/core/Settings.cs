@@ -133,11 +133,13 @@ public sealed class LauncherSettings
         AtomicFile.WriteAllText(file, JsonSerializer.Serialize(this, Context.LauncherSettings));
     }
 
-    /// <summary>自动挡的封顶，MB。</summary>
-    public const int AutoMemoryCapMb = 16384;
+    /// <summary>自动挡的目标，MB：有条件就给 12G（用户定的）。</summary>
+    public const int AutoMemoryCapMb = 12288;
 
     /// <summary>
-    /// 自动内存：物理内存的一半，夹在 4G–16G 之间，并且至少给系统留 4G。
+    /// 自动内存：有条件就给 12G；内存小的机器先给系统留 4G，剩下的全给游戏，最少 4G。
+    /// 16G 及以上的机器都是 12G（Windows 报的物理内存略少于标称，会落在 11.8G 左右），
+    /// 12G 的给 8G，8G 的给 4G。
     /// 405 个模组的包低于 4G 基本必崩；8G 装不下服务器上 1400 多个 YSM 模型——
     /// 加载到七八百个时堆就满了，G1 只剩整堆回收，游戏一停几秒、平均 1 帧。
     ///
@@ -163,10 +165,9 @@ public sealed class LauncherSettings
 
         if (MaxMemoryMb > 0) return (int)Math.Clamp(MaxMemoryMb, floor, ceiling);
 
-        var half = totalMb / 2;
-        var value = Math.Clamp(half, 4096, AutoMemoryCapMb);
-        var leaveForSystem = totalMb - 4096;
-        if (leaveForSystem > 2048 && value > leaveForSystem) value = leaveForSystem;
-        return (int)Math.Clamp(value, floor, ceiling);
+        return (int)Math.Clamp(AutoMemoryMb(totalMb), floor, ceiling);
     }
+
+    /// <summary>自动挡按物理内存算出的堆（还没套整合包下限和物理上限）。</summary>
+    public static long AutoMemoryMb(long totalMb) => Math.Clamp(totalMb - 4096, 4096, AutoMemoryCapMb);
 }
