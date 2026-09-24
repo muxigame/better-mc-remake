@@ -3,8 +3,8 @@
   "pack": {
     "id": "battermc5remake",
     "name": "BatterMC5Remake",
-    "version": "1.3.28",
-    "changelog": "1.3.28\n- 修复更新到 1.3.27 后游戏一启动就崩溃：新下发的冰火结构配置文件开头多了一个看不见的 BOM 标记，读这类配置的前置库 Cristel Lib 解析失败，整个游戏加载不起来。现已去掉 BOM 重新下发，龙穴、龙巢加密的设置不变；启动器会自动替换这个文件，玩家不用手动处理\n\n1.3.27\n- 冰火传说：龙穴、龙巢生成得更密（龙穴间距 34→29，龙巢间距 36→27），龙更好找了\n\n1.3.26\n- 键位全面整理：原版不动；各模组尽量用出厂键，被占了就改成「原键 + Ctrl/Alt」，同一模组归到同一个修饰键\n  - 永恒枪械：全部保持出厂键（R 换弹、G 开火模式、H 检视、Z 改装、C 爬行、V 缩放/近战、O 持械互动）\n  - 铁魔法：施法 Alt+V，法术轮盘 Alt+R，按住左 Alt 滚轮切换法术（出厂）\n  - 灾变：能力 Ctrl+V，头盔 Ctrl+C，胸甲 Ctrl+Y，靴子 Ctrl+B\n  - 精妙背包：打开 B，物品交互 Alt+C，升级卡开关 Ctrl+Z / Alt+X\n  - 是，史蒂夫模型：模型界面 Alt+Y，动作轮盘 Alt+Z，锁定轮盘 Alt+L，额外渲染 Alt+P\n  - 车万女仆：AI 对话 X，脱离扫帚 C；女仆仓管 Alt+1/2/3；万法皆通末影腰包 Ctrl+E\n  - 机械动力：蓝图工具菜单 / 附近工具箱 → 鼠标侧键 4（两者本就共用一个键）\n  - 冰火骑龙：喷吐龙息 R、发动龙袭 G（出厂键，只在骑龙时生效，和只在持枪时生效的换弹/开火模式互不干扰），龙降 Ctrl+X\n  - 越肩视角：自由视角 `（Tab 上方），换肩 U\n  - 其它：Just Zoom Alt+O；Xaero 放大小地图 Alt+M、新建路径点 Ctrl+N、路径点 Ctrl+M、小地图设置 Home\n    饰品栏 Alt+H，末影箱饰品 Alt+E，望远镜饰品 Alt+K，挂件 Alt+F，永恒星光纹章 Alt+G\n    以太隐身 Alt+I，深暗传讯器 Alt+J，箭袋 Alt+N，深渊以太云母冲刺 Alt+U、滑块猛击 Ctrl+U\n  - 解绑：暮色护目镜/地图循环/切快捷栏、穹玉晶透明度、一键收纳、WebDisplays 激光鼠标、网络音乐机显示翻译、L2 轮盘 Alt 修饰\n\n1.3.25\n- 修复 1.3.17 起游戏一启动就崩溃：机械动力航空学带的 Sable/Veil 要求新版 Sodium。现将 Sodium 升到 0.8.13，光影 Iris 1.8.14、视频设置 Reese's Sodium Options 2.2.4、光影搜索与光影文件夹同步升级\n- 锦致装饰 Supplementaries 升到 3.9.8：旧版与新 Sodium 冲突，一进世界就崩（服务端同步升级）\n- 树叶剔除换成支持新版 Sodium 的社区维护版：原版已停更，一进世界就崩\n- 修复新玩家首次进服拿不到任务书、模组入门书也没被收走的问题\n- 已知：Sodium Extras、Sodium 动态光源、BetterGrassify、Better Biome Blend、Farsight 暂时在视频设置里没有自己的设置页，功能照常生效\n\n1.3.24\n- 修复方块实体和生物在 8~10 格外就不渲染的问题。上一版下发的距离剔除参数写成了 64 和 96，而这个字段填的是距离的平方（出厂默认 4096 = 64 的平方），于是实际半径只剩 8 格和 9.8 格——身边一圈之外的箱子、桶、熔炉、告示牌，以及生物、掉落物、其他玩家全部消失。现在改成 4096 和 9216，也就是 64 格和 96 格。已经被改过的存档下次启动会自动纠正回来。"
+    "version": "1.3.33",
+    "changelog": "1.3.33\n- 关掉冰火传说的「图鉴书」主菜单背景：掉线时这本书会挡在断开界面后面，看着像一直卡在加载。菜单背景改回原版\n- 任务「枪械」章节：要交的枪、子弹、配件改成指定型号（格洛克 17、9mm 子弹、T1 瞄具、ACOG 瞄具、扩容弹匣），击杀任务的图标也换成对应的枪\n\n1.3.32\n- 搬运（Carry On）现在可以抱人了：潜行右键抱起队友，生存模式下抱不起创造模式的人"
   },
   "minecraft": {
     "version": "1.21.1",
@@ -135,6 +135,8 @@
       "path": "options.txt",
       "format": "Properties",
       "seedKeys": {
+        "graphicsMode": 0,
+        "fov": 0.0,
         "simulationDistance": 8,
         "particles": 1,
         "key_iris.keybind.reload": "key.keyboard.unknown",
@@ -210,6 +212,22 @@
       "createIfMissing": false
     },
     {
+      "path": "config/iceandfire/iaf-client.json",
+      "format": "Json",
+      "enforce": {
+        "client/customMainMenu": false
+      },
+      "createIfMissing": false
+    },
+    {
+      "path": "config/sodium-options.json",
+      "format": "Json",
+      "seedKeys": {
+        "quality/weather_quality": "FAST"
+      },
+      "createIfMissing": false
+    },
+    {
       "path": "config/fml.toml",
       "format": "Toml",
       "enforce": {
@@ -233,7 +251,8 @@
       "format": "Toml",
       "seedKeys": {
         "embeddiumextras/performance/distanceCulling/tileEntities/cullingMaxDistanceX": 4096,
-        "embeddiumextras/performance/distanceCulling/entities/cullingMaxDistanceX": 9216
+        "embeddiumextras/performance/distanceCulling/entities/cullingMaxDistanceX": 9216,
+        "embeddiumextras/general/fpsDisplay": "ADVANCED"
       },
       "createIfMissing": false
     },
