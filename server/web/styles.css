@@ -146,3 +146,47 @@ footer{grid-template-columns:1fr;padding:65px 20px 30px}
 @media(max-width:900px) { .nav-actions { margin-left: auto; } .nav-user { margin-left: 0; } }
 @media(max-width:560px) { .site-nav { gap: 10px; } .nav-actions { gap: 8px; } .nav-user { max-width: 94px; min-width: 72px; padding: 10px; font-size: 12px; } .nav-cta { padding: 11px 12px; font-size: 12px; } }
 @media(max-width:390px) { .brand { gap: 8px; } .brand span:last-child { letter-spacing: .05em; font-size: 10px; } .nav-cta { padding: 11px 8px; } }
+
+/* ── 下载区：配置要求 ─────────────────────────────────────────────────
+   横跨 .download 整行，不放进右边那半列——那里只有约 490 px，三栏表格每格都会
+   折行，型号名断在中间。竖线和内边距沿用 .release-line，两块看起来是一套。
+   ≤560 px 改成逐行堆叠：三列压进手机宽度后每列只剩 100 px 出头。 */
+.specs { grid-column: 1 / -1; padding: 86px max(28px, calc((100vw - var(--max)) / 2)) 96px; border-top: 1px solid #26262a; }
+.specs-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; flex-wrap: wrap; margin-bottom: 46px; }
+.specs-head .eyebrow { margin: 0 0 12px; }
+.specs-head h3 { margin: 0; font-size: clamp(30px, 3.4vw, 46px); font-weight: 900; letter-spacing: -.045em; }
+.specs-head > p { margin: 0; max-width: 480px; color: var(--muted); font-size: 14px; line-height: 1.85; }
+
+/* 定宽：自动布局会按内容分配，推荐列比最低列宽出 130 px，中间那条竖线就歪了 */
+.spec-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 14px; }
+.spec-table thead td { width: 116px; }
+.spec-table th, .spec-table td { padding: 19px 28px 19px 0; text-align: left; vertical-align: top; border-top: 1px solid #26262a; }
+.spec-table thead th, .spec-table thead td { padding-top: 0; border-top: 0; }
+.spec-table thead th { padding-bottom: 13px; color: #777; font: 800 11px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .16em; }
+.spec-table thead th:last-child { color: var(--accent); }
+.spec-table tbody th { width: 116px; color: #e9e7e2; font-weight: 800; }
+.spec-table tbody td { color: var(--muted); line-height: 1.7; }
+.spec-table tbody td:last-child { color: #d9d7d2; }
+.spec-table th:last-child, .spec-table td:last-child { padding-left: 28px; padding-right: 0; border-left: 1px solid #26262a; }
+
+.spec-notes { max-width: 920px; margin: 36px 0 0; padding: 0; list-style: none; display: grid; gap: 11px; }
+.spec-notes li { position: relative; padding-left: 20px; color: #83817d; font-size: 13px; line-height: 1.8; }
+.spec-notes li::before { content: "—"; position: absolute; left: 0; color: var(--accent); }
+
+@media(max-width:900px) { .specs { padding-top: 72px; padding-bottom: 80px; } }
+@media(max-width:560px) {
+  .specs { padding: 62px 20px 70px; }
+  .specs-head { margin-bottom: 30px; gap: 22px; }
+  .spec-table thead { display: none; }
+  .spec-table, .spec-table tbody, .spec-table tr, .spec-table th, .spec-table td { display: block; }
+  .spec-table tbody tr { padding: 17px 0; border-top: 1px solid #26262a; }
+  .spec-table tbody th, .spec-table tbody td { width: auto; padding: 0; border: 0; }
+  /* 上面那条被 .spec-table td:last-child 的 :last-child 压过（权重高一级），
+     推荐那行会连着竖线一起缩进 28 px，和最低那行对不齐。 */
+  .spec-table tbody td:last-child { padding-left: 0; border-left: 0; }
+  .spec-table tbody th { margin-bottom: 9px; }
+  /* 表头没了，每格自己带上「最低 / 推荐」，否则两行数值分不清谁是谁 */
+  .spec-table tbody td { display: grid; grid-template-columns: 38px 1fr; gap: 10px; }
+  .spec-table tbody td + td { margin-top: 7px; }
+  .spec-table tbody td::before { content: attr(data-label); color: #6a6a6e; font-size: 11px; font-weight: 800; line-height: 1.75; }
+}

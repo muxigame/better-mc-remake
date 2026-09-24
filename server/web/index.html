@@ -82,6 +82,31 @@
         <div class="download-actions"><a class="button button-primary" id="download-button" href="#">下载客户端</a><a class="button button-outline" href="/api/v1/auth/entry?return_to=%2Faccount.html">玩家账号</a></div>
         <code id="release-sha">SHA-256 —</code>
       </div>
+      <!-- 配置要求跨满整行。塞进右边那半列只有 490 px 可用，三栏每一格都会折成两三行、
+           型号名断在中间，读不出「这一档对那一档」。 -->
+      <div class="specs">
+        <div class="specs-head">
+          <div><p class="eyebrow">SYSTEM REQUIREMENTS</p><h3>配置要求</h3></div>
+          <p>整合包收录四百多个模组，比原版吃配置。最低配置指能稳定进游戏，推荐配置指画质开到中高、开光影也跑得动。</p>
+        </div>
+        <table class="spec-table">
+          <thead><tr><td></td><th scope="col">最低配置</th><th scope="col">推荐配置</th></tr></thead>
+          <tbody>
+            <!-- Windows 10 的下限是 1809：客户端界面用的 WebView2 运行时已经不再支持更早的版本。 -->
+            <tr><th scope="row">操作系统</th><td data-label="最低">Windows 10 64 位（1809 及以上）</td><td data-label="推荐">Windows 11 64 位</td></tr>
+            <tr><th scope="row">处理器</th><td data-label="最低">Intel Core i5-6500 / AMD Ryzen 3 1200</td><td data-label="推荐">Intel Core i5-12400 / AMD Ryzen 5 5600</td></tr>
+            <tr><th scope="row">内存</th><td data-label="最低">8 GB</td><td data-label="推荐">16 GB</td></tr>
+            <!-- OpenGL 3.2 是 Minecraft 1.17 起自己的要求，不是我们加的。 -->
+            <tr><th scope="row">显卡</th><td data-label="最低">512 MB 显存，支持 OpenGL 3.2</td><td data-label="推荐">独立显卡，4 GB 显存（GTX 1650 / RX 6600 及以上）</td></tr>
+            <tr><th scope="row">存储空间</th><td data-label="最低">10 GB 可用空间</td><td data-label="推荐">20 GB 可用空间，固态硬盘</td></tr>
+          </tbody>
+        </table>
+        <ul class="spec-notes">
+          <li>首次安装需要下载约 3 GB，装完占用也是约 3 GB；余下的空间留给存档、光影和更新缓存。之后的更新只拉取发生变化的文件。</li>
+          <li>游戏内存由客户端按物理内存自动分配：8 GB 的机器约分到 4 GB，16 GB 及以上才分得到整合包推荐的 8 GB。</li>
+          <li>双显卡笔记本请在客户端「设置 → 显卡」里指定独立显卡。Windows 默认可能把游戏交给核显，表现是帧数怎么调都上不去。</li>
+        </ul>
+      </div>
     </section>
   </main>
 
