@@ -3,8 +3,8 @@
   "pack": {
     "id": "battermc5remake",
     "name": "BatterMC5Remake",
-    "version": "1.3.6",
-    "changelog": "1.3.6\n- 视角切换只保留第一人称和越肩视角，关掉原版的前后两个第三人称\n- 自动第三人称改为可选组件，默认不安装\n- 更真实的第一人称模型改为可选组件，默认不安装\n  （两项都可以在启动器的可选内容里随时勾选）"
+    "version": "1.3.26",
+    "changelog": "1.3.26\n- 键位全面整理：原版不动；各模组尽量用出厂键，被占了就改成「原键 + Ctrl/Alt」，同一模组归到同一个修饰键\n  - 永恒枪械：全部保持出厂键（R 换弹、G 开火模式、H 检视、Z 改装、C 爬行、V 缩放/近战、O 持械互动）\n  - 铁魔法：施法 Alt+V，法术轮盘 Alt+R，按住左 Alt 滚轮切换法术（出厂）\n  - 灾变：能力 Ctrl+V，头盔 Ctrl+C，胸甲 Ctrl+Y，靴子 Ctrl+B\n  - 精妙背包：打开 B，物品交互 Alt+C，升级卡开关 Ctrl+Z / Alt+X\n  - 是，史蒂夫模型：模型界面 Alt+Y，动作轮盘 Alt+Z，锁定轮盘 Alt+L，额外渲染 Alt+P\n  - 车万女仆：AI 对话 X，脱离扫帚 C；女仆仓管 Alt+1/2/3；万法皆通末影腰包 Ctrl+E\n  - 机械动力：蓝图工具菜单 / 附近工具箱 → 鼠标侧键 4（两者本就共用一个键）\n  - 冰火骑龙：喷吐龙息 R、发动龙袭 G（出厂键，只在骑龙时生效，和只在持枪时生效的换弹/开火模式互不干扰），龙降 Ctrl+X\n  - 越肩视角：自由视角 `（Tab 上方），换肩 U\n  - 其它：Just Zoom Alt+O；Xaero 放大小地图 Alt+M、新建路径点 Ctrl+N、路径点 Ctrl+M、小地图设置 Home\n    饰品栏 Alt+H，末影箱饰品 Alt+E，望远镜饰品 Alt+K，挂件 Alt+F，永恒星光纹章 Alt+G\n    以太隐身 Alt+I，深暗传讯器 Alt+J，箭袋 Alt+N，深渊以太云母冲刺 Alt+U、滑块猛击 Ctrl+U\n  - 解绑：暮色护目镜/地图循环/切快捷栏、穹玉晶透明度、一键收纳、WebDisplays 激光鼠标、网络音乐机显示翻译、L2 轮盘 Alt 修饰\n\n1.3.25\n- 修复 1.3.17 起游戏一启动就崩溃：机械动力航空学带的 Sable/Veil 要求新版 Sodium。现将 Sodium 升到 0.8.13，光影 Iris 1.8.14、视频设置 Reese's Sodium Options 2.2.4、光影搜索与光影文件夹同步升级\n- 锦致装饰 Supplementaries 升到 3.9.8：旧版与新 Sodium 冲突，一进世界就崩（服务端同步升级）\n- 树叶剔除换成支持新版 Sodium 的社区维护版：原版已停更，一进世界就崩\n- 修复新玩家首次进服拿不到任务书、模组入门书也没被收走的问题\n- 已知：Sodium Extras、Sodium 动态光源、BetterGrassify、Better Biome Blend、Farsight 暂时在视频设置里没有自己的设置页，功能照常生效\n\n1.3.24\n- 修复方块实体和生物在 8~10 格外就不渲染的问题。上一版下发的距离剔除参数写成了 64 和 96，而这个字段填的是距离的平方（出厂默认 4096 = 64 的平方），于是实际半径只剩 8 格和 9.8 格——身边一圈之外的箱子、桶、熔炉、告示牌，以及生物、掉落物、其他玩家全部消失。现在改成 4096 和 9216，也就是 64 格和 96 格。已经被改过的存档下次启动会自动纠正回来。"
   },
   "minecraft": {
     "version": "1.21.1",
@@ -17,8 +17,10 @@
     "major": 21,
     "min": "21.0.0",
     "image": "jre",
-    "distribution": "temurin",
-    "size": 0
+    "distribution": "zulu",
+    "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/runtime/zulu21.38.21-ca-jre21.0.5-win_x64.zip",
+    "sha256": "56b6db6ad4a34641f44929e69f4069e109846a793d7c1432ef43ea6d9ff224bc",
+    "size": 49146553
   },
   "servers": [
     {
@@ -53,6 +55,12 @@
       "policy": "Optional",
       "group": "视角",
       "label": "更真实的第一人称模型（低头能看到自己身体）"
+    },
+    {
+      "glob": "mods/c2me-neoforge-mc1.21.1-0.4.0-alpha.0.120.jar",
+      "policy": "Optional",
+      "group": "性能",
+      "label": "多线程区块生成（默认关闭；单机探索新地形时会与画面渲染抢 CPU，联机时由服务器承担生成，装了也用不上）"
     },
     {
       "glob": "mods/**",
@@ -126,15 +134,106 @@
     {
       "path": "options.txt",
       "format": "Properties",
+      "seedKeys": {
+        "simulationDistance": 8,
+        "particles": 1,
+        "key_iris.keybind.reload": "key.keyboard.unknown",
+        "key_iris.keybind.toggleShaders": "key.keyboard.unknown",
+        "key_iris.keybind.shaderPackSelection": "key.keyboard.unknown",
+        "key_iris.keybind.wireframe": "key.keyboard.unknown",
+        "key_key.pasterdream.teleportation": "key.keyboard.j",
+        "key_key.pasterdream.cloak_activate": "key.keyboard.n",
+        "key_key.yes_steve_model.animation_roulette.desc": "key.keyboard.z:ALT",
+        "key_key.toms_storage.open_terminal": "key.keyboard.b:ALT",
+        "key_key.deeperdarker.boost": "key.keyboard.unknown",
+        "key_key.yes_steve_model.debug_animation.desc": "key.keyboard.unknown",
+        "key_key.sophisticatedbackpacks.open_backpack": "key.keyboard.b",
+        "key_key.sophisticatedbackpacks.inventory_interaction": "key.keyboard.c:ALT",
+        "key_key.sophisticatedbackpacks.toggle_upgrade_1": "key.keyboard.z:CONTROL",
+        "key_justzoom.keybinds.keybind.zoom": "key.keyboard.o:ALT",
+        "key_key.twilightforest.zoom": "key.keyboard.unknown",
+        "key_gui.xaero_enlarge_map": "key.keyboard.m:ALT",
+        "key_key.irons_spellbooks.spell_wheel": "key.keyboard.r:ALT",
+        "key_key.better_client.bundle_up": "key.keyboard.unknown",
+        "key_key.deep_aether.stratus_dash_ability.desc": "key.keyboard.u:ALT",
+        "key_webdisplays.key.toggle_mouse": "key.keyboard.unknown",
+        "key_key.accessorify.use_spyglass": "key.keyboard.k:ALT",
+        "key_key.twilightforest.item_display_map_cycle": "key.keyboard.unknown",
+        "key_key.cataclysm.helmet_ability": "key.keyboard.c:CONTROL",
+        "key_accessories.key.open_accessories_screen": "key.keyboard.h:ALT",
+        "key_key.eternal_starlight.switch_crest": "key.keyboard.g:ALT",
+        "key_key.cataclysm.ability": "key.keyboard.v:CONTROL",
+        "key_key.cataclysm.boots_ability": "key.keyboard.b:CONTROL",
+        "key_key.irons_spellbooks.spellbook_cast": "key.keyboard.v:ALT",
+        "key_key.aether.invisibility_toggle.desc": "key.keyboard.i:ALT",
+        "key_key.deep_aether.toggle_skyjade_transparency": "key.keyboard.unknown",
+        "key_key.deeperdarker.transmit": "key.keyboard.j:ALT",
+        "key_supplementaries.keybind.quiver": "key.keyboard.n:ALT",
+        "key_key.twilightforest.swap_hotbar": "key.keyboard.unknown",
+        "key_key.accessorify.open_ender_chest": "key.keyboard.e:ALT",
+        "key_key.shouldersurfing.free_look": "key.keyboard.grave.accent",
+        "key_key.irons_spellbooks.spell_bar_modifier": "key.keyboard.left.alt",
+        "key_create.keyinfo.alt_modifier": "key.keyboard.left.alt",
+        "key_create.keyinfo.toolmenu": "key.mouse.4",
+        "key_create.keyinfo.toolbelt": "key.mouse.4",
+        "key_key.deep_aether.slider_eye_ability": "key.keyboard.u:CONTROL",
+        "key_key.maid_storage_manager.request_ingredient": "key.keyboard.1:ALT",
+        "key_key.maid_storage_manager.see_through_mark_box": "key.keyboard.2:ALT",
+        "key_key.maid_storage_manager.roll_special_mode": "key.keyboard.3:ALT",
+        "key_key.net_music_list.toggle_music_transform": "key.keyboard.unknown",
+        "key_key.l2mods.alt": "key.keyboard.unknown",
+        "key_gui.xaero_new_waypoint": "key.keyboard.n:CONTROL",
+        "key_gui.xaero_waypoints_key": "key.keyboard.m:CONTROL",
+        "key_key.touhou_little_maid_spell.open_ender_pocket": "key.keyboard.e:CONTROL",
+        "key_key.cataclysm.chestplate_ability": "key.keyboard.y:CONTROL",
+        "key_gui.xaero_minimap_settings": "key.keyboard.home",
+        "key_key.dragon_down": "key.keyboard.x:CONTROL",
+        "key_key.accessorify.open_widget": "key.keyboard.f:ALT"
+      },
       "enforce": {
-        "skipMultiplayerWarning": true,
-        "key_iris.keybind.reload": "key.keyboard.unknown"
+        "skipMultiplayerWarning": true
       },
       "removeFromList": {
         "resourcePacks": [
           "mod/pasterdream:packs/paster_vanilla_ui",
           "builtin/paster_vanilla_ui"
         ]
+      },
+      "createIfMissing": false
+    },
+    {
+      "path": "config/memorysettings.json",
+      "format": "Json",
+      "enforce": {
+        "disableWarnings/disableWarnings": true
+      },
+      "createIfMissing": false
+    },
+    {
+      "path": "config/fml.toml",
+      "format": "Toml",
+      "enforce": {
+        "disableConfigWatcher": true,
+        "dependencyOverrides/sable": [
+          "-scalablelux"
+        ]
+      },
+      "createIfMissing": false
+    },
+    {
+      "path": "config/sodiumdynamiclights-client.toml",
+      "format": "Toml",
+      "seedKeys": {
+        "sodiumdynamiclights/mode": "FANCY"
+      },
+      "createIfMissing": false
+    },
+    {
+      "path": "config/sodiumextras-client.toml",
+      "format": "Toml",
+      "seedKeys": {
+        "embeddiumextras/performance/distanceCulling/tileEntities/cullingMaxDistanceX": 4096,
+        "embeddiumextras/performance/distanceCulling/entities/cullingMaxDistanceX": 9216
       },
       "createIfMissing": false
     },
