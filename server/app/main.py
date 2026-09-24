@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
 from .skins import MAX_BYTES as SKIN_MAX_BYTES, SkinError, SkinStore
+from .crash_reports import MAX_BUNDLE_BYTES, CrashReportError, CrashReportStore
 from .client_updates import update_required, validate_policy, version_key
 from .announcement import public_announcement
 from .tunnel_registry import router as tunnel_router
@@ -72,6 +73,7 @@ if not database_path.is_absolute():
     database_path = WORKSPACE_ROOT / database_path
 web_auth_store = WebsiteAuthStore(database_path)
 skin_store = SkinStore(database_path, database_path.parent / "skins")
+crash_store = CrashReportStore(database_path, database_path.parent / "crash-reports")
 oidc_issuer = os.getenv("BMC_AUTH_ISSUER", "https://account.muxigame.com").rstrip("/")
 oidc_client = OidcClient(
     oidc_issuer,
@@ -499,6 +501,70 @@ def csl_profile(login_name: str) -> JSONResponse:
         return JSONResponse({"detail": "不是玩家"}, status_code=404,
                             headers={"Cache-Control": "public, max-age=30"})
     return JSONResponse(profile, headers={"Cache-Control": "public, max-age=30"})
+
+
+# ── 崩溃日志：启动器上传，玩家中心查看。见 crash_reports.py ──
+
+def crash_report_for(report_id: str, account) -> dict:
+    """本人或管理员才能看；别人的报告和不存在的一样回 404，不暴露编号是否存在。"""
+    report = crash_store.get(report_id)
+    if report is None or (report["uid"] != account.uid and account.role != "admin"):
+        raise HTTPException(status_code=404, detail="没有这份崩溃日志")
+    return report
+
+
+@app.post("/api/v1/player/crash-reports")
+async def upload_crash_report(request: Request, account=Depends(current_player_account)) -> dict:
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > MAX_BUNDLE_BYTES:
+        raise HTTPException(status_code=413, detail="日志包太大（上限 25 MB）")
+    chunks = bytearray()
+    async for chunk in request.stream():
+        chunks += chunk
+        if len(chunks) > MAX_BUNDLE_BYTES:
+            raise HTTPException(status_code=413, detail="日志包太大（上限 25 MB）")
+    try:
+        report = await run_in_threadpool(crash_store.add, account.uid, bytes(chunks))
+    except CrashReportError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"report": report}
+
+
+@app.get("/api/v1/player/crash-reports")
+def list_crash_reports(account=Depends(current_player_account)) -> dict:
+    return {"reports": crash_store.list(account.uid)}
+
+
+@app.get("/api/v1/player/crash-reports/{report_id}")
+def crash_report_detail(report_id: str, account=Depends(current_player_account)) -> dict:
+    return {"report": crash_report_for(report_id, account)}
+
+
+@app.get("/api/v1/player/crash-reports/{report_id}/files/{name}")
+def crash_report_file(report_id: str, name: str, account=Depends(current_player_account)) -> Response:
+    crash_report_for(report_id, account)
+    content = crash_store.read_file(report_id, name)
+    if content is None:
+        raise HTTPException(status_code=404, detail="没有这个文件")
+    text, truncated = content
+    return Response(text, media_type="text/plain; charset=utf-8",
+                    headers={"X-Truncated": "1" if truncated else "0"})
+
+
+@app.get("/api/v1/player/crash-reports/{report_id}/download")
+def crash_report_download(report_id: str, account=Depends(current_player_account)) -> Response:
+    crash_report_for(report_id, account)
+    path = crash_store.bundle_path(report_id)
+    if path is None:
+        raise HTTPException(status_code=404, detail="没有这份崩溃日志")
+    return FileResponse(path, media_type="application/zip", filename=f"crash-{report_id}.zip")
+
+
+@app.delete("/api/v1/player/crash-reports/{report_id}")
+def delete_crash_report(report_id: str, account=Depends(current_player_account)) -> dict:
+    if not crash_store.delete(account.uid, report_id):
+        raise HTTPException(status_code=404, detail="没有这份崩溃日志")
+    return {"ok": True}
 
 
 @app.post("/api/v1/auth/logout")

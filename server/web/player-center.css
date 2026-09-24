@@ -68,6 +68,36 @@
 .pc-dialog strong { color: var(--accent); font-family: ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
 .pc-dialog-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 25px; }
 .pc-dialog-actions .button { min-height: 43px; font: 700 13px/1.4 inherit; cursor: pointer; }
+/* 03 崩溃日志：整行宽，接在两栏下面 */
+.pc-crash { padding: 32px 36px 28px; border: 1px solid var(--line); border-top: 0; background: var(--bg); }
+.pc-crash-empty { margin: 22px 0 0; color: #92918b; font-size: 13px; }
+.pc-crash-list { list-style: none; margin: 22px 0 0; padding: 0; }
+.pc-crash-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 18px; align-items: center; padding: 15px 0; border-top: 1px solid var(--line); }
+.pc-crash-item:first-child { border-top: 0; }
+.pc-crash-main { min-width: 0; display: grid; gap: 5px; }
+.pc-crash-reason { color: #dedcd3; font-size: 14px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-crash-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; color: #92918b; font-size: 11px; }
+.pc-crash-meta .pc-mono { color: #d3c382; }
+.pc-crash-actions { display: flex; gap: 14px; font-size: 12px; white-space: nowrap; }
+.pc-crash-actions a, .pc-crash-actions button { background: none; border: 0; padding: 4px 0; color: #d4ccaa; font: inherit; cursor: pointer; }
+.pc-crash-actions button.is-danger { color: #b8b6ae; }
+.pc-crash-actions button:hover, .pc-crash-actions a:hover { color: var(--text); }
+.pc-crash-item.is-focus .pc-crash-reason { color: var(--accent); }
+.pc-log-dialog { width: min(980px, calc(100% - 36px)); max-height: calc(100dvh - 48px); display: flex; flex-direction: column; gap: 14px; overflow: hidden; color-scheme: dark; }
+.pc-log-dialog:not([open]) { display: none; }
+.pc-log-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.pc-log-head h2 { font-family: ui-monospace, Consolas, monospace; }
+.pc-log-close { background: none; border: 0; color: #b8b6ae; font-size: 24px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.pc-log-close:hover { color: var(--text); }
+.pc-log-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.pc-log-tabs button { border: 1px solid #414145; border-radius: 3px; background: #17171a; color: #ceccc5; font: 12px/1.4 ui-monospace, Consolas, monospace; padding: 6px 10px; cursor: pointer; }
+.pc-log-tabs button[aria-selected="true"] { border-color: var(--accent); color: var(--accent); }
+.pc-log-note { margin: 0; color: #a19c89; font-size: 11px; }
+.pc-log-body { flex: 1 1 auto; min-height: 160px; margin: 0; overflow-x: hidden; overflow-y: auto; padding: 14px 16px; border: 1px solid #2c2c30; background: #0e0e10; color: #d8d6cf; font: 12px/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+@media (max-width: 720px) {
+  .pc-crash { padding: 28px 24px; }
+  .pc-crash-item { grid-template-columns: minmax(0, 1fr); }
+}
 .player-page :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .player-page input:focus-visible { outline: none; }
 @media (max-width: 900px) {
