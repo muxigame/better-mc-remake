@@ -572,7 +572,9 @@ function render(s) {
 
 
   renderOptional(state.optional || [], st.enabledOptional || []);
-  renderSkin();
+  // 皮肤预览只是展示：它出错（画布不可用、图片坏了）不能把后面的按钮状态、
+  // 安装结果一起带挂——installPack 会把 render 抛的异常当成"安装未完成"。
+  try { renderSkin(); } catch (e) { appendLog('WARN', '皮肤预览失败：' + (e && e.message)); }
   if (state.launcherUpdate) showLauncherUpdate(state.launcherUpdate);
   setBusy(!!state.busy);
 }
