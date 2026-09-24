@@ -30,6 +30,28 @@ public sealed record RouteEstablishment(
     RouteProbeResult Route, RouteKind Kind, MinecraftStatus Status);
 
 /// <summary>
+/// 连服务器要用的东西：线路候选、隧道凭据、打洞参数。凭据和候选都要问控制面现取，
+/// 所以由调用方在后台准备，见 <see cref="MinecraftRouteProxy.ConnectInBackground"/>。
+/// </summary>
+/// <param name="TunnelToken">取不到时为 null：只能走直连/中转，不能建隧道、不能打洞。</param>
+public sealed record ConnectPlan(
+    IReadOnlyList<ServerEntry> Servers, string? TunnelToken, string ControlPlaneBaseUrl,
+    string ServerId, string ReflectorHost, int TunnelPort);
+
+/// <summary>
+/// 线路和服务端的 agent 都是通的，但 agent 接不上它本机的 Minecraft：服务器正在启动、
+/// 重启，或者游戏服挂了。
+///
+/// 必须和"网络不通"分开。网络不通时换线路、打洞都有意义；这种情况下所有线路都通到
+/// 同一台 agent、同一个接不上的游戏服，换谁都一样。实测服务器重启那一分钟里，客户端
+/// 照样把隧道、中转、三轮打洞挨个试完才放弃，每轮打洞服务端还要推 1.6 MB 压测包。
+/// </summary>
+public sealed class ServerNotRespondingException(Exception inner)
+    : InvalidOperationException(
+        "服务器的 Minecraft 没有响应：线路是通的，但服务端接不上它本机的游戏服（多半正在启动或重启）",
+        inner);
+
+/// <summary>
 /// 把 Minecraft 的固定 TCP 连接收进 127.0.0.1，再转发到并行探测得到的最优线路。
 /// 游戏永远只看到本机端口，网络线路选择和故障切换都留在启动器侧。
 /// </summary>
@@ -51,16 +73,43 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
     /// <summary>转发时的候选顺序；验证通过的线路会被提到最前面。</summary>
     private volatile IReadOnlyList<RouteProbeResult> _routes;
 
-    private MinecraftRouteProxy(TcpListener listener, RouteSelection selection)
+    /// <summary>服务器表（线路候选）。后台连接每轮会从控制面重新取，重连时拿它重新探。</summary>
+    private volatile IReadOnlyList<ServerEntry> _servers;
+
+    private MinecraftRouteProxy(TcpListener listener, RouteSelection selection, IReadOnlyList<ServerEntry> servers)
     {
         _listener = listener;
         Selection = selection;
         _routes = selection.Reachable;
+        _servers = servers;
         _acceptLoop = AcceptLoopAsync();
     }
 
-    /// <summary>线路掉了又换到另一条时触发，供界面提示玩家。</summary>
+    /// <summary>线路掉了又换到另一条、或者后台重连连上时触发，供界面提示玩家。</summary>
     public event Action<RouteEstablishment>? RouteChanged;
+
+    /// <summary>
+    /// 后台第一轮没连上、或者掉线后重建也没成时触发（之后每轮失败不再重复），参数是失败原因。
+    /// 后台会接着连，连上时触发 <see cref="RouteChanged"/>。
+    /// </summary>
+    public event Action<Exception>? RouteUnavailable;
+
+    /// <summary>
+    /// 还没连上时，游戏来连本地代理最多等多久。等的是被这次连接叫醒的那一轮重连，
+    /// 一般几百毫秒就有结果；这个上限只防重连本身卡住。游戏登录阶段自己等 30 秒。
+    /// </summary>
+    public TimeSpan PendingRouteWait { get; set; } = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// 给玩家看的一句话：为什么还没连上。界面和本地代理的替身应答用同一套说法。
+    /// </summary>
+    /// <param name="error">最近一次失败；还没失败过（第一轮还在连）时为 null。</param>
+    public static string DescribeUnavailable(Exception? error) => error switch
+    {
+        null => "还在连接服务器",
+        ServerNotRespondingException => "服务器正在启动或重启",
+        _ => "暂时连不上服务器",
+    };
 
     /// <summary>
     /// 已建立的端侧隧道。非空时游戏的每条连接都从隧道里开数据流，而不是自己
@@ -68,10 +117,19 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
     /// </summary>
     private IMuxiTunnel? _tunnel;
 
-    /// <summary>已经验证通过的线路；还没调用 <see cref="EstablishAsync"/> 时为 null。</summary>
-    public RouteEstablishment? Established { get; private set; }
+    /// <summary>
+    /// 已经验证通过的线路；还没连上、或者掉线后重建失败正在后台重连时为 null。
+    /// 好几条后台任务都会读写它，所以是 volatile。
+    /// </summary>
+    public RouteEstablishment? Established
+    {
+        get => _established;
+        private set => _established = value;
+    }
+    private volatile RouteEstablishment? _established;
 
-    public RouteSelection Selection { get; }
+    /// <summary>最近一次选路的结果。后台连接会重新探，所以会变。</summary>
+    public RouteSelection Selection { get; private set; }
     public int LocalPort => ((IPEndPoint)_listener.LocalEndpoint).Port;
     public string LocalAddress => $"127.0.0.1:{LocalPort}";
 
@@ -197,8 +255,10 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
                 viaTunnel = await EstablishTunnelAsync(tunnelToken!, tunnelPort, progress, ct)
                     .ConfigureAwait(false);
             }
-            catch (Exception error) when (error is not OperationCanceledException
-                                          || !ct.IsCancellationRequested)
+            // 服务器没开（ServerNotRespondingException）不在这里接：直连、中转、打洞通到的
+            // 都是同一个游戏服，接着试只是拖时间。
+            catch (Exception error) when (error is not ServerNotRespondingException
+                                          && !Cancellation.IsShutdown(error, ct))
             {
                 // 常见情形：玩家只剩中转可用，而中转节点上没有开隧道端口。
                 Log.Warn($"端侧隧道全部失败，退回直连/中转：{error.Message}");
@@ -274,6 +334,9 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
         string ControlPlaneBaseUrl, string ServerId, string Token, string ReflectorHost);
 
     private P2PParams? _p2p;
+
+    /// <summary>后台升级因为服务器没开而暂停了；保温下次确认服务器正常时接着升级。</summary>
+    private volatile bool _upgradeParked;
     private string? _tunnelToken;
     private int _tunnelPort;
     private Task? _upgrade;
@@ -306,7 +369,16 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
                     await Task.Delay(UpgradeBackoff[attempt], ct).ConfigureAwait(false);
                 if (_tunnel is P2PTunnel { IsAlive: true }) return;
 
-                var built = await BuildP2PAsync(p2p, null, ct).ConfigureAwait(false);
+                (IMuxiTunnel Tunnel, MinecraftStatus Status)? built;
+                try { built = await BuildP2PAsync(p2p, null, ct).ConfigureAwait(false); }
+                // 打通了但服务器那头的游戏服没开（在重启）：接着按退避打只是让服务端一遍遍推
+                // 压测流量。先停下，等保温确认服务器回来了再接着升级（见 KeepWarmAsync）。
+                catch (ServerNotRespondingException refused)
+                {
+                    Log.Info("后台打洞打通了，但" + refused.Message + "——先不升级，等服务器回来");
+                    _upgradeParked = true;
+                    return;
+                }
                 if (built is not { } ready)
                 {
                     Log.Info($"后台打洞第 {attempt + 1} 次没成"
@@ -319,7 +391,7 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
                 {
                     // 等到没有游戏连接再换。等的这段时间里 QUIC 自己的保活维持着映射。
                     var waited = false;
-                    while ((!_connections.IsEmpty || _recovering) && ready.Tunnel.IsAlive)
+                    while ((!_connections.IsEmpty || Rebuilding) && ready.Tunnel.IsAlive)
                     {
                         waited = true;
                         await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
@@ -420,15 +492,22 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
                 // 真实状态查询，问得出版本号才算真的能进服——否则玩家会在读条走完
                 // 之后才发现连不上，那时候已经晚了。
                 MinecraftStatus status;
+                // 流已经开好（agent 回了 StreamReady）之后，状态查询才被关掉，才能算"agent 在、
+                // 游戏服不在"。开流这一步的 EOF/重置不算：agent 总是先回 StreamReady 再去接
+                // Minecraft，所以那一步断掉的只可能是路径——玩家本机的 TUN 代理、frps 接不上 agent。
+                var streamOpened = false;
                 try
                 {
                     using var probe = await tunnel.OpenStreamAsync(ct).ConfigureAwait(false);
+                    streamOpened = true;
                     status = await MinecraftPing
                         .QueryAsync(probe, "127.0.0.1", 25565, StatusTimeout, ct).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception error)
                 {
                     await tunnel.DisposeAsync().ConfigureAwait(false);
+                    // 所有线路都通到这同一台 agent，换下一条也是一样，直接报上去。
+                    if (streamOpened && IsRefusedBehindAgent(error)) throw new ServerNotRespondingException(error);
                     throw;
                 }
 
@@ -442,8 +521,8 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
                 progress?.Report($"已连上 {Describe(kind)}，服务端 {status.Version}");
                 return established;
             }
-            catch (Exception error) when (error is not OperationCanceledException
-                                          || !ct.IsCancellationRequested)
+            catch (Exception error) when (error is not ServerNotRespondingException
+                                          && !Cancellation.IsShutdown(error, ct))
             {
                 var reason = error is OperationCanceledException ? "超时" : error.Message;
                 failures.Add($"{Describe(kind)} {endpoint}：{reason}");
@@ -490,8 +569,15 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
     /// <summary>换 <see cref="_tunnel"/> 的几处（接管 P2P、保温摘除、释放）共用的锁。</summary>
     private readonly object _swapGate = new();
 
-    /// <summary>保温正在重建线路。这期间后台升级先不接管，免得两边互相覆盖。</summary>
-    private volatile bool _recovering;
+    /// <summary>
+    /// 有人正在重建线路（保温、后台重连）。这期间后台升级先不接管，免得两边互相覆盖 _tunnel。
+    ///
+    /// 是计数不是开关：保温和后台重连会交叠——保温重建失败时在自己的 finally 之前就把重连
+    /// 拉起来了，开关的话保温一收尾就把重连那一轮的"正在重建"也清掉，升级趁机接管 P2P，
+    /// 随后被重连建好的隧道覆盖，那条 QUIC 连接就漏了。
+    /// </summary>
+    private int _rebuilding;
+    private bool Rebuilding => Volatile.Read(ref _rebuilding) > 0;
 
     private bool _disposed;
 
@@ -543,6 +629,8 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
     private async Task<(IMuxiTunnel Tunnel, MinecraftStatus Status)?> BuildP2PAsync(
         P2PParams p2p, IProgress<string>? progress, CancellationToken ct, bool acceptSlow = false)
     {
+        // 洞打通、QUIC 也握上了，状态查询却被 agent 关掉：游戏服没开，不是这条路不行。
+        var refused = false;
         try
         {
             // 验收回调里填上。EstablishAsync 只在某条通过验收时才返回，
@@ -554,8 +642,18 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
                 {
                     using (var probe = await candidate.OpenStreamAsync(token2).ConfigureAwait(false))
                     {
-                        status = await MinecraftPing
-                            .QueryAsync(probe, "127.0.0.1", 25565, StatusTimeout, token2).ConfigureAwait(false);
+                        try
+                        {
+                            status = await MinecraftPing
+                                .QueryAsync(probe, "127.0.0.1", 25565, StatusTimeout, token2).ConfigureAwait(false);
+                        }
+                        // 只认 QUIC：TCP 打洞那条腿（MuxTunnel）是一条 socket 上的多路复用，
+                        // NAT 把那条 socket 掐了，所有流都读到 EOF，看着和 agent 关流一模一样。
+                        catch (Exception error) when (candidate is not MuxTunnel && IsRefusedBehindAgent(error))
+                        {
+                            refused = true;
+                            throw;
+                        }
                     }
 
                     // 状态查询只有几百字节，对"进世界时能不能扛住区块"没有预测力。
@@ -589,11 +687,25 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
         }
         catch (Exception error) when (!Cancellation.IsShutdown(error, ct))
         {
+            // 前台打洞原本要连打三轮：服务器没开时每一轮都会同样落空，第一轮就该收手。
+            if (refused) throw new ServerNotRespondingException(error);
             Log.Warn($"P2P 直连未建立：{error.Message}");
             progress?.Report("P2P 直连不可用，改用其他线路");
             return null;
         }
     }
+
+    /// <summary>
+    /// 在经过鉴权的通道（端侧隧道、P2P）上，状态查询被对面直接关掉：只可能是 agent
+    /// 接不上本机的 Minecraft，于是收了这条流。
+    ///
+    /// 裸 TCP 线路上同样的现象不算数：玩家本机开着 TUN 模式的代理时，任何地址都能
+    /// "连上"再被关掉，那说明不了服务器的状态。超时也不算：P2P 路径 MTU 有问题时，
+    /// 状态响应（带模组列表，好几 KB）同样会超时，那是线路的毛病。
+    /// </summary>
+    private static bool IsRefusedBehindAgent(Exception error) =>
+        error is EndOfStreamException
+        || error is IOException { InnerException: SocketException { SocketErrorCode: SocketError.ConnectionReset } };
 
     /// <summary>把验证通过的线路提到最前，其余保持原有顺序作为降级备选。</summary>
     private void Promote(RouteProbeResult route)
@@ -649,6 +761,12 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
                             .ConfigureAwait(false);
                     }
                     strikes = 0;
+                    // 升级在服务器重启时暂停过，现在服务器回来了，接着升级
+                    if (_upgradeParked)
+                    {
+                        _upgradeParked = false;
+                        StartUpgradeIfPaid(current);
+                    }
                 }
                 catch (Exception error) when (error is not OperationCanceledException
                                               || !ct.IsCancellationRequested)
@@ -683,20 +801,39 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
                         try { await tunnel.DisposeAsync().ConfigureAwait(false); } catch { }
                     }
                     // 重建期间别让后台升级插进来接管，两边会互相覆盖 _tunnel。
-                    _recovering = true;
+                    Interlocked.Increment(ref _rebuilding);
                     try
                     {
-                        var replacement = await RecoverAsync(ct).ConfigureAwait(false);
+                        var replacement = await RecoverAsync(_progress, ct).ConfigureAwait(false);
                         if (!ReferenceEquals(replacement.Route, current.Route))
                             RouteChanged?.Invoke(replacement);
                     }
-                    catch (Exception retry) when (retry is not OperationCanceledException)
+                    // 判据是"我们自己要退出"，不是异常类型：重建里的超时抛的也是取消异常，
+                    // 用类型过滤会让它穿出去，把保温循环整个打死。
+                    catch (Exception retry) when (!Cancellation.IsShutdown(retry, ct))
                     {
                         Log.Warn("保温重建线路失败：" + retry.Message);
+                        // 重建不成就别再装作有线路。原先 Established 留着旧值，游戏来连时照着
+                        // 一条死线路转发，玩家只看到"连接中断"；现在退回"未连上"，交给后台重连：
+                        // 它按退避接着试，游戏来连时会被叫醒，连不上也会替服务器说明原因。
+                        //
+                        // 只在确实是我们把它置空时才通知、才转入重连：重建的这几秒里后台升级可能
+                        // 已经把 P2P 接上了，那时线路是好的，再报"连不上"会让界面一直挂着"重连中"。
+                        bool lost;
+                        lock (_swapGate)
+                        {
+                            lost = ReferenceEquals(Established, current);
+                            if (lost) Established = null;
+                        }
+                        if (lost)
+                        {
+                            RouteUnavailable?.Invoke(retry);
+                            ReconnectInBackground(retry);
+                        }
                     }
                     finally
                     {
-                        _recovering = false;
+                        Interlocked.Decrement(ref _rebuilding);
                     }
                 }
             }
@@ -712,13 +849,13 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
     /// 都没有，直接就断了。现在：能走隧道先走隧道，落到付费线路就在后台重新打洞；
     /// 一条 TCP 线路都没有就直接重新打洞。
     /// </summary>
-    private async Task<RouteEstablishment> RecoverAsync(CancellationToken ct)
+    private async Task<RouteEstablishment> RecoverAsync(IProgress<string>? progress, CancellationToken ct)
     {
         if (_routes.Count == 0)
         {
             if (_p2p is null) throw new InvalidOperationException("没有任何可用线路");
             return await TryEstablishP2PAsync(
-                       _p2p.ControlPlaneBaseUrl, _p2p.ServerId, _p2p.Token, _p2p.ReflectorHost, null, ct,
+                       _p2p.ControlPlaneBaseUrl, _p2p.ServerId, _p2p.Token, _p2p.ReflectorHost, progress, ct,
                        acceptSlow: true)
                        .ConfigureAwait(false)
                    ?? throw new InvalidOperationException("没有 TCP 线路，重新打洞也没成功");
@@ -729,11 +866,11 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
         {
             try
             {
-                recovered = await EstablishTunnelAsync(_tunnelToken!, _tunnelPort, null, ct)
+                recovered = await EstablishTunnelAsync(_tunnelToken!, _tunnelPort, progress, ct)
                     .ConfigureAwait(false);
             }
-            catch (Exception error) when (error is not OperationCanceledException
-                                          || !ct.IsCancellationRequested)
+            catch (Exception error) when (error is not ServerNotRespondingException
+                                          && !Cancellation.IsShutdown(error, ct))
             {
                 Log.Warn("重建隧道失败，退回直连/中转：" + error.Message);
             }
@@ -742,7 +879,7 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
         {
             try
             {
-                recovered = await EstablishAsync(null, ct).ConfigureAwait(false);
+                recovered = await EstablishAsync(progress, ct).ConfigureAwait(false);
             }
             // 直连/中转也都进不了服（比如中转后面的 frpc 挂了），打洞是剩下的唯一办法。
             // 不这么做的话，P2P 一掉、中转又不行，这局剩下的时间每 25 秒重建一次、每次都失败。
@@ -753,12 +890,241 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
                 Log.Warn("直连/中转都没能重建，改为重新打洞：" + error.Message);
                 return await TryEstablishP2PAsync(
                            _p2p.ControlPlaneBaseUrl, _p2p.ServerId, _p2p.Token, _p2p.ReflectorHost,
-                           null, ct, acceptSlow: true).ConfigureAwait(false)
+                           progress, ct, acceptSlow: true).ConfigureAwait(false)
                        ?? throw new InvalidOperationException("直连、中转和打洞都没能重建线路");
             }
         }
         StartUpgradeIfPaid(recovered);
         return recovered;
+    }
+
+    /// <summary>
+    /// 重连的退避。游戏加载模组要好几分钟，前几次密一点，服务器重启这种一两分钟就好的
+    /// 情况能赶在读条走完之前连上；之后稀下来，玩家在玩单机时也不会一直敲服务器。
+    /// </summary>
+    private static readonly TimeSpan[] ReconnectBackoff =
+    [
+        TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20),
+        TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60),
+    ];
+
+    /// <summary>两轮重连之间至少隔这么久，游戏连着来叫也一样：每轮都要问控制面，可能还要打洞。</summary>
+    private static readonly TimeSpan ReconnectMinGap = TimeSpan.FromSeconds(2);
+
+    private Task? _reconnect;
+    private volatile Exception? _lastFailure;
+
+    /// <summary>游戏来连本地代理时叫醒重连，不等退避。</summary>
+    private readonly SemaphoreSlim _reconnectKick = new(0, 1);
+
+    /// <summary>每一轮重连结束（不管成没成）都换一个新的，等结果的游戏连接各自拿当时那个。</summary>
+    private TaskCompletionSource _reconnectRound = NewRound();
+
+    /// <summary>开始过、结束过几轮重连。游戏连接要等的是"它叫醒之后开始的那一轮"。</summary>
+    private long _roundsStarted;
+    private long _roundsFinished;
+
+    private static TaskCompletionSource NewRound() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>
+    /// 在后台把线路连起来，并且一直连下去，直到代理关掉：第一轮问控制面、选路、完整建立；
+    /// 没连上就按退避一轮轮重试，连上之后掉了线（保温重建失败）也回到这里接着连。
+    ///
+    /// 启动游戏不再等它。原先是"先连上服务器、再启动游戏"，连不上就抛异常，游戏压根不启动，
+    /// 玩家连单机都玩不了——实测撞上的是服务器重启那一分钟。现在游戏要的只是本机代理的
+    /// 端口，模组加载那几分钟里后台把线路连好：连上了，读完条照样直接进服；没连上，游戏来连时
+    /// 由代理告诉玩家原因，点返回就是主菜单。
+    /// </summary>
+    /// <param name="plan">
+    /// 取凭据和线路候选。要问控制面，所以也放在后台；之后每轮重连都会重新取一次——服务器的
+    /// IPv6 是临时地址会轮换，启动那一刻控制面没问到凭据的话，后面几轮也还能补上。
+    /// </param>
+    /// <param name="progress">连接进度，启动器的进度条接着它。</param>
+    public void ConnectInBackground(Func<CancellationToken, Task<ConnectPlan>> plan, IProgress<string>? progress)
+    {
+        lock (_swapGate)
+        {
+            if (_disposed || _reconnect is { IsCompleted: false }) return;
+            _plan = plan;
+            _progress = progress;
+            _standIn = true;
+            _reconnect = ConnectLoopAsync(firstRound: true, _lifetime.Token);
+        }
+    }
+
+    /// <summary>线路掉了、保温也没重建成功时回到后台重连。已经在连就什么都不做。</summary>
+    /// <param name="why">刚才那次失败。游戏来连时，本地代理拿它告诉玩家为什么进不去。</param>
+    public void ReconnectInBackground(Exception? why = null)
+    {
+        if (why is not null) _lastFailure = why;
+        lock (_swapGate)
+        {
+            if (_disposed || _reconnect is { IsCompleted: false }) return;
+            _reconnect = ConnectLoopAsync(firstRound: false, _lifetime.Token);
+        }
+    }
+
+    private Func<CancellationToken, Task<ConnectPlan>>? _plan;
+    private IProgress<string>? _progress;
+
+    /// <summary>
+    /// 没连上时由代理替服务器回话。只有游戏用的代理（走 <see cref="ConnectInBackground"/>）开：
+    /// 诊断工具要的是真实结果，替身回一句"1.21.1"会被它当成"经代理查询成功"。
+    /// </summary>
+    private volatile bool _standIn;
+
+    private void KickReconnect()
+    {
+        try { _reconnectKick.Release(); }
+        catch (SemaphoreFullException) { } // 已经叫过了，还没被取走
+    }
+
+    private async Task ConnectLoopAsync(bool firstRound, CancellationToken ct)
+    {
+        // 一律到线程池上跑，不在调用方里同步执行到第一个 await：调用方拿着 _swapGate 的锁，
+        // 而保温调用时它自己的"正在重建"计数也还没退。
+        await Task.Yield();
+        try
+        {
+            for (var round = 1; ; round++)
+            {
+                var initial = firstRound && round == 1;
+                if (!initial)
+                {
+                    // 首轮立刻开始；之后按退避等，游戏来连时（玩家点加入、多人列表刷新）提前叫醒
+                    var retry = firstRound ? round - 1 : round;
+                    var backoff = ReconnectBackoff[Math.Min(retry - 1, ReconnectBackoff.Length - 1)];
+                    if (_lastFailure is { } last)
+                        _progress?.Report($"{DescribeUnavailable(last)}，{backoff.TotalSeconds:0} 秒后再试");
+                    await _reconnectKick.WaitAsync(backoff, ct).ConfigureAwait(false);
+                }
+                // 后台升级可能抢先把 P2P 接上了
+                if (Established is not null) return;
+
+                Interlocked.Increment(ref _rebuilding);
+                Interlocked.Increment(ref _roundsStarted);
+                try
+                {
+                    RouteEstablishment established;
+                    if (initial)
+                    {
+                        established = await FirstConnectAsync(ct).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        _progress?.Report("正在重新连接服务器");
+                        await RefreshAsync(ct).ConfigureAwait(false);
+                        established = await RecoverAsync(_progress, ct).ConfigureAwait(false);
+                    }
+                    _lastFailure = null;
+                    Log.Info(initial ? "后台连接已建立" : $"后台重连成功（第 {round} 轮）");
+                    RouteChanged?.Invoke(established);
+                    return;
+                }
+                catch (Exception error) when (!Cancellation.IsShutdown(error, ct))
+                {
+                    _lastFailure = error;
+                    Log.Warn($"{DescribeUnavailable(error)}（第 {round} 轮）：{error.Message}");
+                    if (initial) RouteUnavailable?.Invoke(error);
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref _rebuilding);
+                    Interlocked.Increment(ref _roundsFinished);
+                    NextRound();
+                }
+                await Task.Delay(ReconnectMinGap, ct).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        finally
+        {
+            // 代理关了也要放行还在等的游戏连接
+            NextRound();
+        }
+    }
+
+    private void NextRound() =>
+        Interlocked.Exchange(ref _reconnectRound, NewRound()).TrySetResult();
+
+    /// <summary>首轮：取凭据和候选、选路，然后按优先级完整建立一次（见 <see cref="EstablishBestAsync"/>）。</summary>
+    private async Task<RouteEstablishment> FirstConnectAsync(CancellationToken ct)
+    {
+        var plan = await _plan!(ct).ConfigureAwait(false);
+        ApplyPlan(plan);
+        try
+        {
+            var selection = await SelectRouteAsync(plan.Servers, _progress, ct).ConfigureAwait(false);
+            Selection = selection;
+            _routes = selection.Reachable;
+        }
+        // 有凭据就还能打洞：打洞不依赖任何 TCP 线路。没有凭据时这就是这一轮失败的原因。
+        catch (InvalidOperationException error) when (!string.IsNullOrWhiteSpace(plan.TunnelToken))
+        {
+            Log.Warn($"{error.Message}——还有打洞可以试");
+        }
+        return await EstablishBestAsync(plan.TunnelToken, plan.ControlPlaneBaseUrl, plan.ServerId,
+                plan.ReflectorHost, plan.TunnelPort, _progress, ct, upgradeInBackground: true)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 重连前把凭据、候选和可达线路都重新取一遍。线路全挂时不能一直抱着起代理那一刻的表：
+    /// 中转闪断回来了、服务器换了 IPv6，旧表里都没有。
+    /// </summary>
+    private async Task RefreshAsync(CancellationToken ct)
+    {
+        if (_plan is { } plan)
+        {
+            try { ApplyPlan(await plan(ct).ConfigureAwait(false)); }
+            catch (Exception error) when (!Cancellation.IsShutdown(error, ct))
+            {
+                Log.Warn("重新取线路候选失败，沿用上次的：" + error.Message);
+            }
+        }
+        try
+        {
+            var selection = await SelectRouteAsync(_servers, null, ct).ConfigureAwait(false);
+            Selection = selection;
+            _routes = selection.Reachable;
+        }
+        catch (InvalidOperationException)
+        {
+            // 现在一条都不通：清掉旧表，RecoverAsync 会直接去打洞
+            Selection = RouteSelection.None;
+            _routes = [];
+        }
+    }
+
+    private void ApplyPlan(ConnectPlan plan)
+    {
+        _servers = plan.Servers;
+        if (string.IsNullOrWhiteSpace(plan.TunnelToken)) return;
+        _tunnelToken = plan.TunnelToken;
+        _tunnelPort = plan.TunnelPort;
+        _p2p = new P2PParams(plan.ControlPlaneBaseUrl, plan.ServerId, plan.TunnelToken!, plan.ReflectorHost);
+    }
+
+    /// <summary>
+    /// 游戏来连时还没连上：叫醒重连，等这一轮的结果。连上了返回 true，照常转发；
+    /// 没连上就由调用方替服务器回话。
+    /// </summary>
+    private async Task<bool> AwaitPendingRouteAsync(CancellationToken ct)
+    {
+        // 叫醒时可能正赶上一轮已经在跑，它是在玩家点加入之前开始的，服务器也许正好在这之间
+        // 起来了——它的失败说明不了现在。所以要等的是叫醒之后才开始的那一轮。
+        var wanted = Interlocked.Read(ref _roundsStarted) + 1;
+        KickReconnect();
+        var deadline = Task.Delay(PendingRouteWait, ct);
+        while (true)
+        {
+            // 先拿信号再看条件，否则条件看完、开始等之前那一轮恰好结束，这次通知就丢了。
+            var pulse = Volatile.Read(ref _reconnectRound).Task;
+            if (Established is not null) return true;
+            if (Interlocked.Read(ref _roundsFinished) >= wanted) return false;
+            if (await Task.WhenAny(pulse, deadline).ConfigureAwait(false) == deadline)
+                return Established is not null;
+        }
     }
 
     private static string Describe(RouteKind kind) => kind switch
@@ -779,16 +1145,29 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
     /// 调用方手里有隧道凭据时应当传 true：打洞不依赖任何 TCP 线路，中转挂了、玩家又
     /// 没有 IPv6 时它恰恰是唯一能通的路。原先选路一抛，打洞连尝试的机会都没有。
     /// </param>
+    /// <summary>
+    /// 只把本地代理起起来，不碰任何网络：游戏要的只是一个本机端口。选路、问控制面、建隧道、
+    /// 打洞都交给 <see cref="ConnectInBackground"/>，和游戏加载并行。
+    /// </summary>
+    public static MinecraftRouteProxy Listen(IEnumerable<ServerEntry> servers)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start(32);
+        Log.Info($"MC 本地代理监听 127.0.0.1:{((IPEndPoint)listener.LocalEndpoint).Port}，线路在后台连");
+        return new MinecraftRouteProxy(listener, RouteSelection.None, servers.ToList());
+    }
+
     public static async Task<MinecraftRouteProxy> StartAsync(
         IEnumerable<ServerEntry> servers,
         IProgress<string>? progress,
         CancellationToken ct,
         bool allowNoRoute = false)
     {
+        var serverList = servers.ToList();
         RouteSelection selection;
         try
         {
-            selection = await SelectRouteAsync(servers, progress, ct).ConfigureAwait(false);
+            selection = await SelectRouteAsync(serverList, progress, ct).ConfigureAwait(false);
         }
         catch (InvalidOperationException error) when (allowNoRoute)
         {
@@ -801,7 +1180,7 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
                  (selection.Selected is { } best
                      ? $"首选 {best.Candidate.Kind} {best.Endpoint} {best.Latency.TotalMilliseconds:0}ms"
                      : "没有可达的 TCP 线路，只能靠打洞"));
-        return new MinecraftRouteProxy(listener, selection);
+        return new MinecraftRouteProxy(listener, selection, serverList);
     }
 
     public static async Task<RouteSelection> SelectRouteAsync(
@@ -975,6 +1354,33 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
     {
         using (local)
         {
+            // 还没连上、后台在重连（启动时线路全不通，或者掉线后重建失败）：叫醒重连，等这一轮
+            // 的结果。连上了就照常往下走；还是没连上，就替服务器回话——多人列表显示原因，
+            // 点加入的直接看到进不去的理由，点返回就能去玩单机。
+            //
+            // 不能照旧去碰 _routes：线路 TCP 是通的（中转在），后面的游戏服不在，转过去只会
+            // 让游戏报一句"连接中断"。诊断工具的代理不走这里（见 _standIn），照旧转发。
+            if (_standIn && Established is null && _reconnect is { IsCompleted: false })
+            {
+                if (!await AwaitPendingRouteAsync(ct).ConfigureAwait(false))
+                {
+                    var why = DescribeUnavailable(_lastFailure);
+                    Log.Info($"游戏来连时还没连上服务器（{why}），由本地代理回话");
+                    try
+                    {
+                        await MinecraftPing.ServeStandInAsync(local.GetStream(),
+                            $"{why}，启动器正在后台重连",
+                            $"{why}。\n启动器正在后台自动重连，过一会儿再点加入就行；\n现在可以先返回去玩单机。",
+                            TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
+                    }
+                    catch (Exception error) when (!Cancellation.IsShutdown(error, ct))
+                    {
+                        Log.Info("本地代理回话未完成：" + error.Message);
+                    }
+                    return;
+                }
+            }
+
             // 隧道已建立时，游戏的每条连接都从隧道里开一条数据流。这样公网那一段
             // 的选路、保活、换线全在两端工具之间完成，Minecraft 只看得到本机端口。
             var tunnel = _tunnel;
@@ -1063,6 +1469,11 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
         if (_upgrade is { } upgrade)
         {
             try { await upgrade.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false); } catch { }
+        }
+        // 后台重连同理：它可能正拿着一条刚建好、还没装上的隧道。
+        if (_reconnect is { } reconnect)
+        {
+            try { await reconnect.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false); } catch { }
         }
         var connections = _connections.Values.ToArray();
         if (connections.Length > 0)

@@ -470,115 +470,49 @@ internal sealed class RpcHost : IDisposable
             Log.Info($"玩家 {session.Username}，离线 UUID {session.UuidDashed}");
 
             MinecraftRouteProxy? proxy = null;
-            if (_settings.AutoJoinServer && _manifest.Servers.Count > 0)
+            // 本地代理不管勾没勾"自动进入服务器"都起：服务器列表里永远挂着它（127.0.0.1），
+            // 玩家从主菜单点进服也要走我们的选路、隧道和打洞。勾没勾只决定启动时带不带快速加入，
+            // 那由 GameLauncher 看设置决定。
+            //
+            // 而且游戏不再等连接。原先是"先连上服务器、再启动游戏"，连不上就抛异常，游戏压根
+            // 不启动，玩家连单机都玩不了（实测撞上的是服务器重启那一分钟）。现在代理起来就启动
+            // 游戏，问控制面、选路、建隧道、打洞都在后台和模组加载并行，进度照常报给进度条；
+            // 连上了读完条照样进服，没连上由代理告诉玩家原因，后台一直接着连。
+            if (_manifest.Servers.Count > 0)
             {
-                Emit("status", new JsonObject
-                {
-                    ["phase"] = "选择游戏线路",
-                    ["detail"] = "正在并行探测直连与兜底入口",
-                    ["fraction"] = -1,
-                });
-                var routeProgress = new Progress<string>(detail => Emit("status", new JsonObject
-                {
-                    ["phase"] = "选择游戏线路",
-                    ["detail"] = detail,
-                    ["fraction"] = -1,
-                }));
-                // 控制面优先。清单里的线路是发布那一刻定死的，而服务器那台的 IPv6
-                // 是临时地址、会轮换，运营商重拨还可能整个前缀都变。只有那台机器
-                // 自己知道它此刻是什么地址，所以每次启动都来问一次最新的。
-                // 问不到就退回清单——控制面挂了不该连累玩家进不去游戏。
-                var servers = _manifest.Servers;
-                // 凭据优先用本地配置（运维可以钉死一个），否则现取。和候选一起并行取：
-                // 两次都是问同一个控制面，串着问只是多等一个往返。
-                var tokenFetch = !string.IsNullOrWhiteSpace(_settings.TunnelToken)
-                    ? Task.FromResult<string?>(_settings.TunnelToken)
-                    : ControlPlaneClient.FetchClientTokenAsync(
-                        _settings.UpdateBaseUrl, "default", TimeSpan.FromSeconds(8), ct);
-                var snapshot = await ControlPlaneClient
-                    .FetchAsync(_settings.UpdateBaseUrl, "default", TimeSpan.FromSeconds(8), ct)
-                    .ConfigureAwait(false);
-                if (snapshot is { Online: true } && snapshot.Candidates.Count > 0)
-                {
-                    servers = WithControlPlaneRoutes(_manifest.Servers, snapshot.Candidates);
-                    Log.Info($"线路候选来自控制面：{snapshot.Candidates.Count} 条，" +
-                             $"数据新鲜度 {snapshot.AgeSeconds:0.#}s");
-                }
-                else
-                {
-                    Log.Warn("控制面没有可用候选，回退到清单里的线路");
-                }
-
-                var tunnelToken = await tokenFetch.ConfigureAwait(false);
-
-                // 有凭据就能打洞，而打洞不依赖任何 TCP 线路：一条都不通时也要把代理
-                // 起起来，否则中转挂了、又没有 IPv6 的玩家连打洞的机会都没有。
-                proxy = await MinecraftRouteProxy.StartAsync(servers, routeProgress, ct,
-                        allowNoRoute: !string.IsNullOrWhiteSpace(tunnelToken))
-                    .ConfigureAwait(false);
-
-                // 先把连接真正建起来，建好了才启动游戏。
-                //
-                // 以前是懒连接：选完线就开游戏，真正连远端要等 Minecraft 自己发起，
-                // 于是"线路其实不通"这件事要到读条走完、玩家点进服务器才暴露。现在
-                // 在这里就问一次服务端版本号，问不到就换下一条，全部失败则直接报错，
-                // 不让玩家白等几分钟。
-                Emit("status", new JsonObject
-                {
-                    ["phase"] = "正在和服务器建立连接",
-                    ["detail"] = "逐条尝试可用线路",
-                    ["fraction"] = -1,
-                });
-                var connectProgress = new Progress<string>(detail => Emit("status", new JsonObject
-                {
-                    ["phase"] = "正在和服务器建立连接",
-                    ["detail"] = detail,
-                    ["fraction"] = -1,
-                }));
-
-                // 先订阅：后台升级到 P2P 可能在下面这一步返回之后很快就完成。
+                proxy = MinecraftRouteProxy.Listen(_manifest.Servers);
                 var liveProxy = proxy;
-                proxy.RouteChanged += replacement => Emit("routeSelected", new JsonObject
-                {
-                    ["kind"] = replacement.Kind.ToString(),
-                    ["label"] = replacement.Route.Candidate.Label ?? replacement.Route.Candidate.Id,
-                    ["remote"] = replacement.Route.Endpoint.ToString(),
-                    ["latencyMs"] = Math.Round(replacement.Route.Latency.TotalMilliseconds),
-                    ["local"] = liveProxy.LocalAddress,
-                    ["available"] = liveProxy.Selection.Reachable.Count,
-                });
-
-                // 取不到凭据也不影响进服：EstablishBestAsync 会直接落到直连/中转那一级。
-                // 有凭据时先用最快能通的线路放行游戏，打洞在后台做，见 upgradeInBackground。
-                RouteEstablishment established;
-                try
-                {
-                    established = await proxy.EstablishBestAsync(
-                        tunnelToken, _settings.UpdateBaseUrl, "default",
-                        _settings.PunchReflector, _settings.TunnelPort, connectProgress, ct,
-                        upgradeInBackground: true)
-                        .ConfigureAwait(false);
-                }
-                catch
-                {
-                    // 下面那句 await using 还没走到，这里不收代理就漏了：本地监听、接入循环、
-                    // 可能还有一条刚打通的隧道，一直挂在常驻的 sidecar 里。没有 TCP 线路时
-                    // 代理照样会被起起来（为了打洞），所以这条失败路径现在是真能走到的。
-                    await proxy.DisposeAsync().ConfigureAwait(false);
-                    throw;
-                }
-
-                var selected = established.Route;
-                Emit("routeSelected", new JsonObject
+                proxy.RouteChanged += established => Emit("routeSelected", new JsonObject
                 {
                     // 上报解析后的类型：候选声明为 Auto 时，原值对玩家毫无信息量
                     ["kind"] = established.Kind.ToString(),
-                    ["label"] = selected.Candidate.Label ?? selected.Candidate.Id,
-                    ["remote"] = selected.Endpoint.ToString(),
-                    ["latencyMs"] = Math.Round(selected.Latency.TotalMilliseconds),
-                    ["local"] = proxy.LocalAddress,
-                    ["available"] = proxy.Selection.Reachable.Count,
+                    ["label"] = established.Route.Candidate.Label ?? established.Route.Candidate.Id,
+                    ["remote"] = established.Route.Endpoint.ToString(),
+                    ["latencyMs"] = Math.Round(established.Route.Latency.TotalMilliseconds),
+                    ["local"] = liveProxy.LocalAddress,
+                    ["available"] = liveProxy.Selection.Reachable.Count,
                 });
+                proxy.RouteUnavailable += error =>
+                {
+                    Log.Warn($"{MinecraftRouteProxy.DescribeUnavailable(error)}，后台继续连：{error.Message}");
+                    Emit("routePending", new JsonObject
+                    {
+                        ["reason"] = MinecraftRouteProxy.DescribeUnavailable(error),
+                        ["detail"] = error.Message,
+                    });
+                };
+                var manifestServers = _manifest.Servers;
+                // 进度必须同步报：Progress<T> 会把回调丢进线程池，连上之后才到的旧进度会把
+                // "已连上服务器"又盖回"正在连接"。连接现在全程在后台跑，这种错位随时会撞上。
+                proxy.ConnectInBackground(
+                    token => PlanConnectionAsync(manifestServers, token),
+                    new SyncProgress(detail => Emit("status", new JsonObject
+                    {
+                        ["phase"] = "正在连接服务器",
+                        ["detail"] = detail,
+                        ["fraction"] = -1,
+                    })));
+                Emit("routeConnecting", new JsonObject());
             }
 
             await using var routeProxy = proxy;
@@ -623,6 +557,46 @@ internal sealed class RpcHost : IDisposable
         {
             FinishGameOperation();
         }
+    }
+
+    /// <summary>在报告的线程上直接回调。Emit 自己加了锁，可以从任何线程调。</summary>
+    private sealed class SyncProgress(Action<string> report) : IProgress<string>
+    {
+        public void Report(string value) => report(value);
+    }
+
+    /// <summary>
+    /// 后台连接每一轮开头调用：问控制面拿最新的线路候选和隧道凭据。
+    ///
+    /// 控制面优先。清单里的线路是发布那一刻定死的，而服务器那台的 IPv6 是临时地址、会轮换，
+    /// 运营商重拨还可能整个前缀都变。只有那台机器自己知道它此刻是什么地址，所以每次都来问。
+    /// 问不到就退回清单——控制面挂了不该连累玩家进不去游戏。
+    /// </summary>
+    private async Task<ConnectPlan> PlanConnectionAsync(List<ServerEntry> manifestServers, CancellationToken ct)
+    {
+        // 凭据优先用本地配置（运维可以钉死一个），否则现取。和候选一起并行取：
+        // 两次都是问同一个控制面，串着问只是多等一个往返。
+        var tokenFetch = !string.IsNullOrWhiteSpace(_settings.TunnelToken)
+            ? Task.FromResult<string?>(_settings.TunnelToken)
+            : ControlPlaneClient.FetchClientTokenAsync(
+                _settings.UpdateBaseUrl, "default", TimeSpan.FromSeconds(8), ct);
+        var snapshot = await ControlPlaneClient
+            .FetchAsync(_settings.UpdateBaseUrl, "default", TimeSpan.FromSeconds(8), ct)
+            .ConfigureAwait(false);
+        var servers = manifestServers;
+        if (snapshot is { Online: true } && snapshot.Candidates.Count > 0)
+        {
+            servers = WithControlPlaneRoutes(manifestServers, snapshot.Candidates);
+            Log.Info($"线路候选来自控制面：{snapshot.Candidates.Count} 条，" +
+                     $"数据新鲜度 {snapshot.AgeSeconds:0.#}s");
+        }
+        else
+        {
+            Log.Warn("控制面没有可用候选，回退到清单里的线路");
+        }
+        var token = await tokenFetch.ConfigureAwait(false);
+        return new ConnectPlan(servers, token, _settings.UpdateBaseUrl, "default",
+            _settings.PunchReflector, _settings.TunnelPort);
     }
 
     /// <summary>

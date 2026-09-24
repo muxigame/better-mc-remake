@@ -64,6 +64,7 @@ internal static class SelfTest
         TcpPunchConverge();
         MuxStreams();
         NetworkRouteProxy().GetAwaiter().GetResult();
+        LaunchWithoutRoute().GetAwaiter().GetResult();
         InstallLifecycle().GetAwaiter().GetResult();
         PipelineCompletionMarker().GetAwaiter().GetResult();
         InstallerProcessLifetime().GetAwaiter().GetResult();
@@ -1366,6 +1367,267 @@ internal static class SelfTest
             target.Stop();
             try { await targetLoop; } catch { }
         }
+    }
+
+    /// <summary>
+    /// 线路不通时照样放玩家进游戏，后台接着连。
+    ///
+    /// 实测的起因：服务器重启那一分钟里点开始游戏，隧道、中转、三次打洞全是"连上了、
+    /// 一读就断"，启动器抛异常，游戏压根不启动，玩家连单机都进不去。而那一分钟里
+    /// agent 一直在，只是接不上它本机的 Minecraft：再打洞只会让服务端白推压测流量。
+    /// </summary>
+    private static async Task LaunchWithoutRoute()
+    {
+        Section("线路不通照样进游戏");
+
+        using var life = new CancellationTokenSource();
+        var agent = new TcpListener(IPAddress.Loopback, 0);
+        agent.Start();
+        var agentPort = ((IPEndPoint)agent.LocalEndpoint).Port;
+        var mode = AgentMcDown;
+        var agentLoop = FakeAgentAsync(agent, () => Volatile.Read(ref mode), life.Token);
+        try
+        {
+            // 线路本身是通的：TCP 探测连得上，隧道端口也是这个假 agent。
+            var servers = new[]
+            {
+                new ServerEntry
+                {
+                    Name = "重启中", Primary = true, Host = "127.0.0.1", Port = agentPort,
+                    Routes =
+                    [
+                        new RouteCandidate
+                        {
+                            Id = "lan", Kind = RouteKind.LanDirect, Host = "127.0.0.1", Port = agentPort,
+                        },
+                    ],
+                },
+            };
+            var controlPlane = $"http://127.0.0.1:{ReserveClosedPort()}";
+
+            // 1. agent 在、MC 不在：认出是服务器没开，不再去打洞
+            await using (var probe = await MinecraftRouteProxy.StartAsync(servers, null,
+                             CancellationToken.None, allowNoRoute: true))
+            {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                Exception? failure = null;
+                try
+                {
+                    await probe.EstablishBestAsync("token", controlPlane, "default",
+                        "127.0.0.1", agentPort, null, CancellationToken.None, upgradeInBackground: true);
+                }
+                catch (Exception error) { failure = error; }
+                Check("agent 通、MC 不通时认出是服务器没开", failure is ServerNotRespondingException,
+                    failure is null ? "(没抛)" : $"{failure.GetType().Name}: {failure.Message}");
+                Check("认出之后不再白打洞", watch.Elapsed < TimeSpan.FromSeconds(3), $"{watch.ElapsedMilliseconds} ms");
+            }
+
+            // 1b. 开流时 agent 还没回 StreamReady 就断了：那是路径（TUN 代理、frps 接不上 agent）
+            //     的毛病，agent 总是先回 StreamReady 再去接 MC。不能当成服务器没开，否则会把
+            //     本来还能走的中转和打洞一起跳过。
+            Volatile.Write(ref mode, AgentPathDrop);
+            await using (var probe = await MinecraftRouteProxy.StartAsync(servers, null,
+                             CancellationToken.None, allowNoRoute: true))
+            {
+                Exception? failure = null;
+                try
+                {
+                    await probe.EstablishBestAsync("token", controlPlane, "default",
+                        "127.0.0.1", agentPort, null, CancellationToken.None, skipP2P: true);
+                }
+                catch (Exception error) { failure = error; }
+                Check("路径在开流时断掉不算服务器没开",
+                    failure is not null and not ServerNotRespondingException,
+                    failure is null ? "(没抛)" : $"{failure.GetType().Name}: {failure.Message}");
+            }
+            Volatile.Write(ref mode, AgentMcDown);
+
+            // 2. 启动器真正的用法：代理先起、游戏马上启动，连接全在后台
+            await using var proxy = MinecraftRouteProxy.Listen(servers);
+            var changed = 0;
+            var unavailable = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+            proxy.RouteChanged += _ => Interlocked.Increment(ref changed);
+            proxy.RouteUnavailable += error => unavailable.TrySetResult(error);
+            var steps = new System.Collections.Concurrent.ConcurrentQueue<string>();
+            proxy.ConnectInBackground(
+                _ => Task.FromResult(new ConnectPlan(servers, "token", controlPlane, "default", "127.0.0.1", agentPort)),
+                new SyncProgress(steps.Enqueue));
+            Check("起代理不等网络", proxy.Established is null && proxy.LocalPort > 0);
+            var first = await unavailable.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Check("后台第一轮没连上时通知界面", first is ServerNotRespondingException, first.Message);
+            Check("连接进度报给进度条", !steps.IsEmpty, string.Join(" | ", steps.Take(3)));
+
+            // 3. 多人列表来问：替服务器回一句为什么
+            var local = new IPEndPoint(IPAddress.Loopback, proxy.LocalPort);
+            var listed = await MotdOrErrorAsync(local);
+            Check("多人列表显示服务器在重启", listed.Contains("重启"), listed);
+
+            // 4. 这时点加入：给出进不去的原因，而不是一句"连接中断"
+            string kick;
+            try { kick = await LoginKickAsync(proxy.LocalPort); }
+            catch (Exception error) { kick = $"{error.GetType().Name}: {error.Message}"; }
+            Check("点加入时告诉玩家为什么进不去", kick.Contains("重启"), kick);
+            Check("还没连上时不装作有线路", proxy.Established is null);
+
+            // 5. 服务器起来了：下一次来连就接上
+            Volatile.Write(ref mode, AgentMcUp);
+            Equal("服务器恢复后经本地代理连上", "fake-mc-online", await MotdOrErrorAsync(local));
+            Check("重连成功后线路已建立", proxy.Established is not null);
+            Check("重连成功时通知界面", Volatile.Read(ref changed) >= 1, changed.ToString());
+        }
+        finally
+        {
+            life.Cancel();
+            agent.Stop();
+            try { await agentLoop; } catch { }
+        }
+    }
+
+    private const int AgentMcDown = 0, AgentMcUp = 1, AgentPathDrop = 2;
+
+    /// <summary>
+    /// 回环上的假 agent。握手照真 agent 的流程走（不验签）；数据连接按 <paramref name="mode"/>：
+    /// <see cref="AgentMcDown"/> 回 StreamReady、读完开场就关，真 agent 接本机 Minecraft 被拒时
+    /// 就是这样；<see cref="AgentMcUp"/> 当 Minecraft 回状态；<see cref="AgentPathDrop"/> 连
+    /// StreamReady 都不回就断，模拟中间路径断掉。
+    /// </summary>
+    private static async Task FakeAgentAsync(TcpListener listener, Func<int> mode, CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            TcpClient client;
+            try { client = await listener.AcceptTcpClientAsync(ct); }
+            catch (Exception error) when (error is OperationCanceledException or ObjectDisposedException
+                                              or SocketException) { return; }
+            _ = Task.Run(async () =>
+            {
+                using (client)
+                {
+                    try
+                    {
+                        var stream = client.GetStream();
+                        var preamble = new byte[5];
+                        await stream.ReadExactlyAsync(preamble, ct);
+                        if (!TunnelProtocol.PreambleMatches(preamble)) return;
+                        var (frame, _) = await TunnelProtocol.ReadFrameAsync(stream, ct);
+                        if (frame == TunnelProtocol.Frame.Hello)
+                        {
+                            await TunnelProtocol.WriteFrameAsync(stream, TunnelProtocol.Frame.Welcome, new byte[32], ct);
+                            await TunnelProtocol.ReadFrameAsync(stream, ct);
+                            await TunnelProtocol.WriteFrameAsync(stream, TunnelProtocol.Frame.Welcome, new byte[8], ct);
+                            while (true)
+                            {
+                                var (beat, _) = await TunnelProtocol.ReadFrameAsync(stream, ct);
+                                if (beat == TunnelProtocol.Frame.Ping)
+                                    await TunnelProtocol.WriteFrameAsync(stream, TunnelProtocol.Frame.Pong,
+                                        ReadOnlyMemory<byte>.Empty, ct);
+                            }
+                        }
+                        if (frame != TunnelProtocol.Frame.OpenStream) return;
+                        if (mode() == AgentPathDrop) return;
+                        await TunnelProtocol.WriteFrameAsync(stream, TunnelProtocol.Frame.StreamReady,
+                            ReadOnlyMemory<byte>.Empty, ct);
+                        if (mode() != AgentMcUp)
+                        {
+                            // 真 agent 也只读一次开场就去接 MC，读多少算多少
+                            var head = new byte[256];
+                            if (await stream.ReadAsync(head, ct) == 0) return;
+                            // 正常收尾（FIN），等对面先关，别留着没读的字节把它变成 RST
+                            client.Client.Shutdown(SocketShutdown.Send);
+                            while (await stream.ReadAsync(head, ct) > 0) { }
+                            return;
+                        }
+                        await MinecraftPing.ServeStandInAsync(stream, "fake-mc-online", "fake",
+                            TimeSpan.FromSeconds(5), ct);
+                    }
+                    catch (Exception error) when (error is IOException or SocketException or InvalidDataException
+                                                      or OperationCanceledException or ObjectDisposedException) { }
+                }
+            });
+        }
+    }
+
+    /// <summary>经本地代理查一次状态；查不到就把异常当结果返回，让断言记失败而不是把自检整个带崩。</summary>
+    private static async Task<string> MotdOrErrorAsync(IPEndPoint local)
+    {
+        try
+        {
+            var status = await MinecraftPing.QueryAsync(local, "127.0.0.1", TimeSpan.FromSeconds(20),
+                CancellationToken.None);
+            return status.Motd;
+        }
+        catch (Exception error) { return $"{error.GetType().Name}: {error.Message}"; }
+    }
+
+    /// <summary>在报告的那个线程上直接收下。Progress&lt;T&gt; 会丢到线程池里异步回调，断言时可能还没到。</summary>
+    private sealed class SyncProgress(Action<string> report) : IProgress<string>
+    {
+        public void Report(string value) => report(value);
+    }
+
+    /// <summary>以游戏的身份发起登录，返回服务端（这里是本地代理）给的断开原因。</summary>
+    private static async Task<string> LoginKickAsync(int port)
+    {
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, port);
+        var stream = client.GetStream();
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        static void VarInt(List<byte> sink, int value)
+        {
+            var v = (uint)value;
+            while ((v & ~0x7Fu) != 0) { sink.Add((byte)((v & 0x7F) | 0x80)); v >>= 7; }
+            sink.Add((byte)v);
+        }
+        static byte[] Packet(int id, List<byte> body)
+        {
+            var inner = new List<byte>();
+            VarInt(inner, id);
+            inner.AddRange(body);
+            var framed = new List<byte>();
+            VarInt(framed, inner.Count);
+            framed.AddRange(inner);
+            return framed.ToArray();
+        }
+        static async Task<int> ReadVarInt(Stream s, CancellationToken ct)
+        {
+            var result = 0;
+            var one = new byte[1];
+            for (var shift = 0; shift < 35; shift += 7)
+            {
+                await s.ReadExactlyAsync(one, ct);
+                result |= (one[0] & 0x7F) << shift;
+                if ((one[0] & 0x80) == 0) return result;
+            }
+            throw new InvalidDataException("VarInt 过长");
+        }
+
+        var handshake = new List<byte>();
+        VarInt(handshake, MinecraftPing.ProtocolVersion);
+        var host = Encoding.UTF8.GetBytes("127.0.0.1");
+        VarInt(handshake, host.Length);
+        handshake.AddRange(host);
+        handshake.Add((byte)(port >> 8));
+        handshake.Add((byte)port);
+        VarInt(handshake, 2); // next state: login
+        var loginStart = new List<byte>();
+        var name = Encoding.UTF8.GetBytes("10000");
+        VarInt(loginStart, name.Length);
+        loginStart.AddRange(name);
+        loginStart.AddRange(new byte[16]);
+        await stream.WriteAsync(Packet(0x00, handshake), deadline.Token);
+        await stream.WriteAsync(Packet(0x00, loginStart), deadline.Token);
+
+        var length = await ReadVarInt(stream, deadline.Token);
+        var body = new byte[length];
+        await stream.ReadExactlyAsync(body, deadline.Token);
+        using var reader = new MemoryStream(body);
+        var packetId = await ReadVarInt(reader, deadline.Token);
+        if (packetId != 0x00) return $"(包 ID 0x{packetId:x2})";
+        var textLength = await ReadVarInt(reader, deadline.Token);
+        var json = Encoding.UTF8.GetString(body, (int)reader.Position, textLength);
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.GetProperty("text").GetString() ?? "";
     }
 
     /// <summary>

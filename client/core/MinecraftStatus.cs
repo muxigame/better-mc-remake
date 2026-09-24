@@ -93,6 +93,93 @@ public static class MinecraftPing
         return Parse(json, watch.Elapsed);
     }
 
+    /// <summary>
+    /// 以服务器的身份回一次话：状态查询回 <paramref name="motd"/>，要登录的直接断开，
+    /// 断开原因写 <paramref name="kickReason"/>。
+    ///
+    /// 本地代理还没连上服务器时用它。游戏的多人列表和快速加入都只认本地代理的地址，
+    /// 代理要是一声不吭把连接关掉，玩家只能看到"连接中断"，不知道是自己网络的问题、
+    /// 服务器在重启，还是该等一等；这里直接把原因告诉他，他点返回就能去玩单机。
+    /// </summary>
+    public static async Task ServeStandInAsync(
+        Stream stream, string motd, string kickReason, TimeSpan timeout, CancellationToken ct)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(timeout);
+
+        var handshake = await ReadPacketAsync(stream, deadline.Token).ConfigureAwait(false);
+        var offset = 0;
+        if (ReadVarInt(handshake, ref offset) != 0x00) return;
+        var protocol = ReadVarInt(handshake, ref offset);
+        // 不能写成 offset += ReadVarInt(..., ref offset)：复合赋值先取 offset 的旧值，
+        // ReadVarInt 对它的推进会被覆盖掉。
+        var hostLength = ReadVarInt(handshake, ref offset);
+        offset += hostLength + 2; // 地址串 + 端口
+        var next = ReadVarInt(handshake, ref offset);
+
+        if (next == 1)
+        {
+            await ReadPacketAsync(stream, deadline.Token).ConfigureAwait(false); // Status Request
+            var status = new List<byte>();
+            // 回游戏自己的协议号：填别的会被显示成"版本不兼容"，把真正的说明盖掉。
+            WriteString(status, Json(writer =>
+            {
+                writer.WriteStartObject("version");
+                writer.WriteString("name", "1.21.1");
+                writer.WriteNumber("protocol", protocol);
+                writer.WriteEndObject();
+                writer.WriteStartObject("players");
+                writer.WriteNumber("max", 0);
+                writer.WriteNumber("online", 0);
+                writer.WriteEndObject();
+                writer.WriteStartObject("description");
+                writer.WriteString("text", motd);
+                writer.WriteEndObject();
+            }));
+            await stream.WriteAsync(Frame(0x00, status.ToArray()), deadline.Token).ConfigureAwait(false);
+
+            // 多人列表接着会发 Ping 量延迟，原样回 Pong。只查状态的调用方问完就关，那也正常。
+            byte[] ping;
+            try { ping = await ReadPacketAsync(stream, deadline.Token).ConfigureAwait(false); }
+            catch (EndOfStreamException) { return; }
+            if (ping.Length == 9 && ping[0] == 0x01)
+                await stream.WriteAsync(Frame(0x01, ping[1..]), deadline.Token).ConfigureAwait(false);
+            return;
+        }
+
+        // 2 = 登录，3 = 转服（1.20.5 起），都在登录阶段断开。先把 Login Start 读掉，
+        // 没读的字节留在缓冲里再关连接会变成 RST，游戏那边就只剩一句"连接被重置"。
+        try { await ReadPacketAsync(stream, deadline.Token).ConfigureAwait(false); }
+        catch (EndOfStreamException) { return; }
+        var reason = new List<byte>();
+        WriteString(reason, Json(writer => writer.WriteString("text", kickReason)));
+        await stream.WriteAsync(Frame(0x00, reason.ToArray()), deadline.Token).ConfigureAwait(false);
+        await stream.FlushAsync(deadline.Token).ConfigureAwait(false);
+    }
+
+    private static string Json(Action<Utf8JsonWriter> body)
+    {
+        using var buffer = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(buffer))
+        {
+            writer.WriteStartObject();
+            body(writer);
+            writer.WriteEndObject();
+        }
+        return Encoding.UTF8.GetString(buffer.ToArray());
+    }
+
+    private static async Task<byte[]> ReadPacketAsync(Stream stream, CancellationToken ct)
+    {
+        var length = await ReadVarIntAsync(stream, ct).ConfigureAwait(false);
+        // 握手、Login Start、Ping 都只有几十字节；超出这个量级的不是游戏在说话。
+        if (length is <= 0 or > 32 * 1024)
+            throw new InvalidDataException($"包长度异常：{length}");
+        var body = new byte[length];
+        await stream.ReadExactlyAsync(body, ct).ConfigureAwait(false);
+        return body;
+    }
+
     private static MinecraftStatus Parse(string json, TimeSpan elapsed)
     {
         using var document = JsonDocument.Parse(json);

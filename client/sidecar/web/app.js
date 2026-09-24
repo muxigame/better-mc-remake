@@ -12,6 +12,7 @@ const invoke = tauri && tauri.core && tauri.core.invoke;
 let state = {};
 let busy = false;
 let gameRunning = false;
+let connecting = false;   // 后台还在连服务器（游戏已经照常启动）
 let abortConfirm = null;
 let accountAuthPending = false;
 let packInstallPending = false;
@@ -84,16 +85,31 @@ function handleEvent(name, p) {
       break;
 
     case 'gameStarted':
+      // 游戏不再等连接，进程一起来就给出中止按钮；连接进度照样在进度条上走
       $('hero-meta').textContent = 'Minecraft 正在启动';
+      setGameRunning(true);
+      break;
+
+    case 'routeConnecting':
+      setConnecting(true);
       break;
 
     case 'routeSelected':
+      setConnecting(false);
       $('hero-meta').textContent = `${routeLabel(p.kind)} · ${Math.round(p.latencyMs || 0)} ms`;
       appendLog('INFO', `已选线路：${routeLabel(p.kind)} ${p.remote} → ${p.local}`);
+      if (gameRunning) setProgress('已连上服务器', `${routeLabel(p.kind)} · ${Math.round(p.latencyMs || 0)} ms`, 1);
+      break;
+
+    case 'routePending':
+      // 连不上服务器不影响玩游戏：单机照玩，后台一直接着连，连上了会再来一条 routeSelected
+      setConnecting(true);
+      $('hero-meta').textContent = `${p.reason || '暂时连不上服务器'} · 后台重连中`;
+      appendLog('WARN', `${p.reason || '暂时连不上服务器'}，游戏照常启动，后台继续连：${p.detail || ''}`);
       break;
 
     case 'gameWindowReady':
-      setProgress('游戏运行中', '启动器可以最小化，不影响游戏', 1);
+      if (!connecting) setProgress('游戏运行中', '启动器可以最小化，不影响游戏', 1);
       setGameRunning(true);
       if (!(state.settings || {}).keepLauncherOpen) invoke('minimize').catch(() => {});
       break;
@@ -224,6 +240,7 @@ function routeLabel(kind) {
 }
 
 function onGameExited(p) {
+  setConnecting(false);
   setGameRunning(false);
   setBusy(false);
   if (p.code === 0) {
@@ -239,16 +256,24 @@ function onGameExited(p) {
 /* ───────────────────────── 界面状态 ───────────────────────── */
 
 /*
-   游戏起来之后那条进度条已经走满，再挂着只是占地方；玩家这时真正需要的是一个
-   能把卡住的游戏关掉的入口。所以窗口一出现就把进度条换成运行状态和中止按钮。
-   后端的 cancel 本来就会 Kill 整棵进程树，这里只是把它接出来。
+   游戏进程一起来就给出中止按钮：后端的 cancel 本来就会 Kill 整棵进程树，这里只是把它接出来。
+   进度条在游戏运行时只剩一个用处：显示后台连服务器的进度。连上了就收起来，
+   还在连（包括连不上、后台一直重试）就一直挂着。
 */
 function setGameRunning(value) {
+  // 游戏起来时会连着来两次（gameStarted、gameWindowReady）。状态没变就别动按钮：
+  // 玩家在这两次之间已经点了一下"中止游戏"的话，第二次会把那个待确认状态悄悄清掉。
+  if (gameRunning === !!value) return;
   gameRunning = !!value;
   clearAbortConfirm();
-  $('progress-track').hidden = gameRunning;
+  $('progress-track').hidden = gameRunning && !connecting;
   $('btn-cancel').classList.toggle('mc-btn-danger', gameRunning);
   $('btn-cancel').textContent = gameRunning ? '中止游戏' : '取消';
+}
+
+function setConnecting(value) {
+  connecting = !!value;
+  if (gameRunning) $('progress-track').hidden = !connecting;
 }
 
 function clearAbortConfirm() {
