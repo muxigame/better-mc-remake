@@ -2,11 +2,22 @@
 .SYNOPSIS
     构建 Tauri 客户端、.NET sidecar 和 Python 官网后端。
 
+.DESCRIPTION
+    Windows 代码签名（Authenticode）在 .env 里配了才做，没配照常构建但会警告：
+
+      WINDOWS_SIGN_CERT_THUMBPRINT  证书指纹。证书要在本机「当前用户\个人」证书库里——
+                                    USB 令牌插上、装好厂商驱动就会出现在那儿
+      WINDOWS_SIGN_COMMAND          或者：自定义签名命令，%1 代表文件路径（云签名服务的命令行）
+      WINDOWS_SIGN_TIMESTAMP_URL    时间戳服务，默认 DigiCert。证书过期后签名仍然有效靠它
+
+    没签名的安装包，玩家下载运行时 Windows 显示「未知发布者」。
+
 .EXAMPLE
     .\build.ps1                      # 构建客户端和更新服务器
     .\build.ps1 -Target client       # 只构建 Tauri 客户端
     .\build.ps1 -Target server       # 只构建更新服务器
     .\build.ps1 -SelfTest            # 构建后跑核心逻辑自检
+    .\build.ps1 -AllowUntrustedSigning  # 用自签测试证书验证签名流程（证书不受信任也放行）
 #>
 [CmdletBinding()]
 param(
@@ -15,7 +26,9 @@ param(
 
     [string]$OutDir,
 
-    [switch]$SelfTest
+    [switch]$SelfTest,
+
+    [switch]$AllowUntrustedSigning
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,7 +65,63 @@ function Import-DotEnv([string]$Path) {
 
 Import-DotEnv (Join-Path $workspaceRoot '.env')
 
+# ── Windows 代码签名 ──
+#
+# 签了以后「未知发布者」变成证书上的名字。SmartScreen「已保护你的电脑」看的是信誉：
+# 签了名，信誉按证书累积、跨版本延续；不签，信誉按文件哈希算，每发一版从零开始。
+# 新证书头一段时间仍可能被拦，这点 EV 也一样（2024 年起 EV 不再自带信誉）。
+#
+# 必须交给 Tauri 在打包过程中签，不能等安装包出来再签：updater 的 .sig 是对最终
+# 安装包算的，事后再签名会改动文件，玩家自动更新时校验对不上。Tauri 会签主程序、
+# sidecar、NSIS 插件、安装包，卸载程序在安装时由 !uninstfinalize 签。
+$signThumbprint = ($env:WINDOWS_SIGN_CERT_THUMBPRINT -replace '\s', '').ToUpperInvariant()
+$signCommand = $env:WINDOWS_SIGN_COMMAND
+$signTimestamp = if ($env:WINDOWS_SIGN_TIMESTAMP_URL) { $env:WINDOWS_SIGN_TIMESTAMP_URL } else { 'http://timestamp.digicert.com' }
+$signing = [bool]($signThumbprint -or $signCommand)
+
+function Find-SignTool {
+    $kits = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
+    $tool = Get-ChildItem -LiteralPath $kits -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -match '\\x64\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+    if (-not $tool) { throw '找不到 signtool.exe；安装 Windows SDK（Visual Studio 安装器里勾「Windows 11 SDK」）' }
+    $tool.FullName
+}
+
+function Invoke-CodeSign([string]$Path) {
+    if ($signCommand) {
+        $command = $signCommand.Replace('%1', "`"$Path`"")
+        cmd /c $command
+    } else {
+        & (Find-SignTool) sign /fd sha256 /sha1 $signThumbprint /tr $signTimestamp /td sha256 /d 'BMC [Remake]' $Path
+    }
+    if ($LASTEXITCODE -ne 0) { throw "签名失败：$Path" }
+}
+
+function Assert-CodeSigned([string]$Path) {
+    $sig = Get-AuthenticodeSignature -LiteralPath $Path
+    $ok = $sig.Status -eq 'Valid' -or ($AllowUntrustedSigning -and $sig.SignerCertificate)
+    if (-not $ok) { throw "签名核对没过：$Path（$($sig.Status) $($sig.StatusMessage)）" }
+    Write-Host ("  已签名 {0}  {1}" -f (Split-Path $Path -Leaf), $sig.SignerCertificate.Subject) -ForegroundColor DarkGray
+}
+
 if ($Target -in 'all', 'client') {
+    if ($signing) {
+        if ($signThumbprint -and -not $signCommand) {
+            # signtool /sha1 只找「当前用户\个人」，这里也只认那儿
+            $cert = Get-ChildItem Cert:\CurrentUser\My -ErrorAction SilentlyContinue |
+                Where-Object { $_.Thumbprint -eq $signThumbprint } | Select-Object -First 1
+            if (-not $cert) { throw "「当前用户\个人」证书库里没有指纹为 $signThumbprint 的证书（USB 令牌插上了吗？）" }
+            if (-not $cert.HasPrivateKey) { throw "证书 $($cert.Subject) 没有私钥，签不了名" }
+            if ($cert.NotAfter -lt (Get-Date).AddDays(30)) {
+                Write-Warning "代码签名证书 $($cert.NotAfter.ToString('yyyy-MM-dd')) 到期，记得续"
+            }
+            Write-Host "  代码签名：$($cert.Subject)" -ForegroundColor DarkGray
+        } else {
+            Write-Host '  代码签名：WINDOWS_SIGN_COMMAND' -ForegroundColor DarkGray
+        }
+    } else {
+        Write-Warning '没有配置代码签名（WINDOWS_SIGN_CERT_THUMBPRINT / WINDOWS_SIGN_COMMAND）：玩家下载运行安装包时会看到「未知发布者」'
+    }
     if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and $env:TAURI_SIGNING_PRIVATE_KEY_PATH) {
         $env:TAURI_SIGNING_PRIVATE_KEY = $env:TAURI_SIGNING_PRIVATE_KEY_PATH
     }
@@ -116,10 +185,26 @@ if ($Target -in 'all', 'client') {
     }
 
     Step '构建 Tauri 2 客户端和 NSIS 安装包'
+    $tauriArgs = @('run', 'tauri', '--', 'build')
+    if ($signing) {
+        $windows = if ($signCommand) { @{ signCommand = $signCommand } } else {
+            @{ certificateThumbprint = $signThumbprint; digestAlgorithm = 'sha256'; timestampUrl = $signTimestamp; tsp = $true }
+        }
+        $signConfig = Join-Path $OutDir 'intermediate\tauri-signing.json'
+        New-Item -ItemType Directory -Path (Split-Path $signConfig) -Force | Out-Null
+        @{ bundle = @{ windows = $windows } } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $signConfig -Encoding utf8
+        $tauriArgs += @('--config', $signConfig)
+    }
     Push-Location client\tauri
-    try { npm run tauri -- build }
+    try { npm @tauriArgs }
     finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) { throw 'Tauri 构建失败' }
+
+    if ($SelfTest) {
+        Step '卸载钩子测试'
+        & (Join-Path $workspaceRoot 'client\tests\installer-hooks-test.ps1')
+        if ($LASTEXITCODE -ne 0) { throw '卸载钩子测试失败' }
+    }
 
     $tauriTarget = Join-Path $workspaceRoot 'client\tauri\src-tauri\target\release'
     $clientOut = Join-Path $OutDir 'client'
@@ -145,6 +230,16 @@ if ($Target -in 'all', 'client') {
     $installer = Join-Path $clientOut 'BMC [Remake] setup.exe'
     if ($builtInstaller) { Copy-Item -LiteralPath $builtInstaller.FullName -Destination $installer -Force }
     if (-not $builtInstaller) { throw '没有找到 Tauri NSIS 安装包' }
+
+    if ($signing) {
+        # 安装包和装进去的文件由 Tauri 签过了；target\release 里留下的那份主程序没签，
+        # 上面拷出来的便携副本在这里补签。安装包本身绝不能再动（updater .sig 已经算好了）
+        Assert-CodeSigned $installer
+        foreach ($portable in @($launcherExe, $portableBackend)) {
+            if ((Get-AuthenticodeSignature -LiteralPath $portable).Status -eq 'NotSigned') { Invoke-CodeSign $portable }
+            Assert-CodeSigned $portable
+        }
+    }
 
     $builtSignaturePath = $builtInstaller.FullName + '.sig'
     if (-not (Test-Path -LiteralPath $builtSignaturePath -PathType Leaf)) {
@@ -203,6 +298,8 @@ if ($Target -in 'all', 'server') {
     New-Item -ItemType Directory -Path $serverAppOut -Force | Out-Null
     Get-ChildItem -LiteralPath server\app -Filter '*.py' -File |
         Copy-Item -Destination $serverAppOut -Force
+    # 默认皮肤 steve.png 这类资源文件。skins.py 启动时就要读，缺了控制面起不来
+    Copy-Item -LiteralPath server\app\assets -Destination $serverAppOut -Recurse -Force
     Copy-Item -LiteralPath server\web -Destination $serverOut -Recurse -Force
     Copy-Item -LiteralPath server\requirements.txt -Destination $serverOut -Force
     Copy-Item -LiteralPath server\site.json -Destination $serverOut -Force

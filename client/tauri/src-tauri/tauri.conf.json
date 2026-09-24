@@ -29,7 +29,12 @@
     "windows": {
       "nsis": {
         "installerHooks": "installer-hooks.nsh",
-        "installerIcon": "../../sidecar/icon.ico"
+        "installerIcon": "../../sidecar/icon.ico",
+        "languages": ["SimpChinese"],
+        "displayLanguageSelector": false,
+        "customLanguageFiles": {
+          "SimpChinese": "nsis/SimpChinese.nsh"
+        }
       }
     },
     "active": true,
