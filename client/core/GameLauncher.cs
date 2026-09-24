@@ -40,8 +40,10 @@ public sealed class GameLauncher
         var joinEndpoint = quickPlayEndpoint ?? directEndpoint;
         var quickJoin = _settings.AutoJoinServer && !string.IsNullOrWhiteSpace(joinEndpoint);
 
+        // 全屏时也带上窗口尺寸：它只决定"窗口模式多大"，游戏按 F11 退出全屏时回到这个尺寸。
+        // 不带的话原版退回默认的 854×480。全屏本身的分辨率由显示器和 options.txt 决定，不受影响。
         var features = new VersionJson.Features(
-            CustomResolution: !_settings.Fullscreen,
+            CustomResolution: true,
             QuickPlayMultiplayer: quickJoin,
             Demo: false);
 

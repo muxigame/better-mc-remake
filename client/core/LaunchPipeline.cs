@@ -199,7 +199,7 @@ public sealed class LaunchPipeline
         ShaderPresets.Apply(paths, settings.ShaderPack);
 
         // 全屏同理：命令行的 --fullscreen 只能开不能关，options.txt 里的值才是
-        // 游戏真正认的那个，启动前按启动器里的开关写一次。
+        // 游戏真正认的那个，启动前按启动器里的开关写一次（Sodium Extras 那份一起写）。
         GameOptions.ApplyFullscreen(paths, settings.Fullscreen);
 
         // 9. 服务器列表

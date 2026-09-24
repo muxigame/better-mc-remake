@@ -618,6 +618,40 @@ internal static class SelfTest
 
             Check("没有 options.txt 时返回未知",
                 GameOptions.ReadFullscreen(LauncherPaths.At(Path.Combine(tmp, "empty"))) is null);
+
+            // Sodium Extras 自己记着一份全屏状态并接管 F11，要跟着一起写。
+            // 照实际文件的样子：表头带缩进，前面还有个多行数组。
+            var extras = paths.ResolveGameFile(GameOptions.SodiumExtrasPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(extras)!);
+            File.WriteAllText(extras,
+                "[embeddiumextras]\n\t[embeddiumextras.others]\n\t\twhitelist = [\n\t\t\t\"minecraft:bat\",\n\t\t\t[ \"x\" ]\n\t\t]\n" +
+                "\t[embeddiumextras.general]\n\t\t#Set Fullscreen mode\n\t\tfullscreen = \"WINDOWED\"\n\t\tfpsDisplay = \"OFF\"\n");
+            GameOptions.ApplyFullscreen(paths, true);
+            var extrasAfter = File.ReadAllText(extras);
+            Check("开全屏时 Sodium Extras 也写成 FULLSCREEN",
+                extrasAfter.Contains("\t\tfullscreen = \"FULLSCREEN\"") && !extrasAfter.Contains("WINDOWED"), extrasAfter);
+            Check("Sodium Extras 其它内容原样保留",
+                extrasAfter.Contains("fpsDisplay = \"OFF\"") && extrasAfter.Contains("\"minecraft:bat\"")
+                && extrasAfter.Split("fullscreen =").Length == 2, extrasAfter);
+
+            // 游戏里按 F11 切回窗口：只有 Sodium Extras 那份当场落盘，options.txt 还是旧的
+            File.WriteAllText(extras, extrasAfter.Replace("FULLSCREEN", "WINDOWED"));
+            File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddMinutes(-5));
+            File.SetLastWriteTimeUtc(extras, DateTime.UtcNow);
+            Check("F11 改过的以较新的 Sodium Extras 为准", GameOptions.ReadFullscreen(paths) == false);
+
+            // 反过来：视频设置里开了全屏，只写了 options.txt
+            File.SetLastWriteTimeUtc(extras, DateTime.UtcNow.AddMinutes(-5));
+            File.SetLastWriteTimeUtc(file, DateTime.UtcNow);
+            Check("视频设置改过的以较新的 options.txt 为准", GameOptions.ReadFullscreen(paths) == true);
+
+            // 玩家选了无边框：开全屏时留着，关全屏时改回窗口
+            File.WriteAllText(extras, extrasAfter.Replace("FULLSCREEN", "BORDERLESS"));
+            GameOptions.ApplyFullscreen(paths, true);
+            Check("无边框算全屏，保留不动", File.ReadAllText(extras).Contains("fullscreen = \"BORDERLESS\""));
+            GameOptions.ApplyFullscreen(paths, false);
+            Check("关全屏时两份都写成窗口",
+                File.ReadAllText(extras).Contains("fullscreen = \"WINDOWED\"") && GameOptions.ReadFullscreen(paths) == false);
         }
         finally
         {
