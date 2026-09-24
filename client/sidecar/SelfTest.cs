@@ -1110,6 +1110,27 @@ internal static class SelfTest
         var r2 = ConfigOverlay.ApplyToml(withComment, Enforce("""{"a/x":9}"""), out _);
         Check("带行尾注释的键也能改", r2.Contains("x = 9"), r2);
 
+        // 多行数组的元素也是 [ 开头 ] 结尾，不能当成表头
+        var arrayish = """
+            colors = [
+                [ "minecraft:ender_eye", { r = 122, g = 186, b = 171 } ]
+            ]
+            rainIncreasesLeavesSpawningParticles = true
+            rainWaterRipplesDensity = 0.35
+
+            [sparks]
+            sparksScale = 1.0
+            """;
+        var r8 = ConfigOverlay.ApplyToml(arrayish,
+            Enforce("""{"rainIncreasesLeavesSpawningParticles": false}"""), out var c8);
+        Check("根级键不会被数组行带偏", r8.Contains("rainIncreasesLeavesSpawningParticles = false"), r8);
+        Check("不产生重复键",
+            r8.Split("rainIncreasesLeavesSpawningParticles").Length - 1 == 1, r8);
+        Check("改动计数正确", c8 == 1, c8.ToString());
+        Check("数组内容原样保留", r8.Contains("""[ "minecraft:ender_eye", { r = 122, g = 186, b = 171 } ]"""), r8);
+        Check("真表头仍然认得出", ConfigOverlay.ApplyToml(arrayish,
+            Enforce("""{"sparks/sparksScale": 2.0}"""), out _).Contains("sparksScale = 2.0"), "");
+
         // NeoForge 的键常带空格，既要能就地改，补键时也必须带引号，否则整份配置解析不了
         var quoted = "[HUD]\n\t\"enable mod ui\" = true\n";
         var r3 = ConfigOverlay.ApplyToml(quoted, Enforce("""

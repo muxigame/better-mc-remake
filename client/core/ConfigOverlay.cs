@@ -298,7 +298,7 @@ public static class ConfigOverlay
             var line = lines[i];
             var trimmed = line.Trim();
 
-            if (trimmed.StartsWith('[') && trimmed.EndsWith(']'))
+            if (IsTableHeader(trimmed))
             {
                 currentTable = trimmed.Trim('[', ']').Trim();
                 continue;
@@ -371,6 +371,24 @@ public static class ConfigOverlay
         return "\"" + EscapeToml(leaf) + "\"";
     }
 
+    /// <summary>
+    /// 这一行是不是表头。不能只看首尾的方括号：TOML 里多行数组的元素
+    /// （例如 <c>[ "minecraft:ender_eye", { r = 122 } ]</c>）同样是 [ 开头 ] 结尾，
+    /// 误判成表头会让后面所有根级键都对不上，进而被当成缺失、在文件开头插一份重复键。
+    /// 表头里只允许出现键名字符：字母数字、下划线、点、连字符和引号。
+    /// </summary>
+    private static bool IsTableHeader(string trimmed)
+    {
+        if (trimmed.Length < 3 || trimmed[0] != '[' || trimmed[^1] != ']') return false;
+        var inner = trimmed[1..^1].Trim();
+        if (inner.StartsWith('[') && inner.EndsWith(']')) inner = inner[1..^1].Trim(); // [[数组表]]
+        if (inner.Length == 0) return false;
+        foreach (var c in inner)
+            if (!char.IsLetterOrDigit(c) && c != '_' && c != '.' && c != '-' && c != '"' && c != '\'' && c != ' ')
+                return false;
+        return true;
+    }
+
     private static string TableOf(string path)
     {
         var idx = path.LastIndexOf('/');
@@ -388,7 +406,7 @@ public static class ConfigOverlay
             if (table.Length == 0)
             {
                 // 顶层：插在第一个表头之前
-                if (t.StartsWith('[') && t.EndsWith(']')) return i;
+                if (IsTableHeader(t)) return i;
                 continue;
             }
             if (string.Equals(t, header, StringComparison.Ordinal)) { start = i; break; }
@@ -400,7 +418,7 @@ public static class ConfigOverlay
         for (var i = start + 1; i < lines.Count; i++)
         {
             var t = lines[i].Trim();
-            if (t.StartsWith('[') && t.EndsWith(']')) { end = i; break; }
+            if (IsTableHeader(t)) { end = i; break; }
         }
         // 回退掉表尾的空行，插在真正的最后一项之后
         while (end - 1 > start && lines[end - 1].Trim().Length == 0) end--;
