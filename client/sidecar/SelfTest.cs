@@ -36,6 +36,7 @@ internal static class SelfTest
         ShaderPreset();
         OptionalToggle();
         OptionalDefaultOn();
+        CrashBundle();
         MemoryClamp();
         FullscreenOption();
         DownloadResume();
@@ -876,6 +877,67 @@ internal static class SelfTest
             // 老入口（只给勾选列表）不认识"关掉的默认项"，应当把它当成开着
             OptionalContent.Apply(paths, manifest.Files, untouched.EnabledOptional);
             Check("重新打开改名回 .jar", File.Exists(abs) && !File.Exists(abs + OptionalContent.DisabledSuffix));
+        }
+        finally
+        {
+            try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
+        }
+    }
+
+    /// <summary>崩溃日志打包：替代 Crash Assistant。传出去的东西不能带着用户名、令牌。</summary>
+    private static void CrashBundle()
+    {
+        Section("崩溃日志打包");
+        var redacted = CrashReport.Redact(
+            "at C:\\Users\\张三\\AppData\\x.jar\nC:/Users/ADMINI~1/Temp/y\nUSERNAME=张三\nuser.home: C:\\Users\\张三\n" +
+            "--accessToken abcdefghijk123 Bearer eyJhbGciOiJIUzI1NiJ9.x.y ok");
+        Check("用户目录抹掉", !redacted.Contains("张三") && !redacted.Contains("ADMINI~1") && redacted.Contains("%USERPROFILE%"), redacted);
+        Check("环境变量里的用户名抹掉", redacted.Contains("USERNAME=<已隐去>"), redacted);
+        Check("令牌抹掉", !redacted.Contains("abcdefghijk123") && !redacted.Contains("eyJhbGci") && redacted.EndsWith("ok"), redacted);
+
+        var tmp = Path.Combine(Path.GetTempPath(), "battermc-crash-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            var paths = LauncherPaths.At(tmp);
+            paths.EnsureCreated();
+            var started = DateTimeOffset.Now;
+            var reports = Path.Combine(paths.GameDir, "crash-reports");
+            Directory.CreateDirectory(reports);
+            var old = Path.Combine(reports, "crash-2020-01-01_00.00.00-client.txt");
+            File.WriteAllText(old, "Description: 上一次的崩溃");
+            File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddDays(-2));
+            File.WriteAllText(Path.Combine(reports, "crash-now-client.txt"),
+                "---- Minecraft Crash Report ----\nDescription: Rendering overlay\n\njava.lang.NullPointerException: boom\n\tat x.y(Z.java:1)\n");
+            Directory.CreateDirectory(Path.Combine(paths.GameDir, "logs"));
+            var latest = Path.Combine(paths.GameDir, "logs", "latest.log");
+            File.WriteAllText(latest, new string('x', 100) + "\nLAST LINE\n");
+
+            Check("只认这次运行的崩溃报告",
+                CrashReport.FindCrashReport(paths, started)?.EndsWith("crash-now-client.txt") == true);
+            var summary = CrashReport.Summarize(CrashReport.FindCrashReport(paths, started));
+            Check("摘要取 Description 和第一行异常", summary == "Rendering overlay — java.lang.NullPointerException: boom", summary);
+            var tail = CrashReport.ReadTail(latest, 20);
+            Check("长日志只留尾部", tail.StartsWith("[前面") && tail.EndsWith("LAST LINE\n"), tail);
+
+            var crash = new GameCrash(-1, "内存不足", summary, started, DateTimeOffset.Now);
+            System.IO.Compression.ZipArchive Open(byte[] bytes) => new(new MemoryStream(bytes));
+            var withEnv = CrashReport.Build(paths, crash, new System.Text.Json.Nodes.JsonObject { ["kind"] = "crash" },
+                CrashReport.CollectEnvironment(new LauncherSettings(), "C:\\Users\\张三\\java.exe", "21.0.5"));
+            using (var zip = Open(withEnv))
+            {
+                var names = zip.Entries.Select(e => e.FullName).OrderBy(n => n).ToArray();
+                Check("包里有崩溃报告、游戏日志、摘要和电脑环境",
+                    names.Contains("crash-report.txt") && names.Contains("latest.log") && names.Contains("report.json")
+                    && names.Contains("environment.json"), string.Join(",", names));
+                using var env = new StreamReader(zip.GetEntry("environment.json")!.Open());
+                var envText = env.ReadToEnd();
+                Check("电脑环境里也不带用户名", !envText.Contains("张三") && envText.Contains("cpuThreads"), envText[..Math.Min(200, envText.Length)]);
+                using var report = new StreamReader(zip.GetEntry("report.json")!.Open());
+                Check("摘要标明含电脑环境", report.ReadToEnd().Contains("\"environmentIncluded\": true"));
+            }
+            var noEnv = CrashReport.Build(paths, crash, new System.Text.Json.Nodes.JsonObject { ["kind"] = "crash" }, null);
+            using (var zip = Open(noEnv))
+                Check("关掉开关就不带电脑环境", zip.GetEntry("environment.json") is null);
         }
         finally
         {

@@ -38,6 +38,9 @@ internal sealed class RpcHost : IDisposable
     private JsonObject? _account;
     private JsonObject? _player;
     private string? _activeUpdateSource;
+    // 最近一次异常退出和那次用的 Java，玩家点"上传日志"时打包用
+    private GameCrash? _lastCrash;
+    private JavaInstall? _lastJava;
     private string? _updateError;
 
     public RpcHost(LauncherPaths paths, LauncherSettings settings, LocalState state)
@@ -112,6 +115,8 @@ internal sealed class RpcHost : IDisposable
         "skinGet" => await SkinRequestAsync(HttpMethod.Get, null).ConfigureAwait(false),
         "skinSave" => await SkinRequestAsync(HttpMethod.Put, SkinBody(p)).ConfigureAwait(false),
         "skinReset" => await SkinRequestAsync(HttpMethod.Delete, null).ConfigureAwait(false),
+        "logUpload" => await UploadLogsAsync(p).ConfigureAwait(false),
+        "openCrashReport" => OpenCrashReport(p["id"]?.GetValue<string>() ?? ""),
         "install" => await InstallAsync(p["forceVerify"]?.GetValue<bool>() ?? false).ConfigureAwait(false),
         "launch" => await LaunchAsync(p["forceVerify"]?.GetValue<bool>() ?? false).ConfigureAwait(false),
         "cancel" => Cancel(),
@@ -411,6 +416,7 @@ internal sealed class RpcHost : IDisposable
         ["skipVerify"] = _settings.SkipVerify,
         ["gpu"] = _settings.Gpu,
         ["enabledOptional"] = new JsonArray(_settings.EnabledOptional.Select(x => (JsonNode)x).ToArray()),
+        ["crashReportEnvironment"] = _settings.CrashReportEnvironment,
         ["shaderPack"] = _settings.ShaderPack ?? ShaderPresets.DefaultPack,
     };
 
@@ -570,15 +576,28 @@ internal sealed class RpcHost : IDisposable
                 });
                 Emit("gameStarted", new JsonObject());
 
+                var startedAt = DateTimeOffset.Now;
+                _lastJava = ctx.Java;
                 var result = await launcher.LaunchAsync(
                     ctx.Version!, ctx.Java!, _manifest, session, proxy?.LocalAddress, ct).ConfigureAwait(false);
+
+                // 退出码不是 0 算崩；是 0 但这次运行写出了崩溃报告也算——模组加载失败时
+                // NeoForge 会显示错误页，玩家关掉它时进程可能是正常退出的。
+                // 玩家在启动器里点"中止游戏"走的是取消，到不了这里，不会弹窗。
+                var crashFile = CrashReport.FindCrashReport(_paths, startedAt);
+                var crashed = result.ExitCode != 0 || crashFile is not null;
+                var hint = result.CrashHint ?? (crashed ? "游戏崩溃了，已生成崩溃报告。" : null);
+                var summary = crashed ? CrashReport.Summarize(crashFile) : null;
+                if (crashed) _lastCrash = new GameCrash(result.ExitCode, hint, summary, startedAt, DateTimeOffset.Now);
                 Emit("gameExited", new JsonObject
                 {
                     ["code"] = result.ExitCode,
-                    ["hint"] = result.CrashHint,
+                    ["hint"] = hint,
+                    ["crashed"] = crashed,
+                    ["summary"] = summary,
                     ["logFile"] = result.LogFile,
                 });
-                return new JsonObject { ["exitCode"] = result.ExitCode, ["hint"] = result.CrashHint };
+                return new JsonObject { ["exitCode"] = result.ExitCode, ["hint"] = hint };
             }
             finally
             {
@@ -1074,6 +1093,85 @@ internal sealed class RpcHost : IDisposable
         return uid;
     }
 
+    // ── 日志上传 ──
+    //
+    // 替代整合包原来带的 Crash Assistant（倒计时关不掉的弹窗、传到 mclo.gs、盗版提示）。
+    // 游戏异常退出时界面问一句，玩家点了才打包上传，存到自己账号下，玩家中心能看到。
+    // 也能在设置里随时手动传一份（比如卡顿、掉线这种没崩的问题）。
+
+    private static readonly System.Text.RegularExpressions.Regex CrashReportId = new("^[2-9A-HJKMNP-Z]{10}$");
+
+    private async Task<JsonNode> UploadLogsAsync(JsonObject p)
+    {
+        if (string.IsNullOrEmpty(_accountToken))
+            throw new InvalidOperationException("请先登录 muxi 账户，日志会存到你的账号下");
+
+        var includeEnvironment = p["includeEnvironment"] is JsonValue flag && flag.TryGetValue<bool>(out var on)
+            ? on : _settings.CrashReportEnvironment;
+        if (includeEnvironment != _settings.CrashReportEnvironment)
+        {
+            _settings.CrashReportEnvironment = includeEnvironment;
+            _settings.Save(_paths.SettingsFile);
+        }
+
+        var crash = p["kind"]?.GetValue<string>() == "manual" ? null : _lastCrash;
+        var summary = new JsonObject
+        {
+            ["kind"] = crash is null ? "manual" : "crash",
+            ["reason"] = crash?.Hint,
+            ["summary"] = crash?.Summary,
+            ["exitCode"] = crash?.ExitCode,
+            ["uptimeSeconds"] = crash is null ? null : (int)(crash.ExitedAt - crash.StartedAt).TotalSeconds,
+            ["crashedAt"] = crash?.ExitedAt.ToString("o"),
+            ["launcherVersion"] = GameLauncher.ThisVersion(),
+            ["packVersion"] = _state.InstalledPackVersion,
+            ["minecraftVersion"] = _manifest?.Minecraft.Version,
+            ["loaderVersion"] = _manifest?.Minecraft.LoaderVersion,
+        };
+        var environment = includeEnvironment
+            ? CrashReport.CollectEnvironment(_settings, _lastJava?.Path, _lastJava?.Version)
+            : null;
+        var bundle = await Task.Run(() => CrashReport.Build(_paths, crash, summary, environment)).ConfigureAwait(false);
+        Log.Info($"上传日志：{bundle.Length / 1024} KB，{(includeEnvironment ? "含" : "不含")}电脑环境");
+
+        var (status, json) = await PostLogsAsync(bundle).ConfigureAwait(false);
+        if (status == HttpStatusCode.Unauthorized && await RefreshAccountAsync().ConfigureAwait(false))
+            (status, json) = await PostLogsAsync(bundle).ConfigureAwait(false);
+        if (status != HttpStatusCode.OK || json?["report"]?["id"] is not JsonValue idValue
+            || !idValue.TryGetValue<string>(out var id))
+        {
+            var detail = json?["detail"] is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+            throw new InvalidOperationException(detail ?? $"日志上传失败（HTTP {(int)status}）");
+        }
+        Log.Info($"日志已上传，编号 {id}");
+        return new JsonObject { ["id"] = id, ["report"] = json!["report"]!.DeepClone() };
+    }
+
+    private async Task<(HttpStatusCode Status, JsonObject? Json)> PostLogsAsync(byte[] bundle)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, GameApi("/api/v1/player/crash-reports"));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
+        request.Content = new ByteArrayContent(bundle);
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+        // 默认 15 秒不够传几 MB 的日志包，单独给长一点
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        using var response = await http.SendAsync(request, cts.Token).ConfigureAwait(false);
+        var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        JsonObject? json = null;
+        try { json = JsonNode.Parse(text) as JsonObject; } catch (JsonException) { }
+        return (response.StatusCode, json);
+    }
+
+    /// <summary>在浏览器里打开玩家中心的这份日志。只认报告编号，不接受任意网址。</summary>
+    private static JsonNode OpenCrashReport(string id)
+    {
+        if (!CrashReportId.IsMatch(id)) throw new InvalidOperationException("报告编号不对");
+        var url = LauncherSettings.OfficialUpdateBaseUrl.TrimEnd('/') + "/account.html#crash-" + id;
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        return new JsonObject { ["opened"] = true };
+    }
+
     // ── 自定义皮肤 ──
     //
     // 原版 64×64 皮肤存在控制面，按平台 UID 一人一份；游戏里由整合包带的 CustomSkinLoader
@@ -1340,6 +1438,8 @@ internal sealed class RpcHost : IDisposable
             "game" => _paths.GameDir,
             "logs" => _paths.LogDir,
             "crash" => _paths.CrashDir,
+            // 游戏自己的 latest.log 和崩溃报告在游戏目录下，和启动器的 logs 不是一处
+            "gamelogs" => Path.Combine(_paths.GameDir, "logs"),
             "mods" => Path.Combine(_paths.GameDir, "mods"),
             "config" => Path.Combine(_paths.GameDir, "config"),
             "saves" => Path.Combine(_paths.GameDir, "saves"),

@@ -649,6 +649,23 @@ input.text:focus, input.num:focus, .memory-control input:focus { border-color: v
 }
 .skin-row .row-control { flex-wrap: nowrap; }
 
+/* 游戏异常退出 / 上传日志：比设置面板小，内容自己决定高度 */
+.crash-panel { width: min(520px, calc(100% - 40px)); height: auto; max-height: calc(100% - 40px); }
+.crash-body { padding: 14px 18px 4px; overflow-y: auto; }
+.crash-hint { margin: 0 0 10px; color: var(--text); font-size: 13px; line-height: 1.6; }
+.crash-summary {
+  margin: 0 0 6px; padding: 8px 10px;
+  background: var(--bg-2); border: 1px solid var(--line-soft);
+  color: var(--text-dim); font-size: 11px; line-height: 1.5;
+  max-height: 72px; overflow-y: auto; user-select: text;
+}
+.crash-result { margin: 10px 0 0; font-size: 12px; line-height: 1.6; color: var(--green-hi); user-select: text; }
+.crash-result.is-error { color: #efaaa7; }
+.crash-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 12px 18px 16px; border-top: 1px solid var(--line-soft);
+}
+
 /* 可选内容：和「游戏」页同一套 .row + .switch，组名用 .list-head */
 .option-rows > .list-head:first-child { margin-top: 0; }
 /* 只剩一行名字：不留给说明的下边距，太长就截断而不是折行 */

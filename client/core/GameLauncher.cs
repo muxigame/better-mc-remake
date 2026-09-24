@@ -134,6 +134,7 @@ public sealed class GameLauncher
         process.ErrorDataReceived += (_, e) => OnLine(e.Data);
 
         var sw = Stopwatch.StartNew();
+        var startedAt = DateTimeOffset.Now;
         process.Start();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
@@ -157,7 +158,9 @@ public sealed class GameLauncher
         string[] tailLines;
         lock (tail) tailLines = tail.ToArray();
 
-        return new LaunchResult(exit, gameLog, exit == 0 ? null : DiagnoseCrash(exit, tailLines, sw.Elapsed));
+        var crashReportWritten = CrashReport.FindCrashReport(_paths, startedAt) is not null;
+        return new LaunchResult(exit, gameLog,
+            exit == 0 ? null : DiagnoseCrash(exit, tailLines, sw.Elapsed, crashReportWritten));
     }
 
     /// <summary>
@@ -286,7 +289,8 @@ public sealed class GameLauncher
     /// 把退出码和日志尾巴翻译成人话。
     /// 这里的每一条都来自实际踩过的坑。
     /// </summary>
-    public static string DiagnoseCrash(int exitCode, IReadOnlyList<string> tail, TimeSpan uptime)
+    public static string DiagnoseCrash(int exitCode, IReadOnlyList<string> tail, TimeSpan uptime,
+        bool crashReportWritten = false)
     {
         var text = string.Join('\n', tail);
 
@@ -309,10 +313,15 @@ public sealed class GameLauncher
         if (text.Contains("UnsupportedClassVersionError", StringComparison.Ordinal))
             return "Java 版本不对。本包需要 Java 21，到设置里重新选一个。";
 
+        // Minecraft 自己崩溃时写完崩溃报告再以 -1 退出。不看这个的话，早期崩溃会被
+        // 下面按退出码当成"被外部强制结束"，把玩家往杀毒软件上引。
+        if (crashReportWritten)
+            return "游戏崩溃了，已生成崩溃报告。";
+
         return exitCode switch
         {
             0 => "正常退出。",
-            1 => "游戏自己报错退出了，看下面的日志尾部。",
+            1 => "游戏自己报错退出了。",
             -1 or 255 when uptime < TimeSpan.FromMinutes(5) =>
                 "进程被外部强制结束了。常见原因是第三方「内存优化 / 加速」工具在清理进程内存，" +
                 "或者杀毒软件拦了 Java。这个启动器本身不做任何内存优化。",

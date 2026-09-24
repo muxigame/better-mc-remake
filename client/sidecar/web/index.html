@@ -299,6 +299,14 @@
             <div class="row-control wide"><input type="text" id="jvmargs" spellcheck="false" class="text mono" placeholder="例如 -Dxxx=yyy"></div>
           </div>
 
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">上传日志</div>
+              <div class="row-desc">卡顿、掉线这类没崩的问题，也可以把最近的日志传到玩家中心</div>
+            </div>
+            <div class="row-control"><button class="mc-btn mc-btn-small" id="btn-log-upload">上传…</button></div>
+          </div>
+
           <div class="list-head"><span>打开文件夹</span></div>
           <div class="folder-grid">
             <button class="mc-btn mc-btn-small" data-open="root">启动器根目录</button>
@@ -409,6 +417,37 @@
     <button class="mc-btn mc-btn-primary" id="cu-update" autofocus>立即更新</button>
   </footer>
 </dialog>
+
+<!-- ───────────────────────── 游戏异常退出 / 上传日志 ─────────────────────────
+     替代整合包原来带的 Crash Assistant：没有倒计时，随时能关，玩家点了才上传，
+     传到自己账号下（玩家中心能看到）。 -->
+<div class="overlay" id="crash" hidden>
+  <div class="panel crash-panel" role="dialog" aria-modal="true" aria-labelledby="crash-title">
+    <header class="panel-head">
+      <h2 id="crash-title">游戏异常退出</h2>
+      <button class="win-btn" id="btn-crash-close" aria-label="关闭">
+        <svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1l-8 8"/></svg>
+      </button>
+    </header>
+    <div class="crash-body">
+      <p class="crash-hint" id="crash-hint"></p>
+      <p class="crash-summary mono breakable" id="crash-summary" hidden></p>
+      <div class="row">
+        <div class="row-text">
+          <div class="row-title">附带电脑环境</div>
+          <div class="row-desc">系统版本、CPU、内存、显卡与驱动、Java；不含个人文件，用户名会被抹掉</div>
+        </div>
+        <div class="row-control"><label class="switch"><input type="checkbox" id="crash-env"><span></span></label></div>
+      </div>
+      <p class="crash-result" id="crash-result" hidden></p>
+    </div>
+    <footer class="crash-actions">
+      <button class="mc-btn mc-btn-small" id="btn-crash-folder">打开日志文件夹</button>
+      <button class="mc-btn mc-btn-small" id="btn-crash-view" hidden>在玩家中心查看</button>
+      <button class="mc-btn mc-btn-small mc-btn-primary" id="btn-crash-upload">上传日志</button>
+    </footer>
+  </div>
+</div>
 
 <script src="client-update.js"></script>
 <script src="app.js"></script>

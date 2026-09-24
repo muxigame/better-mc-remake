@@ -272,14 +272,69 @@ function onGameExited(p) {
   setConnecting(false);
   setGameRunning(false);
   setBusy(false);
-  if (p.code === 0) {
+  // 老 sidecar 没有 crashed 字段，按退出码兜底
+  const crashed = p.crashed === undefined ? p.code !== 0 : !!p.crashed;
+  if (!crashed) {
     $('hero-meta').textContent = '游戏已退出';
     toast('游戏正常退出', 'good');
   } else {
-    $('hero-meta').textContent = '游戏异常退出（退出码 ' + p.code + '）';
-    toast(p.hint || ('游戏异常退出，退出码 ' + p.code), 'error', 12000);
-    openLog();
+    $('hero-meta').textContent = p.code === 0 ? '游戏崩溃了' : '游戏异常退出（退出码 ' + p.code + '）';
+    showCrash('crash', p);
   }
+}
+
+/* 游戏异常退出 / 上传日志。
+
+   替代整合包原来带的 Crash Assistant：它的窗口按钮带倒计时关不掉，日志传到第三方，
+   还夹着盗版提示和「模组被改过」提示。这里随时能关，玩家点了才上传，存到自己账号下。
+   手动上传（设置 → 高级）也走这个框，只是没有崩溃原因。 */
+let crashMode = 'crash';
+let crashReportId = null;
+
+function showCrash(mode, p) {
+  crashMode = mode;
+  crashReportId = null;
+  const loggedIn = !!state.account;
+  $('crash-title').textContent = mode === 'crash' ? '游戏异常退出' : '上传日志';
+  $('crash-hint').textContent = mode === 'crash'
+    ? (p && p.hint) || ('游戏异常退出，退出码 ' + (p ? p.code : '?'))
+    : '把最近一次游戏和启动器的日志传到你的账号下，在玩家中心能看到。';
+  $('crash-summary').textContent = (p && p.summary) || '';
+  $('crash-summary').hidden = !(p && p.summary);
+  $('crash-env').checked = (state.settings || {}).crashReportEnvironment !== false;
+  $('crash-result').hidden = loggedIn;
+  $('crash-result').classList.toggle('is-error', !loggedIn);
+  $('crash-result').textContent = loggedIn ? '' : '登录 muxi 账户后才能上传，日志会存到你的账号下。';
+  $('btn-crash-upload').disabled = !loggedIn;
+  $('btn-crash-upload').textContent = '上传日志';
+  $('btn-crash-view').hidden = true;
+  $('crash').hidden = false;
+}
+
+function uploadCrashLogs() {
+  const button = $('btn-crash-upload');
+  button.disabled = true;
+  button.textContent = '正在上传…';
+  $('crash-result').hidden = true;
+  const includeEnvironment = $('crash-env').checked;
+  rpc('logUpload', { kind: crashMode, includeEnvironment })
+    .then((r) => {
+      crashReportId = r.id;
+      // sidecar 已经把这次的选择记进设置了，本地这份跟上，下次打开弹窗不回跳
+      if (state.settings) state.settings.crashReportEnvironment = includeEnvironment;
+      button.textContent = '已上传';
+      $('crash-result').classList.remove('is-error');
+      $('crash-result').textContent = '已上传，编号 ' + r.id + '。找管理员帮忙时把编号发给他就行。';
+      $('crash-result').hidden = false;
+      $('btn-crash-view').hidden = false;
+    })
+    .catch((e) => {
+      button.disabled = false;
+      button.textContent = '重新上传';
+      $('crash-result').classList.add('is-error');
+      $('crash-result').textContent = e.message;
+      $('crash-result').hidden = false;
+    });
 }
 
 /* ───────────────────────── 界面状态 ───────────────────────── */
@@ -892,7 +947,8 @@ function bind() {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (clientUpdate?.isOpen()) return;
-    if (!$('downloads').hidden && !busy) $('downloads').hidden = true;
+    if (!$('crash').hidden) $('crash').hidden = true;
+    else if (!$('downloads').hidden && !busy) $('downloads').hidden = true;
     else if (!$('settings').hidden) $('settings').hidden = true;
     else if (!$('logdrawer').hidden) $('logdrawer').hidden = true;
   });
@@ -906,6 +962,17 @@ function bind() {
     if (btn.dataset.tab === 'java') scanJava();
     if (btn.dataset.tab === 'skin') loadSkin();
   });
+
+  // ── 异常退出 / 上传日志 ──
+  $('btn-crash-close').onclick = () => { $('crash').hidden = true; };
+  $('crash').addEventListener('mousedown', (e) => { if (e.target === $('crash')) $('crash').hidden = true; });
+  $('btn-crash-upload').onclick = uploadCrashLogs;
+  $('btn-crash-view').onclick = () => {
+    if (crashReportId) rpc('openCrashReport', { id: crashReportId }).catch((e) => toast(e.message, 'error'));
+  };
+  $('btn-crash-folder').onclick = () => rpc('openPath', { which: 'gamelogs' }).catch((e) => toast(e.message, 'error'));
+  // 开关只在点上传时带过去（sidecar 顺手记住），不单独存一次
+  $('btn-log-upload').onclick = () => { $('settings').hidden = true; showCrash('manual'); };
 
   // ── 皮肤 ──
   $('btn-skin-pick').onclick = () => $('skin-file').click();
