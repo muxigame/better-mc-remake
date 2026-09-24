@@ -6,16 +6,19 @@ namespace BatterMC.Core;
 /// <summary>
 /// options.txt 里那几个"启动器说了算"的键。
 ///
-/// 全屏是个双向的东西：启动器勾了要全屏，游戏里按 F11 又能改回来，而 Minecraft
-/// 把结果写回 options.txt。只靠命令行 <c>--fullscreen</c> 管不全 —— 那个参数只能
-/// 打开全屏，关不掉：options.txt 里若是 true，游戏启动时会自己再切回全屏。
-/// 所以启动前把这个键写成启动器里的值，启动器也从这个键读回游戏里的改动。
+/// 全屏是个双向的东西：启动器勾了要全屏，游戏里按 F11 又能改回来。只靠命令行
+/// <c>--fullscreen</c> 管不全 —— 那个参数只能打开全屏，关不掉：options.txt 里若是
+/// true，游戏启动时会自己再切回全屏。所以启动前把游戏的配置写成启动器里的值。
 ///
 /// 整合包里的 Sodium Extras 另记着一份全屏状态（<see cref="SodiumExtrasPath"/> 里的
 /// fullscreen = WINDOWED / BORDERLESS / FULLSCREEN），而且它接管了 F11：按下时不看窗口
 /// 现在是什么样，只按自己记的状态切到"下一个"。两份对不上 —— 启动器开了全屏、它还记着
-/// WINDOWED —— 进游戏后第一下 F11 就什么都不做。所以两份一起写。读回时哪个文件新听哪个：
-/// F11 当场只写它那份，视频设置里的全屏开关只写 options.txt。
+/// WINDOWED —— 进游戏后第一下 F11 就什么都不做。所以两份一起写。
+///
+/// 读回游戏里的改动只在游戏退出后做一次：拿启动前的快照比，哪份变了就是玩家在游戏里
+/// 改的（F11 当场只写 Sodium Extras 那份，视频设置只写 options.txt）。不能随时读文件
+/// 去覆盖启动器的设置 —— 启动器里刚勾的开关要到下次启动才写进游戏，随时读会立刻被
+/// 文件里的旧值顶回去；也不能按修改时间挑，游戏启动时会重写配置文件。
 /// </summary>
 public static class GameOptions
 {
@@ -25,18 +28,25 @@ public static class GameOptions
     private const string SodiumExtrasTable = "embeddiumextras.general";
     private const string SodiumExtrasKey = "embeddiumextras/general/fullscreen";
 
-    /// <summary>读游戏当前的全屏设置。两份都没有时返回 null。</summary>
-    public static bool? ReadFullscreen(LauncherPaths paths)
-    {
-        var options = ReadOptionsFullscreen(paths);
-        var mode = ReadSodiumExtrasMode(paths);
-        bool? extras = mode is null ? null : mode != "WINDOWED";
+    /// <summary>两份配置里各自记着的全屏状态；文件或键不在的是 null。</summary>
+    public readonly record struct FullscreenSnapshot(bool? Options, bool? SodiumExtras);
 
-        if (options is null) return extras;
-        if (extras is null || extras == options) return options;
-        var optionsTime = File.GetLastWriteTimeUtc(paths.ResolveGameFile(OptionsPath));
-        var extrasTime = File.GetLastWriteTimeUtc(paths.ResolveGameFile(SodiumExtrasPath));
-        return extrasTime > optionsTime ? extras : options;
+    public static FullscreenSnapshot SnapshotFullscreen(LauncherPaths paths)
+    {
+        var mode = ReadSodiumExtrasMode(paths);
+        return new FullscreenSnapshot(ReadOptionsFullscreen(paths), mode is null ? null : mode != "WINDOWED");
+    }
+
+    /// <summary>
+    /// 游戏退出后调用：和启动前的快照比，玩家在游戏里切过全屏就返回切完的值，没动过返回 null。
+    /// 启动前不存在的文件不算（游戏第一次运行才生成的，那是模组的默认值，不是玩家选的）。
+    /// </summary>
+    public static bool? FullscreenChangedInGame(LauncherPaths paths, FullscreenSnapshot before)
+    {
+        var after = SnapshotFullscreen(paths);
+        if (before.Options is { } o && after.Options is { } o2 && o2 != o) return o2;
+        if (before.SodiumExtras is { } e && after.SodiumExtras is { } e2 && e2 != e) return e2;
+        return null;
     }
 
     /// <summary>

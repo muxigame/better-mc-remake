@@ -407,8 +407,9 @@ internal sealed class RpcHost : IDisposable
         ["extraJvmArgs"] = _settings.ExtraJvmArgs,
         ["windowWidth"] = _settings.WindowWidth,
         ["windowHeight"] = _settings.WindowHeight,
-        // 游戏里按过 F11 的话以 options.txt 为准，顺手记回设置
-        ["fullscreen"] = EffectiveFullscreen(),
+        // 只报启动器自己的设置。游戏里切过全屏的，游戏退出时已经记回来了（见 LaunchAsync）；
+        // 这里再去读游戏文件的话，刚勾的开关会被还没写进游戏的旧值立刻顶回去。
+        ["fullscreen"] = _settings.Fullscreen,
         ["autoJoinServer"] = _settings.AutoJoinServer,
         ["updateBaseUrl"] = _settings.UpdateBaseUrl,
         ["authBaseUrl"] = _settings.AuthBaseUrl,
@@ -579,8 +580,18 @@ internal sealed class RpcHost : IDisposable
 
                 var startedAt = DateTimeOffset.Now;
                 _lastJava = ctx.Java;
+                var fullscreenBefore = GameOptions.SnapshotFullscreen(_paths);
                 var result = await launcher.LaunchAsync(
                     ctx.Version!, ctx.Java!, _manifest, session, proxy?.LocalAddress, ct).ConfigureAwait(false);
+
+                // 玩家在游戏里切过全屏（F11 或视频设置）就记下来，下次按他最后的选择启动
+                if (GameOptions.FullscreenChangedInGame(_paths, fullscreenBefore) is { } fullscreenNow
+                    && fullscreenNow != _settings.Fullscreen)
+                {
+                    _settings.Fullscreen = fullscreenNow;
+                    _settings.Save(_paths.SettingsFile);
+                    Log.Info($"游戏里切换了全屏，启动器跟着改为{(fullscreenNow ? "全屏" : "窗口")}启动");
+                }
 
                 // 退出码不是 0 算崩；是 0 但这次运行写出了崩溃报告也算——模组加载失败时
                 // NeoForge 会显示错误页，玩家关掉它时进程可能是正常退出的。
@@ -1496,15 +1507,6 @@ internal sealed class RpcHost : IDisposable
     /// 全屏的真相是 options.txt —— 玩家在游戏里按 F11 改了，启动器要跟着显示，
     /// 否则下次启动会被写回旧值，玩家会觉得这个开关是坏的。
     /// </summary>
-    private bool EffectiveFullscreen()
-    {
-        var inGame = GameOptions.ReadFullscreen(_paths);
-        if (inGame is not { } value || value == _settings.Fullscreen) return _settings.Fullscreen;
-        _settings.Fullscreen = value;
-        _settings.Save(_paths.SettingsFile);
-        return value;
-    }
-
     private int MemoryCeilingMb()
     {
         var total = TotalMemoryMb();

@@ -606,54 +606,65 @@ internal static class SelfTest
             var file = paths.ResolveGameFile(GameOptions.OptionsPath);
             File.WriteAllText(file, "version:3955\nfullscreen:false\nrenderDistance:12\nlang:zh_cn\n");
 
-            Check("读出游戏里的全屏设置", GameOptions.ReadFullscreen(paths) == false);
-
-            GameOptions.ApplyFullscreen(paths, true);
-            var after = File.ReadAllText(file);
-            Check("写入后游戏侧也是开的", GameOptions.ReadFullscreen(paths) == true, after);
-            Check("只动 fullscreen 这一个键",
-                after.Contains("renderDistance:12") && after.Contains("lang:zh_cn") && after.Contains("version:3955"), after);
-
-            // 玩家在游戏里按 F11 关掉 —— 启动器要能读出来
-            File.WriteAllText(file, after.Replace("fullscreen:true", "fullscreen:false"));
-            Check("玩家在游戏里改了能读回来", GameOptions.ReadFullscreen(paths) == false);
-
-            Check("没有 options.txt 时返回未知",
-                GameOptions.ReadFullscreen(LauncherPaths.At(Path.Combine(tmp, "empty"))) is null);
-
-            // Sodium Extras 自己记着一份全屏状态并接管 F11，要跟着一起写。
-            // 照实际文件的样子：表头带缩进，前面还有个多行数组。
             var extras = paths.ResolveGameFile(GameOptions.SodiumExtrasPath);
             Directory.CreateDirectory(Path.GetDirectoryName(extras)!);
+            // 照实际文件的样子：表头带缩进，前面还有个多行数组
             File.WriteAllText(extras,
                 "[embeddiumextras]\n\t[embeddiumextras.others]\n\t\twhitelist = [\n\t\t\t\"minecraft:bat\",\n\t\t\t[ \"x\" ]\n\t\t]\n" +
                 "\t[embeddiumextras.general]\n\t\t#Set Fullscreen mode\n\t\tfullscreen = \"WINDOWED\"\n\t\tfpsDisplay = \"OFF\"\n");
+
+            var s0 = GameOptions.SnapshotFullscreen(paths);
+            Check("读出两份配置里的全屏状态", s0.Options == false && s0.SodiumExtras == false);
+
+            // 启动前按启动器的设置写：两份都只动全屏这一个键
             GameOptions.ApplyFullscreen(paths, true);
+            var after = File.ReadAllText(file);
             var extrasAfter = File.ReadAllText(extras);
-            Check("开全屏时 Sodium Extras 也写成 FULLSCREEN",
+            Check("options.txt 写成全屏，其它键不动",
+                after.Contains("fullscreen:true") && after.Contains("renderDistance:12")
+                && after.Contains("lang:zh_cn") && after.Contains("version:3955"), after);
+            Check("Sodium Extras 也写成 FULLSCREEN",
                 extrasAfter.Contains("\t\tfullscreen = \"FULLSCREEN\"") && !extrasAfter.Contains("WINDOWED"), extrasAfter);
             Check("Sodium Extras 其它内容原样保留",
                 extrasAfter.Contains("fpsDisplay = \"OFF\"") && extrasAfter.Contains("\"minecraft:bat\"")
                 && extrasAfter.Split("fullscreen =").Length == 2, extrasAfter);
 
-            // 游戏里按 F11 切回窗口：只有 Sodium Extras 那份当场落盘，options.txt 还是旧的
-            File.WriteAllText(extras, extrasAfter.Replace("FULLSCREEN", "WINDOWED"));
-            File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddMinutes(-5));
-            File.SetLastWriteTimeUtc(extras, DateTime.UtcNow);
-            Check("F11 改过的以较新的 Sodium Extras 为准", GameOptions.ReadFullscreen(paths) == false);
+            // 游戏里没动过：哪怕文件和启动器里刚勾的值对不上，也不算改动。
+            // 以前随时读文件去覆盖设置，玩家在启动器里一勾全屏就被旧文件顶回去。
+            var before = GameOptions.SnapshotFullscreen(paths);
+            Check("游戏里没切过全屏就不报改动", GameOptions.FullscreenChangedInGame(paths, before) is null);
 
-            // 反过来：视频设置里开了全屏，只写了 options.txt
-            File.SetLastWriteTimeUtc(extras, DateTime.UtcNow.AddMinutes(-5));
-            File.SetLastWriteTimeUtc(file, DateTime.UtcNow);
-            Check("视频设置改过的以较新的 options.txt 为准", GameOptions.ReadFullscreen(paths) == true);
+            // 游戏里按 F11 切回窗口：只有 Sodium Extras 那份当场落盘
+            File.WriteAllText(extras, extrasAfter.Replace("FULLSCREEN", "WINDOWED"));
+            Check("F11 切的能读回来", GameOptions.FullscreenChangedInGame(paths, before) == false);
+
+            // 视频设置里切的：只写了 options.txt
+            GameOptions.ApplyFullscreen(paths, false);
+            before = GameOptions.SnapshotFullscreen(paths);
+            File.WriteAllText(file, File.ReadAllText(file).Replace("fullscreen:false", "fullscreen:true"));
+            Check("视频设置切的能读回来", GameOptions.FullscreenChangedInGame(paths, before) == true);
+
+            // 启动前还没有的文件，游戏跑一次生成出来的是模组默认值，不是玩家的选择
+            var fresh = LauncherPaths.At(Path.Combine(tmp, "fresh"));
+            fresh.EnsureCreated();
+            File.WriteAllText(fresh.ResolveGameFile(GameOptions.OptionsPath), "fullscreen:true\n");
+            var freshBefore = GameOptions.SnapshotFullscreen(fresh);
+            var freshExtras = fresh.ResolveGameFile(GameOptions.SodiumExtrasPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(freshExtras)!);
+            File.WriteAllText(freshExtras, "[embeddiumextras.general]\nfullscreen = \"WINDOWED\"\n");
+            Check("游戏新生成的配置不算玩家改动", GameOptions.FullscreenChangedInGame(fresh, freshBefore) is null);
 
             // 玩家选了无边框：开全屏时留着，关全屏时改回窗口
             File.WriteAllText(extras, extrasAfter.Replace("FULLSCREEN", "BORDERLESS"));
             GameOptions.ApplyFullscreen(paths, true);
-            Check("无边框算全屏，保留不动", File.ReadAllText(extras).Contains("fullscreen = \"BORDERLESS\""));
+            Check("无边框算全屏，保留不动",
+                File.ReadAllText(extras).Contains("fullscreen = \"BORDERLESS\"") && GameOptions.SnapshotFullscreen(paths).SodiumExtras == true);
             GameOptions.ApplyFullscreen(paths, false);
             Check("关全屏时两份都写成窗口",
-                File.ReadAllText(extras).Contains("fullscreen = \"WINDOWED\"") && GameOptions.ReadFullscreen(paths) == false);
+                GameOptions.SnapshotFullscreen(paths) == new GameOptions.FullscreenSnapshot(false, false));
+
+            Check("没有配置文件时两份都是未知",
+                GameOptions.SnapshotFullscreen(LauncherPaths.At(Path.Combine(tmp, "empty"))) == new GameOptions.FullscreenSnapshot(null, null));
         }
         finally
         {
