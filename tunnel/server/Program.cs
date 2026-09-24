@@ -62,11 +62,48 @@ internal static class Program
             // 该往哪打。探不到就退化成只有隧道和中转，不影响玩家进服。
             var punch = new PunchService(controlPlane, serverId, token, reflector,
                 targetHost, targetPort);
+            var control = new ControlPlane(controlPlane, serverId, token, listenPort, targetPort,
+                () => punch.Candidates);
+            // 接线要在开跑之前：探测只花几秒，晚接一步就可能漏掉第一次通知，
+            // 那之后要白等整整一个上报周期。
+            punch.CandidatesChanged += control.Nudge;
             _ = punch.RunAsync(lifetime.Token);
             Log($"打洞反射器 {reflector}");
 
-            _ = new ControlPlane(controlPlane, serverId, token, listenPort, targetPort,
-                () => punch.Candidates).RunAsync(lifetime.Token);
+            // 把 QUIC 这一侧的一次性开销全部提前付掉：共享证书 + msquic 首次初始化。
+            //
+            // 这两样都发生在"打洞成功之后、监听起来之前"那个缝里，而那一刻对端已经在
+            // 发 QUIC Initial 了——晚就绪就意味着它第一个包被丢，然后要等 msquic 约
+            // 一秒的 PTO 重传。实测：重启后第一次会话的握手 1142ms，之后每次 66~85ms，
+            // 而且**只预热证书不够**（证书自己只要 71~134ms），差值来自 msquic 加载
+            // dll、建 registration/configuration 这些进程级初始化。
+            //
+            // 所以这里真的去起一个监听器再关掉，把那条路径完整走一遍。
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var thumb = QuicTunnel.SharedEphemeralCertificate.Thumbprint;
+                    // 用完就关。留着常驻试过一次，疑似导致后续 listener 收不到 inbound 流。
+                    //
+                    // 每次打洞都要在新端口上新建一个 QuicListener（端口是打通的那个洞
+                    // 的本地端口，没法复用），而实测每次都要约 1 秒——对端那一刻已经
+                    // 在发 Initial 了，丢掉之后要等 msquic 自己的 PTO。用完就关的预热
+                    // 只能消掉一部分：关掉之后 msquic 的进程级状态会回冷，下一次打洞
+                    // 又要重新付。留一个活的在手上，让它一直是热的。
+                    await using var warm = await QuicTunnel
+                        .ListenAsync(0, QuicTunnel.SharedEphemeralCertificate,
+                            System.Net.Sockets.AddressFamily.InterNetwork, lifetime.Token)
+                        .ConfigureAwait(false);
+                    Log($"QUIC 已预热（证书指纹 {thumb[..8]}）");
+                }
+                catch (Exception error) when (error is not OperationCanceledException)
+                {
+                    Log($"QUIC 预热失败（不影响后续，只是第一次会话会慢约一秒）：{error.Message}");
+                }
+            });
+
+            _ = control.RunAsync(lifetime.Token);
         }
         else
         {
@@ -205,6 +242,47 @@ internal static class Program
                 return;
             }
 
+            // StreamReady 必须在读客户端开场**之前**发。
+            //
+            // 客户端开数据连接的约定是"等 StreamReady 再说话"，而下面的开场嗅探要
+            // 先读客户端的字节——两边互等，客户端 10 秒后超时。这个死锁是加带宽
+            // 通道时引入的：嗅探被插在了发 StreamReady 前面。
+            //
+            // 提前发的代价是 StreamReady 不再含有"本机 Minecraft 也活着"的意思，
+            // 只表示"会话认了，你说吧"。这不算损失：客户端拿到流之后本来就要做一次
+            // 真实的状态查询，那才是够格的可达性判据。P2P 那条路径也是客户端先说话，
+            // 现在两边一致了。
+            await TunnelProtocol.WriteFrameAsync(stream, TunnelProtocol.Frame.StreamReady,
+                ReadOnlyMemory<byte>.Empty, ct).ConfigureAwait(false);
+
+            // 带宽测试走同一条流，只是开场多一个标记。做在这里是为了能和 P2P 做
+            // 同机同时刻的对照：同一条线路上 UDP 跑 1 KB/s 而 TCP 正常，才能把锅
+            // 定在"运营商掐 UDP"上，而不是笼统地说"这条线路不行"。
+            var scratch = new byte[64];
+            int? bulk;
+            int headLength;
+            try
+            {
+                (bulk, headLength) = await PunchService
+                    .TryReadBulkAsync(stream, scratch, ct).ConfigureAwait(false);
+            }
+            catch (Exception error) when (error is not OperationCanceledException)
+            {
+                Log($"{remote} 读开场失败：{error.Message}");
+                return;
+            }
+            if (headLength <= 0) return;
+            if (bulk is { } want)
+            {
+                Log($"{remote} 带宽测试：回 {want / 1024} KB");
+                try { await PunchService.ServeBulkAsync(stream, want, ct).ConfigureAwait(false); }
+                catch (Exception error) when (error is not OperationCanceledException)
+                {
+                    Log($"{remote} 带宽测试中断：{error.Message}");
+                }
+                return;
+            }
+
             using var game = new TcpClient();
             try
             {
@@ -214,31 +292,21 @@ internal static class Program
             }
             catch (Exception error)
             {
-                await TunnelProtocol.WriteFrameAsync(stream, TunnelProtocol.Frame.Reject,
-                    Encoding.UTF8.GetBytes("本地 Minecraft 未就绪"), ct).ConfigureAwait(false);
+                // 这时候 StreamReady 已经发出去了，再塞一个 Reject 只会混进玩家的
+                // 字节流里被当成 Minecraft 报文。直接关掉，客户端读到 EOF 自会换线。
                 Log($"{remote} 接本机 {targetHost}:{targetPort} 失败：{error.Message}");
                 return;
             }
 
             game.NoDelay = true;
-            await TunnelProtocol.WriteFrameAsync(stream, TunnelProtocol.Frame.StreamReady, ReadOnlyMemory<byte>.Empty, ct)
+            // 探测开场读走的字节是玩家的握手包，先补给 Minecraft
+            await game.GetStream().WriteAsync(scratch.AsMemory(0, headLength), ct)
                 .ConfigureAwait(false);
 
-            var gameStream = game.GetStream();
-            var up = Pump(stream, gameStream, ct);
-            var down = Pump(gameStream, stream, ct);
-            await Task.WhenAll(up, down).ConfigureAwait(false);
+            // 带收尾的对拷，理由见 StreamBridge。
+            await StreamBridge.RunAsync(stream, game.GetStream(), StreamBridge.DefaultLinger, ct)
+                .ConfigureAwait(false);
         }
-    }
-
-    private static async Task Pump(Stream from, Stream to, CancellationToken ct)
-    {
-        try
-        {
-            await from.CopyToAsync(to, 64 * 1024, ct).ConfigureAwait(false);
-        }
-        catch (Exception error) when (error is IOException or SocketException
-                                          or OperationCanceledException) { }
     }
 
     private static string? Value(string[] args, string name)
@@ -248,7 +316,7 @@ internal static class Program
     }
 
     internal static void Log(string message) =>
-        Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {message}");
+        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] {message}");
 }
 
 /// <summary>

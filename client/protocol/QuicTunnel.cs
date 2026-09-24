@@ -73,17 +73,53 @@ public static class QuicTunnel
     public const string Alpn = "muxi-tunnel/1";
 
     /// <summary>
-    /// 空闲超时要长于 NAT 映射老化时间，否则 QUIC 自己还没觉得空闲，洞已经塌了。
-    /// KeepAlive 比它短得多，实际上也顺便替我们维持着 NAT 映射。
+    /// 空闲超时就是"多久收不到对端任何包就判这条连接死了"。
+    ///
+    /// 保活开着的时候，连接在链路活着时**永远不会空闲**——每个保活包都会换回一个 ACK。
+    /// 所以这个值管的其实只有一件事：链路真断了之后多久才发现。原先是 10 分钟，意味着
+    /// 洞塌了（NAT 映射被回收、蜂窝换了出口）之后，这条 QUIC 还要"活"10 分钟：
+    /// IsAlive 照报 true，玩家掉线重连时新开的流全灌进黑洞，每次都要等 Minecraft 自己
+    /// 30 秒超时，而保温又被正在进行的连接挡着不探活——等于这 10 分钟里进不了服。
+    ///
+    /// 30 秒和 Minecraft 自己的读超时对齐：链路断得比这更久，游戏那条连接本来也保不住。
+    /// 双方各报一个值，QUIC 取较小的那个，所以只改客户端就对所有 agent 生效。
     /// </summary>
-    public static readonly TimeSpan IdleTimeout = TimeSpan.FromMinutes(10);
-    public static readonly TimeSpan KeepAliveInterval = TimeSpan.FromSeconds(15);
+    public static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// 保活间隔。空闲超时的六分之一：连丢五个保活才会误判，而每个保活只有几十字节。
+    /// 它同时也在替我们续 NAT 映射（运营商那边 UDP 映射实测约 30 秒老化）。
+    /// </summary>
+    public static readonly TimeSpan KeepAliveInterval = TimeSpan.FromSeconds(5);
 
     public static bool IsSupported => QuicConnection.IsSupported && QuicListener.IsSupported;
 
     /// <summary>
+    /// 进程内共用的那一张自签证书。
+    ///
+    /// 服务端侧原先**每次打洞之后**都现生成一张（PunchService 的 ServeAsync 里
+    /// <c>using var certificate = CreateEphemeralCertificate()</c>），实测 71~134ms。
+    /// 这段 CPU 正好卡在"打洞成功"和"QUIC 监听起来"之间，而对端那一刻已经在发
+    /// QUIC Initial 了——晚就绪一毫秒都是它第一个包被丢、然后等约一秒 PTO 重传的风险。
+    ///
+    /// 有效期一年，长驻进程用得完；换进程自然换证书。身份校验本来就在应用层的
+    /// HMAC 握手里做，证书只是 TLS 必须有一张，复用它不降低任何安全性。
+    ///
+    /// 注意：这张证书**不要 Dispose**。它是进程级共享的，谁 Dispose 谁就把后面
+    /// 所有会话的 TLS 弄坏。
+    /// </summary>
+    private static readonly Lazy<X509Certificate2> SharedCertificate =
+        new(CreateEphemeralCertificate, LazyThreadSafetyMode.ExecutionAndPublication);
+
+    /// <summary>进程内共用的自签证书，见 <see cref="SharedCertificate"/>。别 Dispose。</summary>
+    public static X509Certificate2 SharedEphemeralCertificate => SharedCertificate.Value;
+
+    /// <summary>
     /// 自签证书。没有 CA，也不需要——校验在应用层做。
-    /// 每次启动现生成，不落盘，省得多一个要轮换的东西。
+    /// 不落盘，省得多一个要轮换的东西。
+    ///
+    /// 想复用请走 <see cref="SharedEphemeralCertificate"/>：这个方法每次调用都要
+    /// 花 71~134ms 做 RSA-2048 加一次 PFX 往返。
     /// </summary>
     public static X509Certificate2 CreateEphemeralCertificate()
     {

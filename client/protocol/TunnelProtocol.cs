@@ -45,6 +45,20 @@ public static class TunnelProtocol
         StreamReady = 6,
         /// <summary>拒绝，后跟一段 UTF-8 原因。</summary>
         Reject = 7,
+
+        // ---- 单连接多路复用（打洞出来的 TCP 用）----
+        //
+        // 常规 TCP 隧道是"每条 Minecraft 连接开一条新 TCP"，因为服务端侧有一个
+        // 公网可达的监听端口，想连几次连几次。打洞出来的连接没有这个条件：我们
+        // 手上只有**一条**已经连通的 socket，断了就得重新打一次洞（几秒起步）。
+        // 所以要在这一条连接上分出多条逻辑流。
+
+        /// <summary>开一条逻辑流。载荷 = 4 字节大端流号。</summary>
+        MuxOpen = 8,
+        /// <summary>流数据。载荷 = 4 字节大端流号 + 裸字节。</summary>
+        MuxData = 9,
+        /// <summary>关闭一条逻辑流（单向：发送方不再发）。载荷 = 4 字节大端流号。</summary>
+        MuxClose = 10,
     }
 
     /// <summary>
@@ -91,6 +105,38 @@ public static class TunnelProtocol
     /// </summary>
     public static string[] AcceptedClientTokens(string masterToken, DateTimeOffset now) =>
         [DeriveClientToken(masterToken, now), DeriveClientToken(masterToken, now, -1)];
+
+    // ------------------------------------------------------------ 带宽测试通道
+
+    /// <summary>
+    /// 带宽测试的开场标记。
+    ///
+    /// 为什么必须有这个通道：此前判定"连接可用"只做一次 Minecraft 状态查询，那是
+    /// 几百字节的小包。实测出现过**小包全通、一传区块就全丢**的链路（握手和登录
+    /// 正常，进世界时 ACK 一个不回，两分钟后 QUIC 判对端失联）。用小包验证大流量
+    /// 用途，等于没验——玩家要读三五分钟条才发现进不去。
+    ///
+    /// 所以隧道里留一条专用流：客户端开流后先发这个标记和想要的字节数，服务端侧
+    /// 直接回等量数据，不转给 Minecraft。这样就能在启动游戏**之前**用真实大流量
+    /// 把链路压一遍。
+    ///
+    /// 标记选得足够长且不可能与 Minecraft 握手撞车：MC 的第一个包是 VarInt 长度，
+    /// 不会以 "MXBULK" 开头。
+    /// </summary>
+    public static ReadOnlySpan<byte> BulkMagic => "MXBULK01"u8;
+
+    /// <summary>带宽测试的开场：标记 + 4 字节大端的请求字节数。</summary>
+    public static byte[] BulkRequest(int bytes)
+    {
+        var buffer = new byte[BulkMagic.Length + 4];
+        BulkMagic.CopyTo(buffer);
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(
+            buffer.AsSpan(BulkMagic.Length), bytes);
+        return buffer;
+    }
+
+    /// <summary>单次带宽测试允许的最大字节数，防止被人拿来当流量放大器。</summary>
+    public const int BulkMaxBytes = 16 * 1024 * 1024;
 
     // ---------------------------------------------------------------- 帧编解码
 

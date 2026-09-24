@@ -59,7 +59,9 @@ public static class Log
 
     private static void Write(string level, string msg)
     {
-        var line = $"[{DateTime.Now:HH:mm:ss}] [{level}] {msg}";
+        // 带毫秒。秒级精度在排查连接建立时完全不够用——打洞、预热、QUIC 握手这几步
+        // 加起来才几百毫秒到两秒，秒级时间戳会把它们压成同一个刻度，看不出时间花在哪。
+        var line = $"[{DateTime.Now:HH:mm:ss.fff}] [{level}] {msg}";
         lock (Gate)
         {
             try { _writer?.WriteLine(line); } catch { }

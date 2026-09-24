@@ -489,6 +489,12 @@ internal sealed class RpcHost : IDisposable
                 // 自己知道它此刻是什么地址，所以每次启动都来问一次最新的。
                 // 问不到就退回清单——控制面挂了不该连累玩家进不去游戏。
                 var servers = _manifest.Servers;
+                // 凭据优先用本地配置（运维可以钉死一个），否则现取。和候选一起并行取：
+                // 两次都是问同一个控制面，串着问只是多等一个往返。
+                var tokenFetch = !string.IsNullOrWhiteSpace(_settings.TunnelToken)
+                    ? Task.FromResult<string?>(_settings.TunnelToken)
+                    : ControlPlaneClient.FetchClientTokenAsync(
+                        _settings.UpdateBaseUrl, "default", TimeSpan.FromSeconds(8), ct);
                 var snapshot = await ControlPlaneClient
                     .FetchAsync(_settings.UpdateBaseUrl, "default", TimeSpan.FromSeconds(8), ct)
                     .ConfigureAwait(false);
@@ -503,7 +509,12 @@ internal sealed class RpcHost : IDisposable
                     Log.Warn("控制面没有可用候选，回退到清单里的线路");
                 }
 
-                proxy = await MinecraftRouteProxy.StartAsync(servers, routeProgress, ct)
+                var tunnelToken = await tokenFetch.ConfigureAwait(false);
+
+                // 有凭据就能打洞，而打洞不依赖任何 TCP 线路：一条都不通时也要把代理
+                // 起起来，否则中转挂了、又没有 IPv6 的玩家连打洞的机会都没有。
+                proxy = await MinecraftRouteProxy.StartAsync(servers, routeProgress, ct,
+                        allowNoRoute: !string.IsNullOrWhiteSpace(tunnelToken))
                     .ConfigureAwait(false);
 
                 // 先把连接真正建起来，建好了才启动游戏。
@@ -525,27 +536,37 @@ internal sealed class RpcHost : IDisposable
                     ["fraction"] = -1,
                 }));
 
-                // 凭据优先用本地配置（运维可以钉死一个），否则现取。取不到也不影响
-                // 进服：EstablishBestAsync 会直接落到直连/中转那一级。
-                var tunnelToken = !string.IsNullOrWhiteSpace(_settings.TunnelToken)
-                    ? _settings.TunnelToken
-                    : await ControlPlaneClient.FetchClientTokenAsync(
-                        _settings.UpdateBaseUrl, "default", TimeSpan.FromSeconds(8), ct)
-                        .ConfigureAwait(false);
-                var established = await proxy.EstablishBestAsync(
-                    tunnelToken, _settings.UpdateBaseUrl, "default",
-                    _settings.PunchReflector, _settings.TunnelPort, connectProgress, ct)
-                    .ConfigureAwait(false);
-
+                // 先订阅：后台升级到 P2P 可能在下面这一步返回之后很快就完成。
+                var liveProxy = proxy;
                 proxy.RouteChanged += replacement => Emit("routeSelected", new JsonObject
                 {
                     ["kind"] = replacement.Kind.ToString(),
                     ["label"] = replacement.Route.Candidate.Label ?? replacement.Route.Candidate.Id,
                     ["remote"] = replacement.Route.Endpoint.ToString(),
                     ["latencyMs"] = Math.Round(replacement.Route.Latency.TotalMilliseconds),
-                    ["local"] = proxy.LocalAddress,
-                    ["available"] = proxy.Selection.Reachable.Count,
+                    ["local"] = liveProxy.LocalAddress,
+                    ["available"] = liveProxy.Selection.Reachable.Count,
                 });
+
+                // 取不到凭据也不影响进服：EstablishBestAsync 会直接落到直连/中转那一级。
+                // 有凭据时先用最快能通的线路放行游戏，打洞在后台做，见 upgradeInBackground。
+                RouteEstablishment established;
+                try
+                {
+                    established = await proxy.EstablishBestAsync(
+                        tunnelToken, _settings.UpdateBaseUrl, "default",
+                        _settings.PunchReflector, _settings.TunnelPort, connectProgress, ct,
+                        upgradeInBackground: true)
+                        .ConfigureAwait(false);
+                }
+                catch
+                {
+                    // 下面那句 await using 还没走到，这里不收代理就漏了：本地监听、接入循环、
+                    // 可能还有一条刚打通的隧道，一直挂在常驻的 sidecar 里。没有 TCP 线路时
+                    // 代理照样会被起起来（为了打洞），所以这条失败路径现在是真能走到的。
+                    await proxy.DisposeAsync().ConfigureAwait(false);
+                    throw;
+                }
 
                 var selected = established.Route;
                 Emit("routeSelected", new JsonObject

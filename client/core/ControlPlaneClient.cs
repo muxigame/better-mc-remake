@@ -21,14 +21,34 @@ public sealed record ControlPlaneSnapshot(
 /// </summary>
 public static class ControlPlaneClient
 {
+    /// <summary>
+    /// 和控制面说话的所有请求共用这一个客户端。
+    ///
+    /// 启动流程里要连着问控制面好几次（候选 → 凭据 → 打洞会合），原先每次都 new 一个
+    /// HttpClient，于是每次都重新做一遍 TCP + TLS 握手。控制面在香港，蜂窝上一次握手
+    /// 就是好几个往返；打洞会合那一格实测 0.24~0.95 秒，大半花在握手上。共用连接池
+    /// 之后后面几次直接复用前面那条热连接。
+    ///
+    /// 超时按请求给（见各处的 CancelAfter），不在客户端上设全局值。
+    /// </summary>
+    internal static readonly HttpClient Http = new(new SocketsHttpHandler
+    {
+        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+        ConnectTimeout = TimeSpan.FromSeconds(8),
+    })
+    {
+        Timeout = System.Threading.Timeout.InfiniteTimeSpan,
+    };
+
     public static async Task<ControlPlaneSnapshot?> FetchAsync(
         string baseUrl, string serverId, TimeSpan timeout, CancellationToken ct)
     {
         var url = $"{baseUrl.TrimEnd('/')}/api/v1/tunnel/endpoints?server_id={Uri.EscapeDataString(serverId)}";
-        using var http = new HttpClient { Timeout = timeout };
+        using var timer = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timer.CancelAfter(timeout);
         try
         {
-            var json = await http.GetStringAsync(url, ct).ConfigureAwait(false);
+            var json = await Http.GetStringAsync(url, timer.Token).ConfigureAwait(false);
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
 
@@ -85,11 +105,12 @@ public static class ControlPlaneClient
         string baseUrl, string serverId, TimeSpan timeout, CancellationToken ct)
     {
         var url = $"{baseUrl.TrimEnd('/')}/api/v1/tunnel/client-token?server_id={Uri.EscapeDataString(serverId)}";
-        using var http = new HttpClient { Timeout = timeout };
+        using var timer = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timer.CancelAfter(timeout);
         try
         {
             using var document = JsonDocument.Parse(
-                await http.GetStringAsync(url, ct).ConfigureAwait(false));
+                await Http.GetStringAsync(url, timer.Token).ConfigureAwait(false));
             var token = Text(document.RootElement, "token");
             if (string.IsNullOrWhiteSpace(token)) return null;
             Log.Info($"已取得隧道凭据（{token.Length} 位，指纹 {token[..8]}）");

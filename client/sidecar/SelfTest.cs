@@ -30,6 +30,8 @@ internal static class SelfTest
         OfflineUuid();
         PropertiesOverlay();
         TomlOverlay();
+        ShaderAdoption();
+        SeedKeysOverlay();
         JsonOverlay();
         ShaderPreset();
         OptionalToggle();
@@ -54,6 +56,13 @@ internal static class SelfTest
         VersionCompare();
         ArgSplitting();
         PunchPortSweep();
+        P2PHardening().GetAwaiter().GetResult();
+        PunchRoleAssignment();
+        ShutdownVsTimeout();
+        HoleLoadPackets();
+        MtuDiagnosis();
+        TcpPunchConverge();
+        MuxStreams();
         NetworkRouteProxy().GetAwaiter().GetResult();
         InstallLifecycle().GetAwaiter().GetResult();
         PipelineCompletionMarker().GetAwaiter().GetResult();
@@ -834,6 +843,16 @@ internal static class SelfTest
         var r3 = ConfigOverlay.ApplyProperties(tricky, Enforce("""{"a":2}"""), out _);
         Check("值里的冒号不影响解析", r3.Contains("url=http://example.com:8099") && r3.Contains("a=2"), r3);
 
+        // Xaero 这类 "key = value" 的配置，写回去必须保持等号两边的空格
+        var xaero = "map_writing_distance = -1\nlighting = true\nterrain_slopes = 2\n";
+        var r6 = ConfigOverlay.ApplyProperties(xaero, Enforce("""{"map_writing_distance":6}"""), out _);
+        Check("保留等号后的空格", r6.Contains("map_writing_distance = 6"), r6);
+        Check("其它行不动", r6.Contains("lighting = true") && r6.Contains("terrain_slopes = 2"), r6);
+
+        var tight = "a=1\nb=2\n";
+        var r7 = ConfigOverlay.ApplyProperties(tight, Enforce("""{"a":9}"""), out _);
+        Check("没空格的格式也保持原样", r7.Contains("a=9") && !r7.Contains("a= 9"), r7);
+
         // 列表型值：只摘掉点名的条目，玩家自己选的资源包一个都不能少
         var packs = """
             resourcePacks:["vanilla","mod/pasterdream:packs/paster_vanilla_ui","file/Mandala Utopia.zip"]
@@ -914,6 +933,111 @@ internal static class SelfTest
             """), out _);
         Check("带空格的引号键能就地改", r3.Contains("\"enable mod ui\" = false"), r3);
         Check("补的带空格键自带引号", r3.Contains("\"paster health hud\" = false"), r3);
+    }
+
+    private static void ShaderAdoption()
+    {
+        Section("光影：以玩家在游戏里的选择为准");
+
+        var root = Path.Combine(Path.GetTempPath(), "bmc-shader-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            var paths = LauncherPaths.At(root);
+            var iris = paths.ResolveGameFile(ShaderPresets.ConfigPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(iris)!);
+
+            // 整合包出厂值：开着光影
+            File.WriteAllText(iris,
+                "enableShaders=true\nshaderPack=Better MC - Low\nmaxShadowRenderDistance=16\ncolorSpace=SRGB\n");
+
+            Check("没动过就不改记录",
+                ShaderPresets.AdoptPlayerChoice("Better MC - Low", ShaderPresets.Read(paths)) is null,
+                "记录与文件一致时不该收编");
+
+            // 玩家在游戏里关掉了光影
+            File.WriteAllText(iris,
+                "enableShaders=false\nshaderPack=Better MC - Low\nmaxShadowRenderDistance=16\ncolorSpace=SRGB\n");
+            var adopted = ShaderPresets.AdoptPlayerChoice("Better MC - Low", ShaderPresets.Read(paths));
+            Check("玩家关掉光影能被认出来", adopted == "", adopted ?? "(null)");
+
+            // 收编之后再写回去，不能又把它打开
+            ShaderPresets.Apply(paths, adopted);
+            var after = File.ReadAllText(iris);
+            Check("写回之后仍然是关闭的", after.Contains("enableShaders=false"), after);
+            Check("保留玩家上次用的包名，方便他再打开", after.Contains("shaderPack=Better MC - Low"), after);
+            Check("不碰其它设置", after.Contains("maxShadowRenderDistance=16") && after.Contains("colorSpace=SRGB"), after);
+
+            // 玩家换成另一个包
+            File.WriteAllText(iris, "enableShaders=true\nshaderPack=Better MC - High\n");
+            Check("换包也能被认出来",
+                ShaderPresets.AdoptPlayerChoice("", ShaderPresets.Read(paths)) == "Better MC - High",
+                after);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
+    private static void SeedKeysOverlay()
+    {
+        Section("硬配置 · 一次性下发（默认值改了，主权还给玩家）");
+
+        var root = Path.Combine(Path.GetTempPath(), "bmc-seedkeys-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            var paths = LauncherPaths.At(root);
+            var options = paths.ResolveGameFile("options.txt");
+            Directory.CreateDirectory(Path.GetDirectoryName(options)!);
+            File.WriteAllText(options, "fov:-0.575\nguiScale:0\nlang:zh_cn\n");
+
+            var state = new LocalState();
+            var spec = new ConfigOverlaySpec
+            {
+                Path = "options.txt",
+                Format = OverlayFormat.Properties,
+                CreateIfMissing = false,
+                SeedKeys = Enforce("""{"fov":0.0}"""),
+            };
+
+            ConfigOverlay.ApplyAll([spec], paths, state);
+            Check("第一次启动：默认值推到位", File.ReadAllText(options).Contains("fov:0.0"),
+                File.ReadAllText(options));
+            Check("推过之后留下记账", !state.NeedsOverlaySeed("options.txt", "fov", "0.0"),
+                string.Join(",", state.OverlaySeeds));
+
+            // 玩家自己改了
+            File.WriteAllText(options, "fov:0.35\nguiScale:0\nlang:zh_cn\n");
+            ConfigOverlay.ApplyAll([spec], paths, state);
+            Check("玩家改过之后不再被按回去", File.ReadAllText(options).Contains("fov:0.35"),
+                File.ReadAllText(options));
+
+            // 服务器换了新默认值 → 再推一次
+            spec.SeedKeys = Enforce("""{"fov":0.25}""");
+            ConfigOverlay.ApplyAll([spec], paths, state);
+            Check("服务器换新值才再推一次", File.ReadAllText(options).Contains("fov:0.25"),
+                File.ReadAllText(options));
+
+            // 没有 state 就没法记账，这种情况宁可不发
+            var noState = new ConfigOverlaySpec
+            {
+                Path = "options.txt",
+                Format = OverlayFormat.Properties,
+                CreateIfMissing = false,
+                SeedKeys = Enforce("""{"guiScale":3}"""),
+            };
+            ConfigOverlay.ApplyAll([noState], paths, null);
+            Check("没有记账就不下发", File.ReadAllText(options).Contains("guiScale:0"),
+                File.ReadAllText(options));
+
+            // 其它键一个都不许动
+            Check("只碰点名的键", File.ReadAllText(options).Contains("lang:zh_cn"),
+                File.ReadAllText(options));
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
     }
 
     private static void JsonOverlay()
@@ -1217,8 +1341,8 @@ internal static class SelfTest
             };
 
             await using var proxy = await MinecraftRouteProxy.StartAsync(servers, null, CancellationToken.None);
-            Check("并行探测选中可达 LAN", proxy.Selection.Selected.Candidate.Id == "lan",
-                proxy.Selection.Selected.Candidate.Id);
+            Check("并行探测选中可达 LAN", proxy.Selection.Selected?.Candidate.Id == "lan",
+                proxy.Selection.Selected?.Candidate.Id ?? "(无)");
             Check("代理只监听回环地址",
                 proxy.LocalAddress.StartsWith("127.0.0.1:", StringComparison.Ordinal), proxy.LocalAddress);
 
@@ -1242,6 +1366,335 @@ internal static class SelfTest
             target.Stop();
             try { await targetLoop; } catch { }
         }
+    }
+
+    /// <summary>
+    /// 单连接多路复用。
+    ///
+    /// 打洞出来的 TCP 只有一条，玩家的游戏连接、带宽探测、保温探活都得挤在上面，
+    /// 所以分片交错、流号串台、大包切分这几处必须是对的。写错的表现是"偶尔卡一下"
+    /// 或者"数据莫名其妙串了"，在游戏里几乎不可能复现，只能在这里拦住。
+    /// </summary>
+    private static void MuxStreams()
+    {
+        Console.WriteLine("单连接多路复用");
+
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using var clientTcp = new TcpClient();
+        var connecting = clientTcp.ConnectAsync(IPAddress.Loopback, port);
+        using var serverTcp = listener.AcceptTcpClient();
+        connecting.GetAwaiter().GetResult();
+        listener.Stop();
+
+        var client = new MuxConnection(clientTcp.GetStream(), initiator: true);
+        var server = new MuxConnection(serverTcp.GetStream(), initiator: false);
+
+        // 服务端侧：接到流就原样回显，模拟 agent 把流接到 Minecraft 上
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                Stream accepted;
+                try { accepted = await server.AcceptAsync(CancellationToken.None); }
+                catch { return; }
+                _ = Task.Run(async () =>
+                {
+                    var buffer = new byte[16 * 1024];
+                    try
+                    {
+                        int read;
+                        while ((read = await accepted.ReadAsync(buffer)) > 0)
+                            await accepted.WriteAsync(buffer.AsMemory(0, read));
+                    }
+                    catch { }
+                });
+            }
+        });
+
+        static byte[] Pattern(int size, byte seed)
+        {
+            var data = new byte[size];
+            for (var i = 0; i < size; i++) data[i] = (byte)(seed + i);
+            return data;
+        }
+
+        static byte[] RoundTrip(Stream s, byte[] payload)
+        {
+            s.WriteAsync(payload).AsTask().Wait(TimeSpan.FromSeconds(20));
+            var got = new byte[payload.Length];
+            var filled = 0;
+            while (filled < got.Length)
+            {
+                var task = s.ReadAsync(got.AsMemory(filled)).AsTask();
+                if (!task.Wait(TimeSpan.FromSeconds(20))) break;
+                if (task.Result <= 0) break;
+                filled += task.Result;
+            }
+            return filled == got.Length ? got : [];
+        }
+
+        // 1) 小包往返
+        var a = client.OpenAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var small = Pattern(64, 7);
+        Check("小包能原样往返", RoundTrip(a, small).AsSpan().SequenceEqual(small));
+
+        // 2) 超过单帧上限的大包：必须被切分再拼回，且顺序不能乱
+        var big = Pattern(200 * 1024, 31);
+        Check("大包切分后顺序不乱", RoundTrip(a, big).AsSpan().SequenceEqual(big),
+            "单帧上限 32 KB，200 KB 会被切成多帧");
+
+        // 3) 两条流并发：分片交错时不能串台
+        var b = client.OpenAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var da = Pattern(40 * 1024, 100);
+        var db = Pattern(40 * 1024, 200);
+        var ta = Task.Run(() => RoundTrip(a, da));
+        var tb = Task.Run(() => RoundTrip(b, db));
+        Task.WaitAll([ta, tb], TimeSpan.FromSeconds(30));
+        Check("并发两条流互不串台",
+            ta.Result.AsSpan().SequenceEqual(da) && tb.Result.AsSpan().SequenceEqual(db));
+
+        // 4) 关掉一条不影响另一条
+        a.Dispose();
+        var after = Pattern(1024, 55);
+        Check("关掉一条流之后另一条还能用", RoundTrip(b, after).AsSpan().SequenceEqual(after));
+
+        // 5) 底层连接断了，读要立刻结束而不是挂死
+        b.Dispose();
+        client.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
+        // 期望是"立刻失败"而不是"挂住"，所以抛异常算通过，超时才算不通过。
+        var ended = false;
+        try
+        {
+            ended = server.AcceptAsync(CancellationToken.None).Wait(TimeSpan.FromSeconds(5));
+        }
+        catch (AggregateException) { ended = true; }
+        Check("连接断开后 Accept 立刻结束而不是挂死", ended);
+        server.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>
+    /// 超时不等于关停。
+    ///
+    /// 这条用例对应一个真实故障：HttpClient 超时抛的 TaskCanceledException 是
+    /// OperationCanceledException 的子类，被 <c>when (error is not OperationCanceledException)</c>
+    /// 放过去之后直接冲出整个 while 循环，agent 的上报永久停摆到进程重启，而现场
+    /// 看起来一切正常（进程活着、别的循环还在转）。
+    /// </summary>
+    private static void ShutdownVsTimeout()
+    {
+        Section("超时与关停的区分");
+
+        using var live = new CancellationTokenSource();
+        using var stopped = new CancellationTokenSource();
+        stopped.Cancel();
+
+        // HttpClient 的超时就是这个形状：TaskCanceledException，而令牌没被取消。
+        var timeout = new TaskCanceledException("The request was canceled due to timeout.");
+        Check("HTTP 超时不算关停（必须继续循环）",
+            !Cancellation.IsShutdown(timeout, live.Token));
+
+        Check("令牌取消时的取消异常算关停",
+            Cancellation.IsShutdown(new OperationCanceledException(), stopped.Token));
+        Check("令牌取消时的 TaskCanceled 也算关停",
+            Cancellation.IsShutdown(timeout, stopped.Token));
+
+        // 普通故障永远不算关停，哪怕正在关停途中也该被记下来而不是当成正常退出。
+        Check("普通异常不算关停",
+            !Cancellation.IsShutdown(new IOException("connection reset"), live.Token));
+        Check("关停途中的普通异常仍不算关停",
+            !Cancellation.IsShutdown(new IOException("connection reset"), stopped.Token));
+    }
+
+    /// <summary>
+    /// 从各包长的压测结果里认出「路径 MTU 黑洞」。
+    ///
+    /// 这条对应一次真实故障：玩家那侧 1200 字节包过了（还丢 23%），1400 / 1452 / 1472
+    /// 全部 0/300，而 QUIC 握手完会把报文往上探、探进黑洞，最终表现成一句含糊的
+    /// 「带不动」。分界线 1228 &lt; 1300 &lt; 1428 正好卡在他机器上一块 MTU 1300 的隧道
+    /// 网卡上。有这条判断，日志里就直接写出病因和该关什么，而不是让人自己去读直方图。
+    /// </summary>
+    private static void MtuDiagnosis()
+    {
+        Section("路径 MTU 黑洞的判定");
+
+        static HoleLoadTest.RoundResult R(int size, int received) =>
+            new(size, 300, received, TimeSpan.FromMilliseconds(250), received > 0 ? 0 : -1,
+                received > 0 ? received - 1 : -1, new int[12]);
+
+        // 真实故障的形状：小包过，1400 及以上全灭。
+        var real = HoleLoadTest.DiagnoseMtu([R(1200, 231), R(1400, 0), R(1452, 0), R(1472, 0)]);
+        Check("认出 MTU 黑洞", real is not null);
+        Check("报出能过的最大包长 1200", real?.Contains("1200") == true);
+        Check("报出链路上的字节数 1228（含 UDP+IP 头 28）", real?.Contains("1228") == true);
+        Check("报出第一个过不去的包长 1400", real?.Contains("1400") == true);
+        Check("给出该怀疑什么", real?.Contains("VPN") == true);
+
+        // 四种都过 = 没问题，不能报警。
+        Check("全通时不报 MTU 问题",
+            HoleLoadTest.DiagnoseMtu([R(1200, 300), R(1400, 300), R(1452, 300), R(1472, 300)]) is null);
+
+        // 一个都没收到 = 对端旧版本或洞本身不通，跟尺寸门槛无关，不能误报成 MTU。
+        Check("全灭时不误报成 MTU 问题",
+            HoleLoadTest.DiagnoseMtu([R(1200, 0), R(1400, 0), R(1452, 0), R(1472, 0)]) is null);
+
+        // 交错（小包死、大包活）说明是丢包不是尺寸门槛，同样不能报。
+        Check("结果交错时不报 MTU 问题",
+            HoleLoadTest.DiagnoseMtu([R(1200, 0), R(1400, 280), R(1452, 0), R(1472, 290)]) is null);
+
+        // 只有一轮时信息不足，宁可不说。
+        Check("样本不足时不下结论",
+            HoleLoadTest.DiagnoseMtu([R(1200, 300)]) is null);
+    }
+
+    /// <summary>
+    /// 打洞分工：谁预测端口、用什么步长。
+    ///
+    /// 这一组用例存在的原因是一个查了很久的 bug：两侧都硬写 predictPorts: true 且步长
+    /// 都是 1，于是命中方程无解，TCP 打洞 0/255 而两边日志都显示自己正常拨了几百次。
+    /// 所以这里不只钉常量，连**方程本身**一起钉——见 SimultaneousOpenHasSolution。
+    /// </summary>
+    private static void PunchRoleAssignment()
+    {
+        Section("打洞分工（谁预测端口、步长多少）");
+
+        // 对端地址相关：它公布的端口是它探反射器时的映射，不是它朝我们发包时的，
+        // 所以必须预测。两侧都预测没问题——救命的是步长不同，不是"只一侧猜"。
+        Check("对端对称：发起方预测",
+            P2PTags.ShouldPredictPeerPorts(
+                myMappingAddressDependent: true, peerEndpointIndependent: false, initiator: true));
+        Check("对端对称：接受方也预测",
+            P2PTags.ShouldPredictPeerPorts(
+                myMappingAddressDependent: true, peerEndpointIndependent: false, initiator: false));
+
+        // 对端端点无关：公布的端口就是真端口，照着连，预测纯属浪费拨号预算。
+        Check("对端锥形：发起方不预测",
+            !P2PTags.ShouldPredictPeerPorts(
+                myMappingAddressDependent: true, peerEndpointIndependent: true, initiator: true));
+        Check("对端锥形：接受方不预测",
+            !P2PTags.ShouldPredictPeerPorts(
+                myMappingAddressDependent: false, peerEndpointIndependent: true, initiator: false));
+
+        // 步长必须不相等，否则命中方程的分母是 0。
+        Equal("发起方步长 1", "1", P2PTags.PredictStep(initiator: true).ToString());
+        Equal("接受方步长 2", "2", P2PTags.PredictStep(initiator: false).ToString());
+        Check("两侧步长不相等",
+            P2PTags.PredictStep(true) != P2PTags.PredictStep(false));
+
+        SimultaneousOpenHasSolution();
+
+        // 前缀是两侧交换类型的唯一载体，标错等于分工错。
+        Equal("对称型用 t: 前缀", "t:", P2PTags.TcpTagFor(addressDependent: true));
+        Equal("锥形用 te: 前缀", "te:", P2PTags.TcpTagFor(addressDependent: false));
+
+        Check("te: 解出端点无关",
+            P2PTags.TryStripTcp("te:1.2.3.4:5678", out var text1, out var eim1)
+            && text1 == "1.2.3.4:5678" && eim1);
+        Check("t: 解出地址相关",
+            P2PTags.TryStripTcp("t:1.2.3.4:5678", out var text2, out var eim2)
+            && text2 == "1.2.3.4:5678" && !eim2);
+        // 老版本只发 "t:"，没有类型信息。按最坏情况算是安全方向：宁可多预测，
+        // 也不要照着一个不可靠的端口去打还以为自己打过了。
+        Check("无前缀不算 TCP 候选",
+            !P2PTags.TryStripTcp("1.2.3.4:5678", out var text3, out var eim3)
+            && text3 == "1.2.3.4:5678" && !eim3);
+    }
+
+    /// <summary>
+    /// 把 TCP 同时开的命中条件当成方程解一遍，钉住"步长不等才有解"。
+    ///
+    /// 两侧对表时各自看到自己的外部端口 p_A/p_B，开打时第 0 次 connect 实际拿到
+    /// a=p_A+δ_A、b=p_B+δ_B，各以步长 s 往上拨。在地址+端口相关过滤下，命中要求
+    /// 存在 i,j 同时满足 <c>1+s_A·i = δ_B+j</c> 和 <c>1+s_B·j = δ_A+i</c>。
+    ///
+    /// 这里直接暴力枚举窗口，不用解析解——用例要验的是"这个条件在我们的参数下能不能
+    /// 被满足"，枚举比化简更不容易写错，也更能看出窗口够不够。
+    /// </summary>
+    private static void SimultaneousOpenHasSolution()
+    {
+        // δ = 背景端口消耗 20.4 个/秒 × 对表提前 900ms ≈ 18。
+        const int drift = 18;
+        const int window = 96;
+
+        static bool Solvable(int stepA, int stepB, int driftA, int driftB, int window)
+        {
+            for (var i = 0; i < window; i++)
+                for (var j = 0; j < window; j++)
+                    if (1 + stepA * i == driftB + j && 1 + stepB * j == driftA + i)
+                        return true;
+            return false;
+        }
+
+        Check("两侧步长都是 1 时无解（这就是 0/255 的根因）",
+            !Solvable(1, 1, drift, drift, window));
+        Check("步长 1/2 时有解",
+            Solvable(1, 2, drift, drift, window));
+        // 窗口要撑得住线路更忙的时候。δ=30 相当于 1.5 秒漂移。
+        Check("δ=30 时窗口 96 仍有解",
+            Solvable(1, 2, 30, 30, window));
+        // 两侧 δ 不一样也要有解——各自线路的繁忙程度本来就不同。
+        Check("两侧 δ 不等（12 与 25）仍有解",
+            Solvable(1, 2, 12, 25, window));
+        // 反证窗口不是白给的：窗口太小就会打空。
+        Check("窗口 16 在 δ=18 下无解（原来的 NarrowAhead 就是 16）",
+            !Solvable(1, 2, drift, drift, 16));
+    }
+
+    /// <summary>
+    /// 洞压测的包：参数编码要能原样回来，数据包要能校验，改一个字节就必须认不出来。
+    ///
+    /// 压测包是唯一长度可变的打洞包，所以它走单独的解析路径。这里盯住的是那条路径
+    /// 别把定长包的校验放松掉——那是挡住端口扫描者的第一道门。
+    /// </summary>
+    private static void HoleLoadPackets()
+    {
+        Section("洞压测包");
+
+        var plan = PunchProtocol.EncodeLoadPlan(1400, 300, 1536);
+        var (size, count, rate) = PunchProtocol.DecodeLoadPlan(plan);
+        Equal("参数往返 · 包长", "1400", size.ToString());
+        Equal("参数往返 · 包数", "300", count.ToString());
+        Equal("参数往返 · 速率", "1536", rate.ToString());
+
+        var secret = PunchProtocol.DeriveSecret("selftest-token");
+        const ulong session = 0x0102_0304_0506_0708UL;
+        var packet = PunchProtocol.BuildLoad(session, 12345, secret, 1400);
+        Equal("压测包长度就是要求的长度", "1400", packet.Length.ToString());
+
+        var parsed = PunchProtocol.ParseLoad(packet, secret);
+        Check("能解出会话和序号",
+            parsed is { } ok && ok.Session == session && ok.Sequence == 12345);
+
+        // 填充不进 MAC（几百个 1.4KB 全算 HMAC 会把压测本身变成 CPU 瓶颈），
+        // 但**头部**必须一个字节都动不了。
+        var tampered = (byte[])packet.Clone();
+        tampered[13] ^= 0x01;
+        Check("改了序号就认不出", PunchProtocol.ParseLoad(tampered, secret) is null);
+        Check("换密钥就认不出",
+            PunchProtocol.ParseLoad(packet, PunchProtocol.DeriveSecret("another")) is null);
+        Check("短于定长包直接丢",
+            PunchProtocol.ParseLoad(packet.AsSpan(0, PunchProtocol.PacketSize - 1), secret) is null);
+
+        // 普通定长包不能被当成压测包，反之亦然——两条解析路径不能互相串。
+        var punch = PunchProtocol.Build(PunchProtocol.Kind.Punch, session, 1, secret);
+        Check("普通打洞包不会被当成压测包", PunchProtocol.ParseLoad(punch, secret) is null);
+        Check("压测包不会被定长解析接受",
+            PunchProtocol.Parse(packet, secret) is null);
+
+        // 请求/回报走的是定长包，必须能被 Parse 接住，否则 agent 侧收包循环会丢掉它们。
+        var request = PunchProtocol.Build(PunchProtocol.Kind.LoadRequest, session, plan, secret);
+        Check("压测请求能被定长解析接受",
+            PunchProtocol.Parse(request, secret) is { Type: PunchProtocol.Kind.LoadRequest } p
+            && p.Nonce == plan);
+        var report = PunchProtocol.Build(PunchProtocol.Kind.LoadReport, session, plan, secret);
+        Check("压测回报能被定长解析接受",
+            PunchProtocol.Parse(report, secret) is { Type: PunchProtocol.Kind.LoadReport });
+        // LoadDone 是"对端可以立刻放开端口"的信号。它解不出来的后果不是少一行日志，
+        // 而是应答方要等满超时，对端的第一个 QUIC Initial 被丢、再等约一秒重传。
+        var done = PunchProtocol.Build(PunchProtocol.Kind.LoadDone, session, 0, secret);
+        Check("压测收工信号能被解析",
+            PunchProtocol.Parse(done, secret) is { Type: PunchProtocol.Kind.LoadDone });
     }
 
     /// <summary>
@@ -1285,6 +1738,323 @@ internal static class SelfTest
             $"A 只发了 {ta.Result.Sent} 个包");
         Check("不该扫的那一侧没有多发包", tb.Result.Sent < 60,
             $"B 发了 {tb.Result.Sent} 个包，本不该扫描");
+
+        // Winner 必须指向真正收到 Ack 的那个 socket。
+        //
+        // 本机映射不可预测（sweepPorts=false）那一侧会多开一批诱饵端口一起打，赢的
+        // 可能不是主 socket。NAT 映射按本地端口记账，上层如果照主端口去建 QUIC，
+        // 就是把刚打好的洞扔掉换一个没打过的端口——现象是"打洞成功但连不上"，
+        // 极难查，所以这里钉死。
+        Check("A 报出了赢的那个 socket", ta.Result.Winner is not null);
+        Check("B 报出了赢的那个 socket", tb.Result.Winner is not null);
+        var bLocal = (tb.Result.Winner?.LocalEndPoint as IPEndPoint)?.Port ?? -1;
+        Check("B（多开诱饵的那一侧）赢的端口确实在本机上",
+            bLocal > 0, $"拿到的本地端口是 {bLocal}");
+        Check("A（不开诱饵的那一侧）赢的就是它自己那个 socket",
+            ReferenceEquals(ta.Result.Winner, a),
+            "A 没开诱饵，赢的只能是主 socket");
+    }
+
+    /// <summary>
+    /// 2026-09-24 端到端实测（蜂窝 × 家宽 × CGNAT 服务端）里修掉的几处，各钉一条。
+    /// 每一条都对应一次真实失败，注释里写的是当时的现象。
+    /// </summary>
+    private static async Task P2PHardening()
+    {
+        Section("P2P 实测修复");
+        var secret = PunchProtocol.DeriveSecret("selftest-token");
+        const ulong session = 0x5EED_0924_0000_0001UL;
+
+        // 1. 对端的压测请求 = 对端已经判定打通，而且指明了它真正在用的那一对端口。
+        //    实测：两边各自认定的端口对不是同一对，预热 6 次里 5 次 0/300。
+        {
+            using var mine = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            using var peer = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            mine.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            peer.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            // 候选故意给一个没人听的端口：唯一能让它成功的就是那个压测请求。
+            var dead = new IPEndPoint(IPAddress.Loopback, ReserveClosedPort());
+            var plan = PunchProtocol.EncodeLoadPlan(1200, 50, 1024);
+            var punch = UdpPuncher.PunchAsync(mine, [dead], session, secret,
+                DateTimeOffset.UtcNow, TimeSpan.FromSeconds(3), sweepPorts: false, null,
+                CancellationToken.None);
+            await Task.Delay(150);
+            await peer.SendToAsync(PunchProtocol.Build(PunchProtocol.Kind.LoadRequest, session, plan, secret),
+                SocketFlags.None, mine.LocalEndPoint!);
+            var outcome = await punch.WaitAsync(TimeSpan.FromSeconds(10));
+            Check("对端的压测请求算打通", outcome.Success, $"Peer={outcome.Peer}");
+            Check("以压测请求的来源为准", Equals(outcome.Peer, peer.LocalEndPoint),
+                $"{outcome.Peer} vs {peer.LocalEndPoint}");
+            Check("压测请求被原样交出来，应答方不必等重发", outcome.PeerLoadRequest == plan);
+            // 对端已经收工，不该再等 Ack 宽限（上限 2 秒）。
+            Check("对端已收工时不等 Ack 宽限", outcome.Elapsed < TimeSpan.FromSeconds(1.5),
+                $"{outcome.Elapsed.TotalMilliseconds:0} ms");
+            foreach (var decoy in new[] { outcome.Winner })
+                if (decoy is not null && !ReferenceEquals(decoy, mine)) decoy.Dispose();
+        }
+
+        // 2. 应答方按请求的实际来源回，而不是按打洞时记下的那个地址。
+        {
+            using var responder = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            using var requester = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            responder.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            requester.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            var stale = new IPEndPoint(IPAddress.Loopback, ReserveClosedPort());
+            var respond = HoleLoadTest.RespondAsync(responder, stale, session, secret, null,
+                CancellationToken.None);
+            var rounds = await HoleLoadTest.RequestAsync(requester, (IPEndPoint)responder.LocalEndPoint!,
+                session, secret, [(1200, 50, 1024)], null, CancellationToken.None);
+            await respond.WaitAsync(TimeSpan.FromSeconds(10));
+            Check("应答方按实际来源回（打洞时记的地址已过时）",
+                rounds.Count == 1 && rounds[0].Received == 50,
+                rounds.Count == 0 ? "没有结果" : rounds[0].Describe());
+        }
+
+        // 3. 一轮整轮丢光时，请求方要在"按计划早该推完"之后很快收手，而不是干等 1.2 秒；
+        //    而应答方要等得住它问下一轮。实测：前者干等、后者 250ms 就收摊，后面几轮全
+        //    对着空气问，还得出一条"路径 MTU 1200~1250"的假结论。
+        {
+            using var requester = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            requester.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            var nobody = new IPEndPoint(IPAddress.Loopback, ReserveClosedPort());
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var rounds = await HoleLoadTest.RequestAsync(requester, nobody, session, secret,
+                [(1200, 50, 1024)], null, CancellationToken.None);
+            Check("对端不应答时一轮很快收手", watch.Elapsed < TimeSpan.FromSeconds(1),
+                $"{watch.ElapsedMilliseconds} ms，轮数 {rounds.Count}");
+        }
+
+        // 4. 出口探测：所有目标一起发一起收；有个端口不回话时靠安静期收手，而不是
+        //    每个都干等 600ms。实测蜂窝上原来这一格 2.2~5.5 秒。
+        {
+            using var reflectorA = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            using var reflectorB = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            reflectorA.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            reflectorB.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            using var stop = new CancellationTokenSource();
+            var echoA = FakeReflectorAsync(reflectorA, stop.Token);
+            var echoB = FakeReflectorAsync(reflectorB, stop.Token);
+            var portA = ((IPEndPoint)reflectorA.LocalEndPoint!).Port;
+            var portB = ((IPEndPoint)reflectorB.LocalEndPoint!).Port;
+
+            using var probe = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            probe.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var all = await NatDiscovery.DiscoverAsync(probe, "127.0.0.1", [portA, portB], 6,
+                CancellationToken.None);
+            var allAnswered = watch.Elapsed;
+            Check("所有反射器都回话时一个往返就收工", allAnswered < TimeSpan.FromMilliseconds(400),
+                $"{allAnswered.TotalMilliseconds:0} ms");
+            Check("探到了出口", all.Candidates.Count == 1, string.Join(",", all.Candidates));
+
+            using var probe2 = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            probe2.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            watch.Restart();
+            var partial = await NatDiscovery.DiscoverAsync(probe2, "127.0.0.1",
+                [portA, ReserveClosedPort(), portB], 6, CancellationToken.None);
+            Check("有反射器端口不回话时照样收得回来", partial.Candidates.Count == 1);
+            Check("不回话的端口不会拖满上限", watch.Elapsed < TimeSpan.FromMilliseconds(1300),
+                $"{watch.ElapsedMilliseconds} ms");
+            stop.Cancel();
+            try { await Task.WhenAll(echoA, echoB); } catch { }
+        }
+
+        // 5. 双向对拷：一个方向结束要把半关闭传过去，不能两边都干等到对面超时。
+        //    实测：玩家断开后服务端那头要等 Minecraft 30 秒超时才放人，客户端这条转发也
+        //    一直占着连接表，后台打好的 P2P 永远切不过去。
+        {
+            var (gameSide, proxyLocal) = await LoopbackPairAsync();
+            var (proxyRemote, serverSide) = await LoopbackPairAsync();
+            using (gameSide) using (proxyLocal) using (proxyRemote) using (serverSide)
+            {
+                var bridge = StreamBridge.RunAsync(proxyLocal.GetStream(), proxyRemote.GetStream(),
+                    TimeSpan.FromSeconds(5), CancellationToken.None);
+                gameSide.Client.Shutdown(SocketShutdown.Send);   // 游戏那头断开
+                var buffer = new byte[16];
+                var read = await serverSide.GetStream().ReadAsync(buffer).AsTask()
+                    .WaitAsync(TimeSpan.FromSeconds(2));
+                Check("游戏断开后服务端那头立刻读到 EOF", read == 0);
+                serverSide.Client.Shutdown(SocketShutdown.Send);  // 服务端随之收尾
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                await bridge.WaitAsync(TimeSpan.FromSeconds(10));
+                Check("两头都收尾后转发立即结束，不等宽限", watch.Elapsed < TimeSpan.FromSeconds(1),
+                    $"{watch.ElapsedMilliseconds} ms");
+            }
+
+            var (game2, local2) = await LoopbackPairAsync();
+            var (remote2, server2) = await LoopbackPairAsync();
+            using (game2) using (local2) using (remote2) using (server2)
+            {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                var bridge = StreamBridge.RunAsync(local2.GetStream(), remote2.GetStream(),
+                    TimeSpan.FromMilliseconds(300), CancellationToken.None);
+                game2.Client.Shutdown(SocketShutdown.Send);
+                // 服务端这次装死、不收尾：宽限到了也必须结束。
+                await bridge.WaitAsync(TimeSpan.FromSeconds(10));
+                Check("对端不收尾时宽限一到就拆", watch.Elapsed < TimeSpan.FromSeconds(2),
+                    $"{watch.ElapsedMilliseconds} ms");
+            }
+        }
+
+        // 6. 一条 TCP 线路都不通时代理照样起得来——打洞不依赖任何 TCP 线路。
+        //    实测：中转挂了、玩家又没有 IPv6，选路一抛，打洞连试的机会都没有。
+        {
+            var servers = new[]
+            {
+                new ServerEntry
+                {
+                    Name = "全不通", Primary = true, Host = "127.0.0.1", Port = ReserveClosedPort(),
+                    Routes =
+                    [
+                        new RouteCandidate
+                        {
+                            Id = "dead-relay", Kind = RouteKind.Relay, Host = "127.0.0.1",
+                            Port = ReserveClosedPort(), ProbeTimeoutMs = 300,
+                        },
+                    ],
+                },
+            };
+            var threw = false;
+            try { await using var _ = await MinecraftRouteProxy.StartAsync(servers, null, CancellationToken.None); }
+            catch (InvalidOperationException) { threw = true; }
+            Check("不允许无线路时照旧报错", threw);
+            await using var proxy = await MinecraftRouteProxy.StartAsync(servers, null,
+                CancellationToken.None, allowNoRoute: true);
+            Check("允许无线路时代理照样起来", proxy.Selection.Selected is null
+                                                && proxy.Selection.Reachable.Count == 0);
+        }
+    }
+
+    /// <summary>回环上的假反射器：把来源地址按真反射器的格式回过去。</summary>
+    private static async Task FakeReflectorAsync(Socket socket, CancellationToken ct)
+    {
+        var buffer = new byte[512];
+        const string magic = "MUXI-REFLECT/1 ";
+        while (!ct.IsCancellationRequested)
+        {
+            SocketReceiveFromResult got;
+            try
+            {
+                got = await socket.ReceiveFromAsync(buffer, SocketFlags.None,
+                    new IPEndPoint(IPAddress.Any, 0), ct);
+            }
+            catch (OperationCanceledException) { return; }
+            catch (SocketException) { continue; }
+            var text = Encoding.ASCII.GetString(buffer, 0, got.ReceivedBytes);
+            if (!text.StartsWith(magic, StringComparison.Ordinal)) continue;
+            var from = (IPEndPoint)got.RemoteEndPoint;
+            var reply = $"{{\"nonce\":\"{text[magic.Length..]}\",\"ip\":\"{from.Address}\",\"port\":{from.Port}}}";
+            try { await socket.SendToAsync(Encoding.ASCII.GetBytes(reply), SocketFlags.None, from, ct); }
+            catch (Exception error) when (error is SocketException or OperationCanceledException) { }
+        }
+    }
+
+    private static async Task<(TcpClient Client, TcpClient Server)> LoopbackPairAsync()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            var client = new TcpClient();
+            var accept = listener.AcceptTcpClientAsync();
+            await client.ConnectAsync(IPAddress.Loopback, ((IPEndPoint)listener.LocalEndpoint).Port);
+            return (client, await accept);
+        }
+        finally { listener.Stop(); }
+    }
+
+    /// <summary>
+    /// TCP 打洞的收敛。
+    ///
+    /// 两边同时拨号会打通**两条**连接（我拨通你一条、你拨通我一条），真实链路上
+    /// 因为端口预测还会更多。各留各的就谁也读不到谁——实测表现是隧道"建立成功"、
+    /// 一开流立刻 EOF，极难查：两边日志都写着打洞成功。
+    ///
+    /// 这里把这个局面直接构造出来：A、B 互相知道对方端口，两条必然都通。再塞一个
+    /// 外人抢在正主前面连进来，验证它既不会被选中、也不会把正主挤掉。
+    /// </summary>
+    private static void TcpPunchConverge()
+    {
+        Console.WriteLine("TCP 打洞收敛");
+        var secret = PunchProtocol.DeriveSecret("selftest-token");
+        const ulong session = 0x5EC0_1234_5678_9ABCUL;
+
+        var pa = ReserveClosedPort();
+        var pb = ReserveClosedPort();
+        while (pb == pa) pb = ReserveClosedPort();
+
+        var punchAt = DateTimeOffset.UtcNow.AddMilliseconds(500);
+        var budget = TimeSpan.FromSeconds(5);
+
+        // 端口预测在回环上没有意义（邻近端口是别的进程），这里只验收敛，关掉。
+        var ta = TcpPuncher.PunchAsync(
+            pa, [new IPEndPoint(IPAddress.Loopback, pb)], session, secret, punchAt, budget,
+            predictPorts: false, initiator: true, narrowWindow: false, null, CancellationToken.None);
+        var tb = TcpPuncher.PunchAsync(
+            pb, [new IPEndPoint(IPAddress.Loopback, pa)], session, secret, punchAt, budget,
+            predictPorts: false, initiator: false, narrowWindow: false, null, CancellationToken.None);
+
+        // 监听在等待约定时刻之前就起来了，所以外人现在就能连上。发满一帧垃圾：
+        // MAC 对不上就该被丢掉，不能占住名额——否则扫到端口的人就能让打洞永远不成。
+        TcpClient? stranger = null;
+        try
+        {
+            Thread.Sleep(100);
+            stranger = new TcpClient();
+            stranger.Connect(IPAddress.Loopback, pb);
+            stranger.GetStream().Write(new byte[PunchProtocol.PacketSize]);
+        }
+        catch { }
+
+        Task.WaitAll([ta, tb], TimeSpan.FromSeconds(30));
+        try { stranger?.Dispose(); } catch { }
+
+        Check("两边都打通", ta.Result.Success && tb.Result.Success,
+            $"A={ta.Result.Success} B={tb.Result.Success}");
+        if (!ta.Result.Success || !tb.Result.Success) return;
+
+        var sa = ta.Result.Socket!;
+        var sb = tb.Result.Socket!;
+        var la = (IPEndPoint)sa.LocalEndPoint!;
+        var ra = (IPEndPoint)sa.RemoteEndPoint!;
+        var lb = (IPEndPoint)sb.LocalEndPoint!;
+        var rb = (IPEndPoint)sb.RemoteEndPoint!;
+        Check("两边守的是同一条连接", la.Port == rb.Port && ra.Port == lb.Port,
+            $"A {la}<->{ra}，B {lb}<->{rb}");
+
+        // 真正的判据：数据能从 A 的逻辑流走到 B。各守一条时这一步必然 EOF。
+        var passed = false;
+        var detail = "";
+        try
+        {
+            var muxA = new MuxConnection(new NetworkStream(sa, ownsSocket: true), initiator: true);
+            var muxB = new MuxConnection(new NetworkStream(sb, ownsSocket: true), initiator: false);
+            try
+            {
+                var open = muxA.OpenAsync(CancellationToken.None);
+                var accept = muxB.AcceptAsync(CancellationToken.None);
+                if (!Task.WaitAll([open, accept], TimeSpan.FromSeconds(10)))
+                    throw new TimeoutException("开流/接流超时");
+
+                var payload = new byte[4096];
+                for (var i = 0; i < payload.Length; i++) payload[i] = (byte)(i * 77 + 13);
+                open.Result.Write(payload);
+                open.Result.Flush();
+                var got = new byte[payload.Length];
+                accept.Result.ReadExactly(got);
+                passed = got.AsSpan().SequenceEqual(payload);
+            }
+            finally
+            {
+                muxA.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
+                muxB.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
+            }
+        }
+        catch (Exception error)
+        {
+            detail = (error.InnerException ?? error).Message;
+        }
+        Check("打洞出来的连接上能跑通复用流", passed, detail);
     }
 
     private static int ReserveClosedPort()

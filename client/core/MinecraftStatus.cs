@@ -37,7 +37,10 @@ public static class MinecraftPing
         using var client = new TcpClient(endpoint.AddressFamily);
         await client.ConnectAsync(endpoint, deadline.Token).ConfigureAwait(false);
         client.NoDelay = true;
-        return await QueryAsync(client.GetStream(), announcedHost, endpoint.Port, deadline.Token)
+        // 连接已经吃掉了一部分预算，把剩下的交给流那一层——两段共用一个总上限，
+        // 不要各给一份，否则最坏等待会变成两倍。
+        return await QueryAsync(
+                client.GetStream(), announcedHost, endpoint.Port, timeout, deadline.Token)
             .ConfigureAwait(false);
     }
 
@@ -45,10 +48,24 @@ public static class MinecraftPing
     /// 在一条已经接通的流上做状态查询。隧道的数据连接就是这么用的：外面那层
     /// 由端侧工具负责，这里只管说 Minecraft 的话。
     /// </summary>
+    /// <param name="timeout">
+    /// 必须有，而且必须在这里兜住，不能指望调用方的 <paramref name="ct"/>。
+    ///
+    /// 这个重载原先建了 linked CTS 却从不 CancelAfter，于是"流能开、写能进、对面
+    /// 永远不回"的隧道会让下面的 ReadExactlyAsync 无限挂着。配上 QUIC 那边
+    /// KeepAliveInterval=15s（连接永不 idle 超时），挂住就是真的永远。最要命的是
+    /// 保温探活那个调用点：它的 ct 是整个会话的生命周期令牌，只在代理 Dispose 时
+    /// 才取消——探活一挂，strikes 永远停在 0，线路真死了也不会换，界面上一切正常
+    /// 而玩家连不进去。
+    ///
+    /// 探活的定义就是**有界**等待；无界的探活不是探活，只是把故障挪了个地方藏起来。
+    /// </param>
     public static async Task<MinecraftStatus> QueryAsync(
-        Stream stream, string announcedHost, int announcedPort, CancellationToken ct)
+        Stream stream, string announcedHost, int announcedPort, TimeSpan timeout,
+        CancellationToken ct)
     {
-        var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(timeout);
         var watch = Stopwatch.StartNew();
 
         var handshake = new List<byte>();
@@ -67,8 +84,6 @@ public static class MinecraftPing
         var body = new byte[length];
         await stream.ReadExactlyAsync(body, deadline.Token).ConfigureAwait(false);
         watch.Stop();
-
-        deadline.Dispose();
 
         var offset = 0;
         var packetId = ReadVarInt(body, ref offset);

@@ -76,6 +76,7 @@ internal static class RouteDiagnostics
         }
         Console.WriteLine();
 
+        var wantTunnel = args.Any(a => a.Equals("--tunnel", StringComparison.OrdinalIgnoreCase));
         RouteSelection selection;
         try
         {
@@ -87,7 +88,10 @@ internal static class RouteDiagnostics
         {
             Console.WriteLine();
             Console.WriteLine("选路失败：" + error.Message);
-            return 2;
+            // 和启动游戏时一致：TCP 线路全不通不等于进不去，打洞还可以试。
+            if (!wantTunnel) return 2;
+            Console.WriteLine("没有可达的 TCP 线路，但还可以打洞，继续。");
+            selection = RouteSelection.None;
         }
 
         Console.WriteLine();
@@ -110,19 +114,21 @@ internal static class RouteDiagnostics
                               + $"{route.Endpoint,-44}{route.Latency.TotalMilliseconds,6:0}ms  {note}");
         }
 
-        var selected = selection.Selected;
-        var selectedKind = selected.Candidate.Kind == RouteKind.Auto
-            ? MinecraftRouteProxy.Classify(selected.Endpoint.Address)
-            : selected.Candidate.Kind;
-        Console.WriteLine();
-        Console.WriteLine($"选中 {selected.Candidate.Id}（{selectedKind}） {selected.Endpoint} "
-                          + $"{selected.Latency.TotalMilliseconds:0}ms");
-        Console.WriteLine($"可用 {selection.Reachable.Count} 条；"
-                          + (selectedKind is RouteKind.TcpTunnel or RouteKind.Relay
-                              ? "只剩中转可用，流量会走服务器"
-                              : "有直连可用，不需要中转"));
+        if (selection.Selected is { } selected)
+        {
+            var selectedKind = selected.Candidate.Kind == RouteKind.Auto
+                ? MinecraftRouteProxy.Classify(selected.Endpoint.Address)
+                : selected.Candidate.Kind;
+            Console.WriteLine();
+            Console.WriteLine($"选中 {selected.Candidate.Id}（{selectedKind}） {selected.Endpoint} "
+                              + $"{selected.Latency.TotalMilliseconds:0}ms");
+            Console.WriteLine($"可用 {selection.Reachable.Count} 条；"
+                              + (selectedKind is RouteKind.TcpTunnel or RouteKind.Relay
+                                  ? "只剩中转可用，流量会走服务器"
+                                  : "有直连可用，不需要中转"));
+        }
 
-        if (args.Any(a => a.Equals("--tunnel", StringComparison.OrdinalIgnoreCase)))
+        if (wantTunnel)
         {
             var baseUrl = controlPlane ?? settings.UpdateBaseUrl;
             var serverId = ValueOf(args, "--server-id") ?? "default";
@@ -150,17 +156,74 @@ internal static class RouteDiagnostics
             if (args.Any(a => a.Equals("--tunnel-hold", StringComparison.OrdinalIgnoreCase)))
                 return await TunnelAsync(selection, tunnelToken!, tunnelPort, ct).ConfigureAwait(false);
 
+            var skipPunch = args.Any(a => a.Equals("--no-p2p", StringComparison.OrdinalIgnoreCase));
+            // --launch-flow：和玩家点「开始游戏」完全同一条路——先用最快能通的线路，
+            // 付费线路再在后台打洞升级。不加时按老顺序在前台完整打一遍洞，便于量打洞本身。
+            var launchFlow = args.Any(a => a.Equals("--launch-flow", StringComparison.OrdinalIgnoreCase));
             Console.WriteLine();
-            Console.WriteLine("按启动游戏时的顺序建立连接（打洞 → 隧道 → 直连/中转）…");
+            Console.WriteLine(skipPunch
+                ? "按启动游戏时的顺序建立连接，但跳过打洞（隧道 → 直连/中转）…"
+                : launchFlow
+                    ? "按启动游戏的真实流程建立连接（最快能通的线路先用，付费线路后台打洞升级）…"
+                    : "按启动游戏时的顺序建立连接（打洞 → 隧道 → 直连/中转）…");
             await using var live = await MinecraftRouteProxy
-                .StartAsync(servers, null, ct).ConfigureAwait(false);
+                .StartAsync(servers, null, ct, allowNoRoute: true).ConfigureAwait(false);
             var liveProgress = new Progress<string>(detail => Console.WriteLine("  · " + detail));
+            var switched = new TaskCompletionSource<RouteEstablishment>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            live.RouteChanged += change => switched.TrySetResult(change);
+            var clock = Stopwatch.StartNew();
             try
             {
                 var best = await live.EstablishBestAsync(
                     tunnelToken, baseUrl, serverId,
                     ValueOf(args, "--reflector") ?? settings.PunchReflector,
-                    tunnelPort, liveProgress, ct).ConfigureAwait(false);
+                    tunnelPort, liveProgress, ct,
+                    skipP2P: skipPunch, upgradeInBackground: launchFlow)
+                    .ConfigureAwait(false);
+                Console.WriteLine($"  放行游戏用时 {clock.ElapsedMilliseconds} ms，线路 {best.Kind}");
+                if (launchFlow && best.Kind is RouteKind.Relay or RouteKind.TcpTunnel)
+                {
+                    // --hold-conn N：升级期间挂着一条游戏连接 N 秒，验证"有连接时不硬切"。
+                    //
+                    // 注意这条连接不发握手。对着真 Minecraft 时服务端会在它的空闲超时（30~60 秒）
+                    // 后主动断开，N 超过这个值就不再"挂着"了；对着只回状态查询的假 MC 不受影响。
+                    TcpClient? held = null;
+                    if (int.TryParse(ValueOf(args, "--hold-conn"), out var holdSeconds) && holdSeconds > 0)
+                    {
+                        held = new TcpClient();
+                        await held.ConnectAsync(IPAddress.Loopback, live.LocalPort, ct).ConfigureAwait(false);
+                        Console.WriteLine($"  挂住一条经代理的连接 {holdSeconds}s（模拟已进服的玩家）");
+                        _ = Task.Delay(TimeSpan.FromSeconds(holdSeconds), ct).ContinueWith(_ =>
+                        {
+                            Console.WriteLine($"  [{clock.ElapsedMilliseconds} ms] 释放挂着的连接");
+                            held.Dispose();
+                        }, TaskScheduler.Default);
+                    }
+
+                    var wait = int.TryParse(ValueOf(args, "--upgrade-wait"), out var w) ? w : 60;
+                    Console.WriteLine($"  等后台打洞升级（最多 {wait}s，模拟游戏加载期间）…");
+                    var done = await Task.WhenAny(switched.Task, Task.Delay(TimeSpan.FromSeconds(wait), ct))
+                        .ConfigureAwait(false);
+                    if (done == switched.Task)
+                    {
+                        best = switched.Task.Result;
+                        Console.WriteLine($"  后台升级完成，用时 {clock.ElapsedMilliseconds} ms，线路 {best.Kind}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("  后台升级在等待时间内没有完成，继续用付费线路");
+                    }
+                }
+
+                if (launchFlow)
+                {
+                    // 升级之后游戏的新连接必须真的走新线路——经本地代理做一次真实状态查询，
+                    // 代理自己会在日志里写出这条连接经的是哪条隧道。
+                    Console.WriteLine("  经本地代理做一次真实状态查询（模拟游戏发起连接）…");
+                    var viaProxy = await StatusAsync(live.LocalPort, "127.0.0.1", ct).ConfigureAwait(false);
+                    Console.WriteLine($"    经代理查询成功：{viaProxy.Version}，{viaProxy.ElapsedMs:0}ms");
+                }
                 Console.WriteLine();
                 Console.WriteLine($"  走的是 {best.Kind}  {best.Route.Candidate.Label ?? best.Route.Candidate.Id}");
                 Console.WriteLine($"    服务端版本 {best.Status.Version}");
@@ -201,7 +264,7 @@ internal static class RouteDiagnostics
             Console.WriteLine($"  MOTD       {status.Motd}");
             Console.WriteLine($"  往返       {status.ElapsedMs:0}ms");
             Console.WriteLine();
-            Console.WriteLine("整条链路贯通：游戏 → 本地代理 → " + selected.Endpoint);
+            Console.WriteLine("整条链路贯通：游戏 → 本地代理 → " + proxy.Selection.Selected?.Endpoint);
             return 0;
         }
         catch (Exception error) when (error is IOException or SocketException or JsonException
@@ -270,7 +333,8 @@ internal static class RouteDiagnostics
             Console.WriteLine("  开数据连接并做真实 Minecraft 状态查询…");
             await using var data = await tunnel.OpenStreamAsync(ct).ConfigureAwait(false);
             var status = await MinecraftPing
-                .QueryAsync(data, "127.0.0.1", 25565, ct).ConfigureAwait(false);
+                .QueryAsync(data, "127.0.0.1", 25565, TimeSpan.FromSeconds(8), ct)
+                .ConfigureAwait(false);
             Console.WriteLine($"    服务端版本 {status.Version}");
             Console.WriteLine($"    在线人数   {status.Online}/{status.Max}");
             Console.WriteLine($"    MOTD       {status.Motd}");
