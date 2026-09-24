@@ -199,6 +199,35 @@ function renderShaderOptions(shaders, current) {
   sel.value = options.some((o) => o.value === current) ? current : '';
 }
 
+// 服务端下发的公告。关掉之后按 id 记住，换文案要换 id，否则关过的人看不到新的。
+// localStorage 在这里只是"少看一次"的便利：读不到、写不进都不该影响界面，
+// 所以两头都包 try，拿不到就当没关过，照常显示。
+function dismissedAnnouncement() {
+  try { return localStorage.getItem('announce-dismissed') || ''; } catch (_) { return ''; }
+}
+
+function renderAnnouncement(notice) {
+  const box = $('announce');
+  if (!box) return;
+  if (!notice || !(notice.title || notice.body) || dismissedAnnouncement() === notice.id) {
+    box.hidden = true;
+    return;
+  }
+  $('announce-title').textContent = notice.title || '';
+  $('announce-body').textContent = notice.body || '';
+  $('announce-body').hidden = !notice.body;
+  box.dataset.level = notice.level || 'info';
+  box.hidden = false;
+}
+
+function onAnnouncementClosed() {
+  const notice = (state && state.announcement) || null;
+  if (notice && notice.id) {
+    try { localStorage.setItem('announce-dismissed', notice.id); } catch (_) { /* 无痕模式等，忽略 */ }
+  }
+  $('announce').hidden = true;
+}
+
 function renderGpuOptions(gpus, current) {
   const sel = $('gpu');
   const list = Array.isArray(gpus) ? gpus : [];
@@ -390,6 +419,7 @@ function render(s) {
   $('autojoin').checked = !!st.autoJoinServer;
   $('keepopen').checked = !!st.keepLauncherOpen;
   $('skipverify').checked = !!st.skipVerify;
+  renderAnnouncement(state.announcement);
   renderGpuOptions(state.gpus, st.gpu || 'performance');
   // 显示以 iris.properties 的实际值为准，设置里那份只是兜底
   renderShaderOptions(state.shaders, (state.shaders && state.shaders.current) || st.shaderPack || '');
@@ -831,6 +861,7 @@ function bind() {
     rpc('beginDrag');
   });
 
+  $('announce-close').onclick = onAnnouncementClosed;
   $('btn-min').onclick = () => rpc('minimize');
   $('btn-close').onclick = () => rpc('close');
 

@@ -182,6 +182,20 @@ internal sealed class RpcHost : IDisposable
         Emit("launcherUpdate", LauncherUpdateNode(release));
     }
 
+    /// <summary>服务端下发的公告。没有就给 null，界面那边整块不显示。</summary>
+    private JsonNode? AnnouncementNode()
+    {
+        if (_manifest?.Announcement is not { } notice) return null;
+        if (string.IsNullOrWhiteSpace(notice.Title) && string.IsNullOrWhiteSpace(notice.Body)) return null;
+        return new JsonObject
+        {
+            ["id"] = notice.Id,
+            ["title"] = notice.Title,
+            ["body"] = notice.Body,
+            ["level"] = notice.Level,
+        };
+    }
+
     private JsonNode BuildState()
     {
         var node = new JsonObject
@@ -197,6 +211,7 @@ internal sealed class RpcHost : IDisposable
             ["memoryCeilingMb"] = MemoryCeilingMb(),
             ["totalMemoryMb"] = TotalMemoryMb(),
             ["gpus"] = DetectedGpus(),
+            ["announcement"] = AnnouncementNode(),
             ["account"] = _account?.DeepClone(),
             ["player"] = _player?.DeepClone(),
             ["updateServer"] = new JsonObject

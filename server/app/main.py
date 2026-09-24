@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
 from .skins import MAX_BYTES as SKIN_MAX_BYTES, SkinError, SkinStore
 from .client_updates import update_required, validate_policy, version_key
+from .announcement import public_announcement
 from .tunnel_registry import router as tunnel_router
 
 
@@ -253,6 +254,7 @@ def site() -> dict:
             "name": config["name"],
             "edition": config["edition"],
         },
+        "announcement": public_announcement(config),
         "launcher": launcher_release(config),
         "pack": {
             "name": pack.get("name", "BatterMC5Remake"),
@@ -324,6 +326,7 @@ def manifest() -> JSONResponse:
             "manifestUrl": config["manifestUrl"],
             "filesBaseUrl": config["filesBaseUrl"],
             "mirrorBaseUrl": config["mirrorBaseUrl"],
+            "announcement": public_announcement(config),
             "launcher": launcher_release(config),
         },
         headers={"Cache-Control": "public, max-age=30"},

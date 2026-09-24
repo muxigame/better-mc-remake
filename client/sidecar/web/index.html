@@ -33,6 +33,17 @@
     <div class="hero-meta" id="hero-meta">正在连接更新服务器…</div>
   </div>
 
+  <!-- 公告由服务端随 /api/v1/manifest 下发，文案不在这个文件里：改一句话要是得重发
+       客户端，玩家就得先更新才看得到，而公告往往正是为了通知"现在该做什么"。
+       没有公告时整块 hidden，界面回到原来的样子。 -->
+  <div class="announce" id="announce" hidden>
+    <div class="announce-text">
+      <p class="announce-title" id="announce-title"></p>
+      <p class="announce-body" id="announce-body"></p>
+    </div>
+    <button class="announce-close" id="announce-close" type="button" aria-label="知道了">×</button>
+  </div>
+
   <div class="console">
 
     <!-- 待机：账号登录 / 开始 -->

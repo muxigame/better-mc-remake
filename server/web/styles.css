@@ -190,3 +190,15 @@ footer{grid-template-columns:1fr;padding:65px 20px 30px}
   .spec-table tbody td + td { margin-top: 7px; }
   .spec-table tbody td::before { content: attr(data-label); color: #6a6a6e; font-size: 11px; font-weight: 800; line-height: 1.75; }
 }
+
+/* ── 首屏公告 ─────────────────────────────────────────────────────────
+   服务端下发，没有公告时整块 hidden、不占位——首屏是全屏高度，留一块空白
+   会把标题推下去，比不显示更难看。 */
+.announce { max-width: 640px; margin: 0 0 30px; padding: 16px 20px; border-left: 3px solid var(--accent); background: rgba(243,211,63,.07); border-radius: 0 5px 5px 0; }
+.announce-title { margin: 0; font-size: 16px; font-weight: 900; letter-spacing: -.01em; color: var(--accent); }
+.announce-body { margin: 9px 0 0; font-size: 14px; line-height: 1.85; color: #d8d6d1; }
+@media(max-width:560px) {
+  .announce { margin-bottom: 22px; padding: 14px 16px; }
+  .announce-title { font-size: 15px; }
+  .announce-body { font-size: 13px; line-height: 1.8; }
+}

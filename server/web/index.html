@@ -26,6 +26,12 @@
       </picture>
       <div class="hero-shade"></div>
       <div class="hero-content">
+        <!-- 文案由 /api/v1/site 下发，不写死在这里：改一句话不该要重新部署前端。
+             接口没给或已过期时这块保持 hidden，页面回到原来的样子。 -->
+        <aside class="announce" id="announce" hidden>
+          <p class="announce-title" id="announce-title"></p>
+          <p class="announce-body" id="announce-body"></p>
+        </aside>
         <p class="eyebrow">BETTER MC · OUR BEST WORLD</p>
         <h1 id="hero-title">更好的 MC，<br>最好的我们。</h1>
         <p class="hero-lead">更稳定、更省心，也更值得长久游玩。安装、更新和维护交给客户端，探索、建造与故事留给每一次上线。</p>

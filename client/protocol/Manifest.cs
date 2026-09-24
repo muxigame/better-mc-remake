@@ -154,6 +154,20 @@ public sealed class LauncherRelease
 }
 
 /// <summary>
+/// 服务端下发的公告。文案不写死在客户端里：改一句话要是得重发客户端，
+/// 玩家就得先更新才看得到——而公告往往正是为了通知"现在该做什么"。
+/// </summary>
+public sealed class Announcement
+{
+    /// <summary>用来记住玩家关掉过哪一条。换文案时服务端要换 id，否则关过的人看不到新的。</summary>
+    public string Id { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Body { get; set; } = "";
+    /// <summary>info / highlight，只影响显示样式。</summary>
+    public string Level { get; set; } = "info";
+}
+
+/// <summary>
 /// 更新控制面返回值。客户端永远只请求 muxigame 域名获取这个对象；
 /// 真正的 manifest 与文件存储地址可以随时由服务端切换到 OSS/COS/R2。
 /// </summary>
@@ -171,6 +185,7 @@ public sealed class ManifestControl
     /// </summary>
     public string? MirrorBaseUrl { get; set; }
     public LauncherRelease? Launcher { get; set; }
+    public Announcement? Announcement { get; set; }
 
     public static ManifestControl? FromJson(string json) =>
         JsonSerializer.Deserialize(json, Context.ManifestControl);
@@ -245,6 +260,8 @@ public sealed class PackManifest
     public JavaRequirement Java { get; set; } = new();
     public List<ServerEntry> Servers { get; set; } = new();
     public LauncherRelease? Launcher { get; set; }
+    /// <summary>控制面下发的公告，和 Launcher 一样由信封带过来，不在 OSS 清单里。</summary>
+    public Announcement? Announcement { get; set; }
     public List<ManagedFile> Files { get; set; } = new();
 
     /// <summary>

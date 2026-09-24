@@ -77,6 +77,7 @@ public sealed class SyncEngine
                 var manifest = PackManifest.FromJson(json)
                     ?? throw new InvalidOperationException("清单内容为空");
                 manifest.Launcher = control.Launcher;
+                manifest.Announcement = control.Announcement;
                 AtomicFile.WriteAllText(_paths.ManifestCacheFile, json);
                 LastManifestUrl = control.ManifestUrl;
                 LastFilesBaseUrl = control.FilesBaseUrl.TrimEnd('/');
