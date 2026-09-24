@@ -430,7 +430,7 @@ internal sealed class RpcHost : IDisposable
 
         // Game login identity is derived from the authenticated muxi UID only.
         if (p.ContainsKey("javaPath")) _settings.JavaPath = Str("javaPath");
-        // 0 = 自动。非 0 就地夹进可用区间，免得存了个进游戏要挨警告屏的值
+        // 0 = 自动。非 0 就地夹进物理内存允许的区间
         if (Int("maxMemoryMb") is { } mm)
             _settings.MaxMemoryMb = mm <= 0 ? 0 : Math.Clamp(mm, 2048, MemoryCeilingMb());
         if (Str("extraJvmArgs") is { } ja) _settings.ExtraJvmArgs = ja;
@@ -1500,8 +1500,8 @@ internal sealed class RpcHost : IDisposable
     };
 
     /// <summary>
-    /// 玩家最多能分配多少堆：给系统留 2G，再不超过整合包自己声明的阈值
-    /// （config/memorysettings.json 的 maximumClient，超了游戏会弹警告屏）。
+    /// 玩家最多能分配多少堆：物理内存给系统留 2G。整合包 memorysettings.json 的
+    /// maximumClient 不再参与——启动时由启动器按实际的堆写回去（见 PackMemoryLimits.WriteMaximum）。
     /// </summary>
     /// <summary>
     /// 全屏的真相是 options.txt —— 玩家在游戏里按 F11 改了，启动器要跟着显示，
@@ -1510,10 +1510,7 @@ internal sealed class RpcHost : IDisposable
     private int MemoryCeilingMb()
     {
         var total = TotalMemoryMb();
-        var ceiling = total > 0 ? Math.Max(2048, total - 2048) : 8192;
-        var limits = PackMemoryLimits.Read(_paths);
-        if (limits.MaxMb > 0) ceiling = Math.Min(ceiling, limits.MaxMb);
-        return ceiling;
+        return total > 0 ? Math.Max(2048, total - 2048) : 8192;
     }
 
     private static int TotalMemoryMb()

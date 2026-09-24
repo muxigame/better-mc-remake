@@ -133,13 +133,21 @@ public sealed class LauncherSettings
         AtomicFile.WriteAllText(file, JsonSerializer.Serialize(this, Context.LauncherSettings));
     }
 
+    /// <summary>自动挡的封顶，MB。</summary>
+    public const int AutoMemoryCapMb = 16384;
+
     /// <summary>
-    /// 自动内存：物理内存的一半，夹在 4G–8G 之间，并且至少给系统留 4G。
-    /// 405 个模组的包低于 4G 基本必崩，高于 8G 对 G1 反而是负担。
+    /// 自动内存：物理内存的一半，夹在 4G–16G 之间，并且至少给系统留 4G。
+    /// 405 个模组的包低于 4G 基本必崩；8G 装不下服务器上 1400 多个 YSM 模型——
+    /// 加载到七八百个时堆就满了，G1 只剩整堆回收，游戏一停几秒、平均 1 帧。
     ///
-    /// 玩家手填的值同样要夹 —— 在 12G 的机器上填 16G，游戏一进去就被整合包的
-    /// memorysettings 拦下来弹警告屏，更糟的是堆挤掉原生内存，JVM 会直接 abort。
-    /// 上限取"物理内存留够系统"和"整合包自己声明的阈值"里更小的那个。
+    /// 上限只看物理内存（给系统留 2G），不再看 memorysettings.json 的 maximumClient：
+    /// 那只是模组的警告阈值（整合包已经把警告关了），现在由启动器按这里定的堆写回去。
+    /// 在 12G 的机器上填 16G 仍会被夹回 10G —— 堆挤掉原生内存，JVM 会直接 abort。
+    /// 下限仍取整合包声明的 minimumClient。
+    ///
+    /// 不看实时可用内存：堆不是一启动就占满的，而可用内存开关个浏览器就差好几 G，
+    /// 同一台机器每次启动给的堆忽大忽小，还可能随机落到不够用的档位。
     /// </summary>
     public int EffectiveMaxMemoryMb(PackMemoryLimits limits = default)
     {
@@ -150,14 +158,13 @@ public sealed class LauncherSettings
 
         // 系统自己要用，堆不能顶到物理内存
         var ceiling = Math.Max(2048, totalMb - 2048);
-        if (limits.MaxMb > 0) ceiling = Math.Min(ceiling, limits.MaxMb);
         var floor = Math.Max(2048, (long)limits.MinMb);
         if (floor > ceiling) floor = ceiling;
 
         if (MaxMemoryMb > 0) return (int)Math.Clamp(MaxMemoryMb, floor, ceiling);
 
         var half = totalMb / 2;
-        var value = Math.Clamp(half, 4096, 8192);
+        var value = Math.Clamp(half, 4096, AutoMemoryCapMb);
         var leaveForSystem = totalMb - 4096;
         if (leaveForSystem > 2048 && value > leaveForSystem) value = leaveForSystem;
         return (int)Math.Clamp(value, floor, ceiling);

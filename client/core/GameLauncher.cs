@@ -218,8 +218,13 @@ public sealed class GameLauncher
         var mb = _settings.EffectiveMaxMemoryMb(limits);
         if (_settings.MaxMemoryMb > 0 && _settings.MaxMemoryMb != mb)
             Log.Warn($"手填的 {_settings.MaxMemoryMb} MB 超出可用范围，按 {mb} MB 启动"
-                   + $"（整合包声明 {limits.MinMb}–{limits.MaxMb} MB）");
-        Log.Info($"堆上限 {mb} MB");
+                   + $"（下限取整合包声明的 {limits.MinMb} MB，上限是物理内存减 2 GB）");
+        var free = CrashReport.AvailableMemoryMb();
+        Log.Info(free is { } f ? $"堆上限 {mb} MB（此刻可用物理内存 {f} MB）" : $"堆上限 {mb} MB");
+        if (free is { } low && low < mb)
+            Log.Warn($"此刻可用物理内存 {low} MB 比堆上限小，堆长到那么大之前系统会先换页");
+        // memorysettings 模组的上限跟着这次的堆走，它就不会觉得分多了
+        PackMemoryLimits.WriteMaximum(_paths, mb);
         yield return $"-Xmx{mb}M";
         // 不设 -Xms：让 G1 自己长。预分配整块堆在 Windows 上会拖慢启动，
         // 而且真正的启动慢从来不是堆的问题。

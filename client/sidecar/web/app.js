@@ -509,8 +509,8 @@ function render(s) {
   $('jvmargs').value = st.extraJvmArgs || '';
 
   const mem = st.maxMemoryMb || 0;
-  // 上限由 sidecar 给：给系统留 2G，且不超过整合包声明的阈值。
-  // 以前这里写死最低 16384，12G 的机器也能拉到 16G，进游戏必挨警告屏。
+  // 上限由 sidecar 给：物理内存给系统留 2G。整合包 memorysettings 的阈值不再卡这里，
+  // 启动时由 sidecar 按实际的堆写回去。
   const ceiling = state.memoryCeilingMb || state.totalMemoryMb || 8192;
   $('memory-range').max = ceiling;
   $('memory-input').max = ceiling;

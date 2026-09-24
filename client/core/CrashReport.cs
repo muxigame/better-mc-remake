@@ -241,7 +241,7 @@ public static class CrashReport
     private static extern bool GlobalMemoryStatusEx(ref MemoryStatusEx status);
 
     private static long? TotalMemoryMb() => Memory() is { } m ? (long)(m.TotalPhys / 1024 / 1024) : null;
-    private static long? AvailableMemoryMb() => Memory() is { } m ? (long)(m.AvailPhys / 1024 / 1024) : null;
+    internal static long? AvailableMemoryMb() => Memory() is { } m ? (long)(m.AvailPhys / 1024 / 1024) : null;
 
     private static MemoryStatusEx? Memory()
     {

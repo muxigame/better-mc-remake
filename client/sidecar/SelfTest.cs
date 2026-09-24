@@ -695,24 +695,38 @@ internal static class SelfTest
             Check("没有配置文件时按未知处理",
                 PackMemoryLimits.Read(LauncherPaths.At(Path.Combine(tmp, "empty"))).MaxMb == 0);
 
-            // 玩家手填 16G：真机 12G 也好 64G 也好，都不该超过整合包阈值
+            // 整合包的 maximumClient 不再卡堆：手填 16G 只受物理内存限制
+            var total = (long)(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024 * 1024));
+            var physical = Math.Max(2048, total - 2048);
             var greedy = new LauncherSettings { MaxMemoryMb = 16384 }.EffectiveMaxMemoryMb(limits);
-            Check("手填超过整合包阈值会被夹回来", greedy <= 10000, greedy + " MB");
+            Check("手填不再被整合包的 10000 夹住", greedy == Math.Min(16384, physical), $"{greedy} MB / 物理 {total} MB");
             Check("夹回来之后仍然是个能玩的值", greedy >= 3000, greedy + " MB");
 
-            // 填得太小同样不行，低于阈值游戏也会弹警告屏
+            // 下限照旧：低于 minimumClient 游戏也玩不动
             var stingy = new LauncherSettings { MaxMemoryMb = 512 }.EffectiveMaxMemoryMb(limits);
             Check("手填低于整合包下限会被抬上来", stingy >= 3000, stingy + " MB");
 
-            // 没有整合包信息时也不能顶到物理内存
+            // 物理内存的余量不能丢
             var noLimits = new LauncherSettings { MaxMemoryMb = 999999 }.EffectiveMaxMemoryMb();
-            var total = (long)(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024 * 1024));
-            Check("没有整合包信息也要给系统留余量",
-                noLimits <= Math.Max(2048, total - 2048), $"{noLimits} MB / 物理 {total} MB");
+            Check("手填再大也要给系统留余量", noLimits <= physical, $"{noLimits} MB / 物理 {total} MB");
 
-            // 自动挡不受影响
+            // 自动挡：物理内存一半，4G–16G，至少给系统留 4G
             var auto = new LauncherSettings().EffectiveMaxMemoryMb(limits);
-            Check("自动挡仍落在区间内", auto >= 3000 && auto <= 10000, auto + " MB");
+            Check("自动挡落在 16G 封顶以内", auto >= 3000 && auto <= LauncherSettings.AutoMemoryCapMb && auto <= physical,
+                $"{auto} MB / 物理 {total} MB");
+            if (total >= 32 * 1024)
+                Check("32G 以上的机器自动给满 16G", auto == LauncherSettings.AutoMemoryCapMb, auto + " MB");
+
+            // 启动时把这次的堆写回 maximumClient，其余键原样保留
+            PackMemoryLimits.WriteMaximum(paths, 16384);
+            var after = PackMemoryLimits.Read(paths);
+            var text = File.ReadAllText(config);
+            Check("maximumClient 跟着堆写回去", after.MaxMb == 16384 && after.MinMb == 3000, after.ToString());
+            Check("写回时别的键不动", text.Contains("\"disableWarnings\"") && text.Contains("\"desc:\""), text.Length + " 字符");
+            Check("写回的文件不带 BOM", File.ReadAllBytes(config) is var bytes && !(bytes.Length >= 3 && bytes[0] == 0xEF));
+            var empty = LauncherPaths.At(Path.Combine(tmp, "empty"));
+            PackMemoryLimits.WriteMaximum(empty, 16384);
+            Check("没有配置文件时不凭空生成", !File.Exists(empty.ResolveGameFile("config/memorysettings.json")));
         }
         finally
         {
