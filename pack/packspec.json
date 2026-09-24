@@ -63,8 +63,19 @@
       "label": "多线程区块生成（默认关闭；单机探索新地形时会与画面渲染抢 CPU，联机时由服务器承担生成，装了也用不上）"
     },
     {
+      "glob": "mods/[是，史蒂夫模型]ysm-*.jar",
+      "policy": "Optional",
+      "defaultOn": true,
+      "group": "外观",
+      "label": "是，史蒂夫模型 (YSM)"
+    },
+    {
       "glob": "mods/**",
       "policy": "Managed"
+    },
+    {
+      "glob": "CustomSkinLoader/CustomSkinLoader.json",
+      "policy": "Seed"
     },
     {
       "glob": "config/**",

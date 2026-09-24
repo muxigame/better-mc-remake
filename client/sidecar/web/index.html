@@ -98,6 +98,7 @@
     <div class="panel-body">
       <nav class="panel-nav" id="panel-nav">
         <button class="nav-item is-active" data-tab="game">游戏</button>
+        <button class="nav-item" data-tab="skin">皮肤</button>
         <button class="nav-item" data-tab="java">Java</button>
         <button class="nav-item" data-tab="update">更新</button>
         <button class="nav-item" data-tab="optional">可选内容</button>
@@ -181,6 +182,34 @@
         </section>
 
         <!-- Java -->
+        <!-- 皮肤：原版 64×64 皮肤，存在控制面，游戏里由 CustomSkinLoader 取回 -->
+        <section class="tab" data-tab="skin">
+          <div class="row skin-row">
+            <canvas class="skin-preview" id="skin-preview" width="128" height="256" aria-label="皮肤正面预览"></canvas>
+            <div class="row-text">
+              <div class="row-title" id="skin-title">默认皮肤</div>
+              <div class="row-desc" id="skin-desc">聊天头像和关掉 YSM 的玩家会看到这张皮肤</div>
+            </div>
+            <div class="row-control">
+              <button class="mc-btn mc-btn-small" id="btn-skin-pick">选择皮肤…</button>
+              <button class="mc-btn mc-btn-small" id="btn-skin-reset">恢复默认</button>
+              <input type="file" id="skin-file" accept="image/png" hidden>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">手臂</div>
+              <div class="row-desc">经典 4 像素宽（Steve），纤细 3 像素宽（Alex）</div>
+            </div>
+            <div class="row-control">
+              <select class="sel" id="skin-model">
+                <option value="default">经典</option>
+                <option value="slim">纤细</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
         <section class="tab" data-tab="java">
           <div class="row">
             <div class="row-text">

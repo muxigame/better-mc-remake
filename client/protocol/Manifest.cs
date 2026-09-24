@@ -190,6 +190,16 @@ public sealed class ManagedFile
     public string? Group { get; set; }
     /// <summary>给玩家看的说明。</summary>
     public string? Label { get; set; }
+    /// <summary>
+    /// 默认开启的可选项。清单里这种文件的 <see cref="Policy"/> 仍写 Managed：
+    /// 1.1.34 及更早的启动器不认这个字段，照旧当必装；它们要是看到 Optional，
+    /// 会把没勾选的文件改名成 .disabled，整合包一发全员被关掉。
+    /// </summary>
+    public bool OptionalDefaultOn { get; set; }
+
+    /// <summary>玩家能在「可选内容」里开关的文件。</summary>
+    [JsonIgnore]
+    public bool IsOptional => Policy == FilePolicy.Optional || OptionalDefaultOn;
 }
 
 /// <summary>

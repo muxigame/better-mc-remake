@@ -109,6 +109,9 @@ internal sealed class RpcHost : IDisposable
         "accountLogin" => await AccountLoginAsync(register: false).ConfigureAwait(false),
         "accountRegister" => await AccountLoginAsync(register: true).ConfigureAwait(false),
         "accountLogout" => await AccountLogoutAsync().ConfigureAwait(false),
+        "skinGet" => await SkinRequestAsync(HttpMethod.Get, null).ConfigureAwait(false),
+        "skinSave" => await SkinRequestAsync(HttpMethod.Put, SkinBody(p)).ConfigureAwait(false),
+        "skinReset" => await SkinRequestAsync(HttpMethod.Delete, null).ConfigureAwait(false),
         "install" => await InstallAsync(p["forceVerify"]?.GetValue<bool>() ?? false).ConfigureAwait(false),
         "launch" => await LaunchAsync(p["forceVerify"]?.GetValue<bool>() ?? false).ConfigureAwait(false),
         "cancel" => Cancel(),
@@ -343,10 +346,12 @@ internal sealed class RpcHost : IDisposable
 
     private JsonArray BuildOptionalGroups(IEnumerable<ManagedFile> files)
     {
-        var groups = files.Where(f => f.Policy == FilePolicy.Optional)
+        var groups = files.Where(f => f.IsOptional)
             .GroupBy(OptionalKey, StringComparer.OrdinalIgnoreCase)
             .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
         var result = new JsonArray();
+        var enabled = new HashSet<string>(_settings.EnabledOptional, StringComparer.OrdinalIgnoreCase);
+        var disabled = new HashSet<string>(_settings.DisabledOptional, StringComparer.OrdinalIgnoreCase);
 
         foreach (var group in groups)
         {
@@ -359,7 +364,7 @@ internal sealed class RpcHost : IDisposable
                 ["label"] = items[0].Label is "光影包" ? Path.GetFileName(group.Key) : items[0].Label ?? Path.GetFileName(group.Key),
                 ["group"] = items[0].Group ?? "其他",
                 ["size"] = items.Sum(x => x.Size),
-                ["enabled"] = paths.All(p => _settings.EnabledOptional.Contains(p, StringComparer.OrdinalIgnoreCase)),
+                ["enabled"] = items.All(f => OptionalContent.IsWanted(f, enabled, disabled)),
             });
         }
         return result;
@@ -423,10 +428,25 @@ internal sealed class RpcHost : IDisposable
         }
         if (p["enabledOptional"] is JsonArray arr)
         {
-            _settings.EnabledOptional = arr.Select(x => x?.GetValue<string>()).Where(x => !string.IsNullOrEmpty(x)).Select(x => x!).ToList();
-            // 开关立刻生效：禁用只是给文件加个 .disabled 后缀，不用等下一次同步，也不用重下
+            // 界面每次把"现在勾着的全部项"发过来。拆成两份记：默认关的记开了哪些，
+            // 默认开的记关了哪些——玩家没碰过的项才能一直跟着清单的默认值走。
+            var on = new HashSet<string>(
+                arr.Select(x => x?.GetValue<string>()).Where(x => !string.IsNullOrEmpty(x)).Select(x => x!),
+                StringComparer.OrdinalIgnoreCase);
             if (_manifest is not null)
-                OptionalContent.Apply(_paths, _manifest.Files, _settings.EnabledOptional);
+            {
+                var defaultOn = _manifest.Files.Where(f => f.OptionalDefaultOn).Select(f => f.Path)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                _settings.EnabledOptional = on.Where(x => !defaultOn.Contains(x)).ToList();
+                _settings.DisabledOptional = defaultOn.Where(x => !on.Contains(x)).ToList();
+                // 开关立刻生效：禁用只是给文件加个 .disabled 后缀，不用等下一次同步，也不用重下
+                OptionalContent.Apply(_paths, _manifest.Files, _settings.EnabledOptional, _settings.DisabledOptional);
+            }
+            else
+            {
+                // 没有清单就分不清哪些是默认开的；只记勾选，别动已经关掉的默认项
+                _settings.EnabledOptional = on.ToList();
+            }
         }
 
         _settings.Save(_paths.SettingsFile);
@@ -1037,6 +1057,45 @@ internal sealed class RpcHost : IDisposable
             throw new InvalidOperationException("登录身份缺少有效平台 UID，请重新登录");
         _ = OfflineAuth.UidLoginName(uid);
         return uid;
+    }
+
+    // ── 自定义皮肤 ──
+    //
+    // 原版 64×64 皮肤存在控制面，按平台 UID 一人一份；游戏里由整合包带的 CustomSkinLoader
+    // 按登录名取回来（见 server/app/skins.py）。聊天头像、关掉 YSM 的玩家看到的身体都用它。
+    // 页面只允许 data: 图片，所以贴图以 base64 在这里来回。
+
+    private static JsonObject SkinBody(JsonObject p)
+    {
+        var body = new JsonObject { ["model"] = p["model"]?.GetValue<string>() is "slim" ? "slim" : "default" };
+        // 不带图片 = 只改模型
+        if (p["png"]?.GetValue<string>() is { Length: > 0 } png) body["png"] = png;
+        return body;
+    }
+
+    /// <summary>返回 {"skin": {model, hash, png} | null}。</summary>
+    private async Task<JsonNode> SkinRequestAsync(HttpMethod method, JsonObject? body)
+    {
+        if (string.IsNullOrEmpty(_accountToken)) throw new InvalidOperationException("请先登录 muxi 账户");
+        var (status, json) = await SendSkinAsync(method, body).ConfigureAwait(false);
+        // access token 过期是最常见的情况，刷一次再来
+        if (status == HttpStatusCode.Unauthorized && await RefreshAccountAsync().ConfigureAwait(false))
+            (status, json) = await SendSkinAsync(method, body).ConfigureAwait(false);
+        if (status == HttpStatusCode.OK && json is not null) return json;
+        var detail = json?["detail"] is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+        throw new InvalidOperationException(detail ?? $"皮肤服务暂时不可用（HTTP {(int)status}）");
+    }
+
+    private async Task<(HttpStatusCode Status, JsonObject? Json)> SendSkinAsync(HttpMethod method, JsonObject? body)
+    {
+        using var request = new HttpRequestMessage(method, GameApi("/api/v1/player/skin"));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
+        if (body is not null) request.Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
+        using var response = await _accountHttp.SendAsync(request).ConfigureAwait(false);
+        var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        JsonObject? json = null;
+        try { json = JsonNode.Parse(text) as JsonObject; } catch (JsonException) { }
+        return (response.StatusCode, json);
     }
 
     private async Task<JsonNode> AccountLogoutAsync()

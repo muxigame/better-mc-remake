@@ -215,6 +215,12 @@ def build_manifest(
             "group": rule.get("group"),
             "label": rule.get("label"),
         }
+        if item["policy"] == "Optional" and rule.get("defaultOn"):
+            # 默认开启的可选项。启动器 1.1.34 及更早只看 policy：Optional 又不在
+            # 玩家勾选的列表里，就改名成 .disabled——整合包一发，全员被关掉。
+            # 所以对它们仍写 Managed（照旧必装），新启动器看 optionalDefaultOn 当可选项。
+            item["policy"] = "Managed"
+            item["optionalDefaultOn"] = True
         return compact(item), is_cached
 
     with ThreadPoolExecutor(max_workers=max(4, os.cpu_count() or 4)) as pool:

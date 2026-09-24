@@ -22,6 +22,25 @@ class ManifestBuilderTests(unittest.TestCase):
             self.assertTrue(result['files'][0]['url'].startswith('https://cdn.modrinth.com/'))
             spec['externalDownloads']['mods/nick.jar']['sha1'] = '0' * 40
             with self.assertRaises(ValueError): build_manifest(spec, base / 'spec.json', None, log=lambda _: None)
+    def test_default_on_optional_stays_managed_for_old_launchers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp); root = base / 'source'; (root / 'mods').mkdir(parents=True)
+            (root / 'mods/[是，史蒂夫模型]ysm-2.6.5.jar').write_bytes(b'ysm')
+            (root / 'mods/c2me.jar').write_bytes(b'c2me')
+            (root / 'mods/core.jar').write_bytes(b'core')
+            spec = {'root': str(root), 'pack': {'id':'test','version':'1'},
+                    'include':[
+                        {'glob':'mods/[是，史蒂夫模型]ysm-*.jar','policy':'Optional','defaultOn':True,
+                         'group':'外观','label':'是，史蒂夫模型 (YSM)'},
+                        {'glob':'mods/c2me.jar','policy':'Optional','group':'性能','label':'多线程区块生成'},
+                        {'glob':'mods/**','policy':'Managed'}]}
+            result, _ = build_manifest(spec, base / 'spec.json', None, log=lambda _: None)
+            files = {f['path']: f for f in result['files']}
+            ysm = files['mods/[是，史蒂夫模型]ysm-2.6.5.jar']
+            self.assertEqual(('Managed', True, '外观'), (ysm['policy'], ysm['optionalDefaultOn'], ysm['group']))
+            self.assertEqual('Optional', files['mods/c2me.jar']['policy'])
+            self.assertNotIn('optionalDefaultOn', files['mods/c2me.jar'])
+            self.assertNotIn('optionalDefaultOn', files['mods/core.jar'])
     def test_minecraft_globs(self):
         self.assertIsNotNone(glob_to_regex("mods/**").match("mods/a/b.jar"))
         self.assertIsNotNone(glob_to_regex("**/*.log").match("latest.log"))

@@ -148,6 +148,7 @@ public sealed class SyncEngine
             ?.TrimEnd('/')
             ?? throw new InvalidOperationException("更新控制面未提供 filesBaseUrl");
         var enabled = new HashSet<string>(_settings.EnabledOptional, StringComparer.OrdinalIgnoreCase);
+        var disabled = new HashSet<string>(_settings.DisabledOptional, StringComparer.OrdinalIgnoreCase);
 
         // 并行校验，所以用并发集合；ConcurrentDictionary 当作 set 用
         var expected = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
@@ -164,8 +165,8 @@ public sealed class SyncEngine
             new ParallelOptions { CancellationToken = ct, MaxDegreeOfParallelism = Environment.ProcessorCount },
             file =>
             {
-                var isOptional = file.Policy == FilePolicy.Optional;
-                var wanted = !isOptional || enabled.Contains(file.Path);
+                var isOptional = file.IsOptional;
+                var wanted = OptionalContent.IsWanted(file, enabled, disabled);
 
                 // 禁用的可选内容不删，只是带着 .disabled 后缀躺在原地，随时能切回来。
                 var relative = OptionalContent.PathFor(file.Path, wanted);

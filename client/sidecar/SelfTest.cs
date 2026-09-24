@@ -35,6 +35,7 @@ internal static class SelfTest
         JsonOverlay();
         ShaderPreset();
         OptionalToggle();
+        OptionalDefaultOn();
         MemoryClamp();
         FullscreenOption();
         DownloadResume();
@@ -804,6 +805,77 @@ internal static class SelfTest
             var legacyPlan = new SyncEngine(paths, legacy, on, downloader).Plan(manifest, null, CancellationToken.None);
             Check("老安装靠哈希缓存也能认出自己装过的文件",
                 legacyPlan.Deletions.Contains(retired), string.Join(",", legacyPlan.Deletions));
+        }
+        finally
+        {
+            try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
+        }
+    }
+
+    /// <summary>
+    /// 默认开启的可选项（YSM）。清单里它仍是 Managed，老启动器照旧必装；
+    /// 新启动器按 optionalDefaultOn 让玩家能关，关掉只改名。
+    /// </summary>
+    private static void OptionalDefaultOn()
+    {
+        Section("默认开启的可选项");
+        var parsed = PackManifest.FromJson(
+            """{"pack":{"id":"t","version":"1"},"files":[{"path":"mods/ysm.jar","size":3,"sha1":"a","policy":"Managed","optionalDefaultOn":true},{"path":"mods/core.jar","size":3,"sha1":"b"}]}""");
+        Check("清单字段读得出来", parsed?.Files.Count == 2 && parsed.Files[0].IsOptional && parsed.Files[0].Policy == FilePolicy.Managed);
+        Check("普通 Managed 不算可选", parsed?.Files[1].IsOptional == false);
+
+        var tmp = Path.Combine(Path.GetTempPath(), "battermc-optdefault-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            var paths = LauncherPaths.At(tmp);
+            paths.EnsureCreated();
+            using var downloader = new Downloader();
+            const string path = "mods/ysm.jar";
+            const string optIn = "mods/c2me.jar";
+            var body = "ysm"u8.ToArray();
+            var abs = paths.ResolveGameFile(path);
+            Directory.CreateDirectory(Path.GetDirectoryName(abs)!);
+            File.WriteAllBytes(abs, body);
+            var manifest = new PackManifest
+            {
+                Prune = ["mods"],
+                Files =
+                [
+                    new ManagedFile { Path = path, Size = body.Length, Sha1 = Hashing.Sha1File(abs), OptionalDefaultOn = true },
+                    new ManagedFile { Path = optIn, Size = 1, Sha1 = new string('d', 40), Policy = FilePolicy.Optional },
+                ],
+            };
+            LocalState NewState() => new() { LastFilesBaseUrl = "https://example.invalid/files" };
+            var untouched = new LauncherSettings();
+            var turnedOff = new LauncherSettings { DisabledOptional = [path] };
+
+            Check("没碰过：默认开着", OptionalContent.IsWanted(manifest.Files[0], untouched));
+            Check("没碰过：默认关的照旧关着", !OptionalContent.IsWanted(manifest.Files[1], untouched));
+            Check("关默认项的记录不影响默认关的项",
+                !OptionalContent.IsWanted(manifest.Files[1], new LauncherSettings { DisabledOptional = [optIn] })
+                && OptionalContent.IsWanted(manifest.Files[1], new LauncherSettings { EnabledOptional = [optIn] }));
+            Check("勾选列表管不到默认开的项", OptionalContent.IsWanted(manifest.Files[0], new LauncherSettings { EnabledOptional = [] }));
+
+            var keep = new SyncEngine(paths, NewState(), untouched, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("默认开且已装好：不动它", keep.Renames.Count == 0 && !keep.Deletions.Contains(path)
+                && !keep.Downloads.Any(d => d.TargetPath == abs), $"改名{keep.Renames.Count} 删{keep.Deletions.Count}");
+
+            var off = new SyncEngine(paths, NewState(), turnedOff, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("玩家关掉：只改名成 .disabled",
+                off.Renames.Count == 1 && off.Renames[0] == (path, path + OptionalContent.DisabledSuffix) && off.Deletions.Count == 0,
+                $"改名{off.Renames.Count} 删{off.Deletions.Count}");
+
+            OptionalContent.Apply(paths, manifest.Files, turnedOff.EnabledOptional, turnedOff.DisabledOptional);
+            Check("关掉后 jar 不在、.disabled 在",
+                !File.Exists(abs) && File.Exists(abs + OptionalContent.DisabledSuffix));
+            var whileOff = new SyncEngine(paths, NewState(), turnedOff, downloader).Plan(manifest, null, CancellationToken.None);
+            Check("关着时不被 prune 清掉、也不重下",
+                whileOff.Deletions.Count == 0 && !whileOff.Downloads.Any(d => d.TargetPath.StartsWith(abs, StringComparison.OrdinalIgnoreCase)),
+                string.Join(",", whileOff.Deletions));
+
+            // 老入口（只给勾选列表）不认识"关掉的默认项"，应当把它当成开着
+            OptionalContent.Apply(paths, manifest.Files, untouched.EnabledOptional);
+            Check("重新打开改名回 .jar", File.Exists(abs) && !File.Exists(abs + OptionalContent.DisabledSuffix));
         }
         finally
         {

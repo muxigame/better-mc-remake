@@ -461,6 +461,7 @@ function render(s) {
 
 
   renderOptional(state.optional || [], st.enabledOptional || []);
+  renderSkin();
   if (state.launcherUpdate) showLauncherUpdate(state.launcherUpdate);
   setBusy(!!state.busy);
 }
@@ -550,6 +551,158 @@ function onOptionalToggle() {
       return item ? (item.paths || [item.path]) : [];
     });
   save({ enabledOptional: enabled });
+}
+
+/* ───────────────────────── 皮肤 ───────────────────────── */
+
+let skin = null;          // 控制面上的 {model, hash, png}；null = 默认皮肤
+let skinDefault = null;   // 没上传时别人看到的样子（Steve），控制面随响应带回来
+let skinImage = null;     // { hash, img }，解码过的贴图，render 频繁不能每次重解
+let skinBusy = false;
+
+// 正面各部位：贴图里的 [x, y, 宽, 高] → 16×32 人形里的落点 [x, y]。
+// 贴图里的"右臂"是角色自己的右手，画在观众左边；纤细模型的手臂窄一列。
+// 旧版 64×32 没有左手左腿，游戏里用右边的镜像。
+function skinParts(slim, legacy) {
+  const a = slim ? 3 : 4;
+  const parts = [
+    { src: [8, 8, 8, 8], at: [4, 0] },
+    { src: [20, 20, 8, 12], at: [4, 8] },
+    { src: [44, 20, a, 12], at: [4 - a, 8] },
+    { src: [4, 20, 4, 12], at: [4, 20] },
+    legacy ? { src: [44, 20, a, 12], at: [12, 8], mirror: true } : { src: [36, 52, a, 12], at: [12, 8] },
+    legacy ? { src: [4, 20, 4, 12], at: [8, 20], mirror: true } : { src: [20, 52, 4, 12], at: [8, 20] },
+    { src: [40, 8, 8, 8], at: [4, 0] },
+  ];
+  if (!legacy) {
+    parts.push(
+      { src: [20, 36, 8, 12], at: [4, 8] },
+      { src: [44, 36, a, 12], at: [4 - a, 8] },
+      { src: [52, 52, a, 12], at: [12, 8] },
+      { src: [4, 36, 4, 12], at: [4, 20] },
+      { src: [4, 52, 4, 12], at: [8, 20] });
+  }
+  return parts;
+}
+
+function drawSkin(img, slim) {
+  const canvas = $('skin-preview');
+  const ctx = canvas.getContext('2d');
+  const k = canvas.width / 16;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = false;
+  if (!img) {
+    ctx.fillStyle = '#343140';
+    [[4, 0, 8, 8], [4, 8, 8, 12], [0, 8, 4, 12], [12, 8, 4, 12], [4, 20, 4, 12], [8, 20, 4, 12]]
+      .forEach(([x, y, w, h]) => ctx.fillRect(x * k, y * k, w * k, h * k));
+    return;
+  }
+  skinParts(slim, img.height === 32).forEach(({ src: [sx, sy, w, h], at: [x, y], mirror }) => {
+    if (!mirror) { ctx.drawImage(img, sx, sy, w, h, x * k, y * k, w * k, h * k); return; }
+    ctx.save();
+    ctx.translate((x + w) * k, y * k);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, sx, sy, w, h, 0, 0, w * k, h * k);
+    ctx.restore();
+  });
+}
+
+function decodePng(base64) {
+  const img = new Image();
+  img.src = 'data:image/png;base64,' + base64;
+  return img.decode().then(() => img);
+}
+
+// 纤细皮肤的手臂只有 3 像素宽，贴图里 x=54..55、y=20..31 那两列用不到，是全透明的
+function looksSlim(img) {
+  if (img.height !== 64) return false;
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(54, 20, 2, 12).data;
+  for (let i = 3; i < data.length; i += 4) if (data[i] !== 0) return false;
+  return true;
+}
+
+function bytesToBase64(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+let skinOwner = null;     // 当前 skin 属于哪个账号；换号要重新取
+
+function renderSkin() {
+  const loggedIn = !!state.account;
+  const owner = loggedIn ? String(state.account.muxi_uid || state.account.sub || '') : null;
+  if (owner !== skinOwner) {
+    skinOwner = owner;
+    skin = null;
+    const open = document.querySelector('.tab.is-active[data-tab="skin"]');
+    if (loggedIn && open) { loadSkin(); return; }
+  }
+  $('btn-skin-pick').disabled = !loggedIn || skinBusy;
+  $('btn-skin-reset').disabled = !loggedIn || skinBusy || !skin;
+  // 默认皮肤固定是经典手臂的 Steve，没上传时这个选项没意义
+  $('skin-model').disabled = !loggedIn || skinBusy || !skin;
+  $('skin-model').value = skin ? skin.model : 'default';
+  $('skin-title').textContent = skin ? '自定义皮肤' : '默认皮肤（Steve）';
+  $('skin-desc').textContent = !loggedIn ? '登录 muxi 账户后才能设置皮肤'
+    : skin ? '聊天头像和关掉 YSM 的玩家会看到这张皮肤'
+    : '没上传过皮肤的玩家一律显示 Steve';
+
+  const shown = loggedIn ? (skin || skinDefault) : null;
+  const slim = !!shown && shown.model === 'slim';
+  if (!shown || !shown.png) { drawSkin(null, slim); return; }
+  if (skinImage && skinImage.hash === shown.hash) { drawSkin(skinImage.img, slim); return; }
+  const hash = shown.hash;
+  decodePng(shown.png)
+    .then((img) => {
+      skinImage = { hash, img };
+      const now = skin || skinDefault;
+      if (now && now.hash === hash) drawSkin(img, now.model === 'slim');
+    })
+    .catch(() => drawSkin(null, slim));
+}
+
+function takeSkin(r) {
+  skin = r.skin || null;
+  if (r.default) skinDefault = r.default;
+}
+
+function loadSkin() {
+  if (!state.account) { renderSkin(); return; }
+  rpc('skinGet')
+    .then(takeSkin)
+    .catch((e) => toast(e.message, 'error'))
+    .finally(renderSkin);
+}
+
+function skinCall(method, params, done) {
+  skinBusy = true;
+  renderSkin();
+  rpc(method, params)
+    .then((r) => { takeSkin(r); toast(done, 'good'); })
+    .catch((e) => toast(e.message, 'error'))
+    .finally(() => { skinBusy = false; renderSkin(); });
+}
+
+async function onSkinFile() {
+  const file = $('skin-file').files[0];
+  $('skin-file').value = '';   // 同一个文件再选一次也要能触发
+  if (!file) return;
+  if (file.size > 64 * 1024) { toast('皮肤文件太大（上限 64 KB）', 'error'); return; }
+  const png = bytesToBase64(new Uint8Array(await file.arrayBuffer()));
+  let img;
+  try { img = await decodePng(png); } catch { toast('不是有效的 PNG 图片', 'error'); return; }
+  if (img.width !== 64 || (img.height !== 64 && img.height !== 32)) {
+    toast('皮肤尺寸必须是 64×64，这张是 ' + img.width + '×' + img.height, 'error');
+    return;
+  }
+  const model = looksSlim(img) ? 'slim' : 'default';
+  $('skin-model').value = model;
+  skinCall('skinSave', { png, model }, '皮肤已保存，其他玩家重新进服后看到');
 }
 
 function escapeHtml(s) {
@@ -720,6 +873,15 @@ function bind() {
     document.querySelectorAll('.tab').forEach((t) =>
       t.classList.toggle('is-active', t.dataset.tab === btn.dataset.tab));
     if (btn.dataset.tab === 'java') scanJava();
+    if (btn.dataset.tab === 'skin') loadSkin();
+  });
+
+  // ── 皮肤 ──
+  $('btn-skin-pick').onclick = () => $('skin-file').click();
+  $('skin-file').addEventListener('change', onSkinFile);
+  $('btn-skin-reset').onclick = () => skinCall('skinReset', {}, '已恢复默认皮肤');
+  $('skin-model').addEventListener('change', () => {
+    if (skin) skinCall('skinSave', { model: $('skin-model').value }, '手臂样式已保存');
   });
 
   // ── 游戏 ──

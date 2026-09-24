@@ -38,6 +38,12 @@ public sealed class LauncherSettings
     /// <summary>玩家勾选启用的 Optional 文件（清单里的相对路径）。</summary>
     public List<string> EnabledOptional { get; set; } = new();
 
+    /// <summary>
+    /// 玩家关掉的「默认开启」可选项（<see cref="BatterMC.Protocol.ManagedFile.OptionalDefaultOn"/>）。
+    /// 默认开的记关了哪些、默认关的记开了哪些：玩家没碰过的项永远跟着清单的默认值走。
+    /// </summary>
+    public List<string> DisabledOptional { get; set; } = new();
+
     /// <summary>跳过文件校验直接启动。仅用于救急，界面上会红字警告。</summary>
     public bool SkipVerify { get; set; }
 

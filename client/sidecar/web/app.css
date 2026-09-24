@@ -637,6 +637,18 @@ input.text:focus, input.num:focus, .memory-control input:focus { border-color: v
 }
 .badge.ok { background: rgba(74, 156, 45, .26); color: #9ede7c; }
 
+/* 皮肤：左边正面预览，像素放大不能糊 */
+.skin-row { align-items: center; }
+.skin-preview {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 128px;
+  image-rendering: pixelated;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+}
+.skin-row .row-control { flex-wrap: nowrap; }
+
 /* 可选内容：和「游戏」页同一套 .row + .switch，组名用 .list-head */
 .option-rows > .list-head:first-child { margin-top: 0; }
 /* 只剩一行名字：不留给说明的下边距，太长就截断而不是折行 */
