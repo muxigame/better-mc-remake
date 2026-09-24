@@ -12,7 +12,6 @@ async function loadSite() {
     $('hero-version').textContent = `${pack.version || 'BMC5'} · Minecraft ${pack.minecraft || '1.21.1'}`;
     $('stat-files').textContent = Number(pack.fileCount || 0).toLocaleString('zh-CN');
     $('stat-size').textContent = pack.sizeText || '—';
-    $('server-address').textContent = (data.site || {}).serverAddress || '—';
     $('release-version').textContent = `v${launcher.version || '—'}`;
     $('release-size').textContent = launcher.sizeText || '—';
     $('release-sha').textContent = `SHA-256 ${launcher.sha256 || '—'}`;

@@ -481,6 +481,7 @@ internal sealed class RpcHost : IDisposable
             if (_manifest.Servers.Count > 0)
             {
                 proxy = MinecraftRouteProxy.Listen(_manifest.Servers);
+                proxy.BeforeGameConnects = MintJoinGrantAsync;
                 var liveProxy = proxy;
                 proxy.RouteChanged += established => Emit("routeSelected", new JsonObject
                 {
@@ -995,6 +996,38 @@ internal sealed class RpcHost : IDisposable
         _player = json?["player"]?.AsObject();
         if (_player?["uid"]?.GetValue<long>() != AuthenticatedUid())
             throw new InvalidOperationException("玩家资料 UID 与登录账户不匹配");
+    }
+
+    /// <summary>
+    /// 换一张一次性进服票。
+    ///
+    /// 游戏服务端是 offline-mode：用户名就是平台 UID，而 UID 是从 10000 开始的顺号。
+    /// 没有这一步的话，谁把用户名填成别人的 UID 谁就是那个人——换个"不好猜"的登录名
+    /// 也没用，游戏里 /msg 的 Tab 补全本来就会把在线玩家的登录名全列出来。
+    /// 这张票是本人的 access token 换来的，冒名者拿不到。
+    ///
+    /// 在游戏发起连接的那一刻换，而不是启动游戏时换：400 多个模组要加载一两分钟，
+    /// 玩家还可能在主菜单停留，启动时换的票到手就快过期了。
+    /// </summary>
+    private async Task MintJoinGrantAsync(CancellationToken ct)
+    {
+        // 没登录就什么都不做：服务端拒绝时给出的理由比这里编一个准确。
+        if (string.IsNullOrEmpty(_accountToken)) return;
+        var status = await PostJoinGrantAsync(ct).ConfigureAwait(false);
+        // 只有 401 值得重试。access token 过期是最常见的情况，刷一次就好；
+        // 其余状态码重试只是把玩家多晾一个往返。
+        if (status == HttpStatusCode.Unauthorized && await RefreshAccountAsync().ConfigureAwait(false))
+            status = await PostJoinGrantAsync(ct).ConfigureAwait(false);
+        if (status == HttpStatusCode.OK) Log.Info("已换到进服票据");
+        else Log.Warn($"没换到进服票据（HTTP {(int)status}），这次进服会被服务端拒绝");
+    }
+
+    private async Task<HttpStatusCode> PostJoinGrantAsync(CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, AccountApi("/api/launcher/minecraft/join"));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
+        using var response = await _accountHttp.SendAsync(request, ct).ConfigureAwait(false);
+        return response.StatusCode;
     }
 
     private long AuthenticatedUid()

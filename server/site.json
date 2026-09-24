@@ -6,6 +6,5 @@
   "launcherObject": "BatterMC5Remake-setup.exe",
   "manifestObject": "manifest.json",
   "filesPrefix": "files",
-  "mirrorBaseUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/mirror",
-  "serverAddress": "110.42.51.3:25565"
+  "mirrorBaseUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/mirror"
 }

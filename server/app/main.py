@@ -248,7 +248,6 @@ def site() -> dict:
         "site": {
             "name": config["name"],
             "edition": config["edition"],
-            "serverAddress": config["serverAddress"],
         },
         "launcher": launcher_release(config),
         "pack": {

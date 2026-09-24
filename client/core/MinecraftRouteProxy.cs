@@ -68,6 +68,18 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
     private readonly ConcurrentDictionary<long, Task> _connections = new();
     private readonly Task _acceptLoop;
     private long _nextConnectionId;
+
+    /// <summary>
+    /// 游戏每发起一条连接，转发之前先跑一遍。用来换进服票据——服务端的 LoginGate 会
+    /// 拿这张票核实"连过来的真是这个 UID 本人"。
+    ///
+    /// 必须在转发之前**完成**，不能并行发出去了事：票是服务端收到登录包之后才去平台
+    /// 核销的，换票只要比登录包晚一步，服务端就查无此票，玩家被拒之门外。
+    ///
+    /// 里面抛异常不挡连接：换不到票时让玩家照常连过去，由服务端给出拒绝理由，
+    /// 比在这里静默断开好查得多。
+    /// </summary>
+    public Func<CancellationToken, Task>? BeforeGameConnects { get; set; }
     private Task? _keepWarm;
 
     /// <summary>转发时的候选顺序；验证通过的线路会被提到最前面。</summary>
@@ -1354,6 +1366,11 @@ public sealed class MinecraftRouteProxy : IAsyncDisposable
     {
         using (local)
         {
+            if (BeforeGameConnects is { } prepare)
+            {
+                try { await prepare(ct).ConfigureAwait(false); }
+                catch (Exception ex) { Log.Warn($"进服票据没换到，先照常连过去（服务端会说明原因）：{ex.Message}"); }
+            }
             // 还没连上、后台在重连（启动时线路全不通，或者掉线后重建失败）：叫醒重连，等这一轮
             // 的结果。连上了就照常往下走；还是没连上，就替服务器回话——多人列表显示原因，
             // 点加入的直接看到进不去的理由，点返回就能去玩单机。
