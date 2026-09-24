@@ -35,6 +35,17 @@ public sealed class LauncherPaths
             : Path.GetFullPath(gameDirOverride);
     }
 
+    /// <summary>
+    /// ⚠ 下面那个 "BatterMC5Remake" 是**不能改的字面量**，哪怕产品名已经改成别的。
+    ///
+    /// 它是玩家数据的落点：整合包 1.5 GB、存档、settings.json 全在这个目录下。
+    /// 安装包的 productName 改过（BatterMC5Remake → muxi-mc → BMC [Remake]），
+    /// 程序因此装到了新目录，但数据根**刻意**留在旧名字上，所以升级时玩家不用重下。
+    /// 谁顺手把这里也"对齐"成新产品名，全体玩家会在下一次启动时重下 1.5 GB，
+    /// 并且丢掉存档和设置——这不会有任何编译错误或测试失败来提醒你。
+    ///
+    /// 真要迁移，必须先写数据搬运逻辑（老目录存在就整体移过去），再改这个名字。
+    /// </summary>
     public static LauncherPaths Resolve(string? gameDirOverride = null)
     {
         var exeDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);

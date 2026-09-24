@@ -66,6 +66,22 @@ public sealed class LaunchPipeline
                 throw new InvalidOperationException($"当前客户端已停止支持，请先更新到 {manifest.Launcher.Version}。");
         }
 
+        // 2.5 光影：先看玩家现在实际在用什么。
+        //     必须排在同步之前——iris.properties 是 Seed 文件，同步可能把它整份重投成
+        //     出厂值（出厂是开着 Better MC - Low 的），重投之后就分不清是玩家自己关的
+        //     还是刚被重投的，结果就是玩家在游戏里关掉光影、下次启动又被打开。
+        if (!string.IsNullOrWhiteSpace(state.InstalledPackVersion)
+            && File.Exists(paths.ResolveGameFile(ShaderPresets.ConfigPath)))
+        {
+            var adopted = ShaderPresets.AdoptPlayerChoice(settings.ShaderPack, ShaderPresets.Read(paths));
+            if (adopted is not null)
+            {
+                Log.Info($"光影改用玩家自己的选择：{Describe(settings.ShaderPack)} -> {Describe(adopted)}");
+                settings.ShaderPack = adopted;
+                settings.Save(paths.SettingsFile);
+            }
+        }
+
         // 3. 整合包文件
         if (forceFullVerify)
         {
@@ -161,7 +177,7 @@ public sealed class LaunchPipeline
         if (manifest.Overlays.Count > 0)
         {
             Report("应用服务器配置", $"{manifest.Overlays.Count} 个文件");
-            var results = ConfigOverlay.ApplyAll(manifest.Overlays, paths);
+            var results = ConfigOverlay.ApplyAll(manifest.Overlays, paths, state);
             var failed = results.Where(r => r.Error is not null).ToList();
             foreach (var f in failed) Log.Warn($"硬配置失败 {f.Path}：{f.Error}");
         }
@@ -203,4 +219,7 @@ public sealed class LaunchPipeline
         state.Save(paths.StateFile);
         Report("准备就绪", $"{manifest.Pack.Name} {manifest.Pack.Version}", 1);
     }
+    private static string Describe(string? pack)
+        => string.IsNullOrEmpty(pack) ? "无光影" : pack;
+
 }

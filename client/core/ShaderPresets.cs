@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace BatterMC.Core;
 
@@ -27,6 +27,23 @@ public static class ShaderPresets
 
     /// <summary>新装默认不开光影：这包 400 多个模组本来就重，着色器编译还要再等一轮。</summary>
     public const string DefaultPack = "";
+
+    /// <summary>
+    /// 玩家在游戏里自己换/关了光影，就以他的选择为准。
+    ///
+    /// 必须在同步整合包**之前**问这个问题：iris.properties 是 Seed 文件，
+    /// 同步可能把它整份重投成出厂值（出厂值是开着光影的），重投之后再读，
+    /// 就分不清「玩家自己关的」和「刚被重投成开的」了。
+    ///
+    /// 启动器 UI 里换光影走的是另一条路：那边设置和文件是一起写的，
+    /// 所以这里读到的仍然等于记住的值，不会把 UI 的选择顶掉。
+    /// </summary>
+    /// <returns>需要改记录时返回玩家当前实际用的那个，否则返回 null。</returns>
+    public static string? AdoptPlayerChoice(string? remembered, ShaderSelection onDisk)
+    {
+        var actual = onDisk.AsSettingValue();
+        return string.Equals(actual, remembered, StringComparison.Ordinal) ? null : actual;
+    }
 
     /// <summary>读出游戏当前实际用的光影。文件不存在或没写过就是关闭。</summary>
     public static ShaderSelection Read(LauncherPaths paths)

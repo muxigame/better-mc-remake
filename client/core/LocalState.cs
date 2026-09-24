@@ -50,6 +50,16 @@ public sealed class LocalState
     /// </summary>
     public Dictionary<string, string> SeedRevisions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// 已经一次性下发过的 overlay 键：「相对路径#键名」→ 下发时服务器点名的那个值。
+    ///
+    /// 记的是**服务器上次点名的值**，不是玩家现在的值。所以：
+    /// - 服务器不换值 → 永远不再写，玩家改成什么都算数；
+    /// - 服务器换了新值 → 再强制写一次，然后重新交还给玩家。
+    /// 和 SeedRevisions 是同一套思路，只是粒度从整个文件细到单个键。
+    /// </summary>
+    public Dictionary<string, string> OverlaySeeds { get; set; } = new(StringComparer.Ordinal);
+
     /// <summary>最后一次由官方控制面下发的游戏文件根地址，用于离线 manifest 缓存。</summary>
     public string? LastFilesBaseUrl { get; set; }
 
@@ -90,6 +100,11 @@ public sealed class LocalState
                         s.SeedRevisions ?? new Dictionary<string, string>(),
                         StringComparer.OrdinalIgnoreCase);
 
+                    // 老 state 里没有这份记账，缺了就当一次都没下发过。
+                    s.OverlaySeeds = new Dictionary<string, string>(
+                        s.OverlaySeeds ?? new Dictionary<string, string>(),
+                        StringComparer.Ordinal);
+
                     s.InstalledFiles = new HashSet<string>(
                         s.InstalledFiles ?? new HashSet<string>(),
                         StringComparer.OrdinalIgnoreCase);
@@ -123,6 +138,16 @@ public sealed class LocalState
     {
         if (!HasSeeded(relative)) SeededFiles.Add(relative);
     }
+
+    private static string SeedKey(string relative, string key) => relative + "#" + key;
+
+    /// <summary>服务器点名的值和上次下发过的不一样（或从没发过）才需要再写一次。</summary>
+    public bool NeedsOverlaySeed(string relative, string key, string value)
+        => !OverlaySeeds.TryGetValue(SeedKey(relative, key), out var applied)
+           || !string.Equals(applied, value, StringComparison.Ordinal);
+
+    public void MarkOverlaySeed(string relative, string key, string value)
+        => OverlaySeeds[SeedKey(relative, key)] = value;
 
     public bool TryGetSeedRevision(string relative, out string revision)
         => SeedRevisions.TryGetValue(relative, out revision!);

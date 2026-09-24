@@ -207,6 +207,16 @@ public sealed class ConfigOverlaySpec
     /// </summary>
     public Dictionary<string, JsonElement> Enforce { get; set; } = new();
     /// <summary>
+    /// 一次性下发的键 → 值：服务器点名一个新值就写一次，之后玩家改成什么都不再纠正。
+    ///
+    /// 和 Enforce 的区别是「谁说了算」：Enforce 每次启动强制拉回服务器的值，
+    /// 这个只负责把默认值推到位，主权仍归玩家。适合视场角这种
+    /// 想改默认、又不该剥夺玩家选择权的设置。
+    /// 记账在 state.json 的 overlaySeeds 里，键是「路径#键名」。
+    /// </summary>
+    public Dictionary<string, JsonElement> SeedKeys { get; set; } = new();
+
+    /// <summary>
     /// 列表型键里要摘掉的条目：键名 → 要移除的元素。只对 Properties 生效，
     /// 用于 options.txt 这种「值本身是一个 JSON 数组」的键（resourcePacks）。
     /// 整键强制会把玩家自己选的资源包一起抹掉，所以只点名删指定条目。

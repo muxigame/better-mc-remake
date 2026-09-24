@@ -17,12 +17,13 @@ public sealed record OverlayResult(string Path, int Changed, int Total, bool Cre
 /// </summary>
 public static class ConfigOverlay
 {
-    public static List<OverlayResult> ApplyAll(IEnumerable<ConfigOverlaySpec> specs, LauncherPaths paths)
+    public static List<OverlayResult> ApplyAll(
+        IEnumerable<ConfigOverlaySpec> specs, LauncherPaths paths, LocalState? state = null)
     {
         var results = new List<OverlayResult>();
         foreach (var spec in specs)
         {
-            try { results.Add(Apply(spec, paths)); }
+            try { results.Add(Apply(spec, paths, state)); }
             catch (Exception ex)
             {
                 Log.Warn($"硬配置写入失败 {spec.Path}：{ex.Message}");
@@ -32,30 +33,43 @@ public static class ConfigOverlay
         return results;
     }
 
-    public static OverlayResult Apply(ConfigOverlaySpec spec, LauncherPaths paths)
+    public static OverlayResult Apply(ConfigOverlaySpec spec, LauncherPaths paths, LocalState? state = null)
     {
         var file = paths.ResolveGameFile(spec.Path);
         var existed = File.Exists(file);
-        var total = spec.Enforce.Count + spec.RemoveFromList.Sum(kv => kv.Value.Count);
+
+        // 一次性下发：服务器换了新值才写一次，玩家之后改了不再纠正。
+        // 没有 state 就没法记账，宁可不发也不要每次启动都把玩家的值按回去。
+        var seeds = new Dictionary<string, JsonElement>();
+        if (state is not null)
+            foreach (var (key, value) in spec.SeedKeys)
+                if (state.NeedsOverlaySeed(spec.Path, key, value.GetRawText()))
+                    seeds[key] = value;
+
+        var total = spec.Enforce.Count + seeds.Count + spec.RemoveFromList.Sum(kv => kv.Value.Count);
 
         if (!existed && !spec.CreateIfMissing)
             return new OverlayResult(spec.Path, 0, total, false, null);
 
         var original = existed ? File.ReadAllText(file) : "";
 
+        // 写法上两者一样，都是「把键设成这个值」，区别只在要不要记账。
+        var write = new Dictionary<string, JsonElement>(spec.Enforce, StringComparer.Ordinal);
+        foreach (var (key, value) in seeds) write[key] = value;
+
         string updated;
         int changed;
         switch (spec.Format)
         {
             case OverlayFormat.Properties:
-                updated = ApplyProperties(original, spec.Enforce, out changed);
+                updated = ApplyProperties(original, write, out changed);
                 updated = RemoveListEntries(updated, spec.RemoveFromList, out var removed);
                 changed += removed;
                 break;
             case OverlayFormat.Json:
-                updated = ApplyJson(original, spec.Enforce, out changed); break;
+                updated = ApplyJson(original, write, out changed); break;
             case OverlayFormat.Toml:
-                updated = ApplyToml(original, spec.Enforce, out changed); break;
+                updated = ApplyToml(original, write, out changed); break;
             default:
                 updated = original; changed = 0; break;
         }
@@ -64,6 +78,15 @@ public static class ConfigOverlay
         {
             AtomicFile.WriteAllText(file, updated);
             Log.Info($"硬配置 {spec.Path}：纠正 {changed}/{total} 项（{(existed ? "更新" : "新建")}）");
+        }
+
+        // 记账放在写入之后：写失败会抛异常，这里就不会把它记成“已下发”。
+        // 值本来就等于目标值时同样要记，否则玩家改动之后又会被推一次。
+        if (state is not null && seeds.Count > 0)
+        {
+            foreach (var (key, value) in seeds)
+                state.MarkOverlaySeed(spec.Path, key, value.GetRawText());
+            Log.Info($"硬配置 {spec.Path}：一次性下发 {seeds.Count} 个键（{string.Join("、", seeds.Keys)}），之后交还给玩家");
         }
 
         return new OverlayResult(spec.Path, changed, total, !existed, null);
@@ -96,7 +119,11 @@ public static class ConfigOverlay
             if (!remaining.TryGetValue(key, out var value)) continue;
 
             var desired = ScalarToPlainString(value);
-            var rebuilt = line[..idx] + sep + desired;
+            // 保留分隔符后原有的空格：Xaero 之类的配置写的是 "key = value"，
+            // 写成 "key =value" 它自己的解析器未必认，下次保存还可能把这行丢掉。
+            var valueStart = idx + 1;
+            while (valueStart < line.Length && (line[valueStart] == ' ' || line[valueStart] == '\t')) valueStart++;
+            var rebuilt = line[..idx] + sep + line[(idx + 1)..valueStart] + desired;
             if (!string.Equals(rebuilt, line, StringComparison.Ordinal)) changed++;
             lines[i] = rebuilt;
             remaining.Remove(key);
