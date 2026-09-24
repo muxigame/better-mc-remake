@@ -1340,7 +1340,8 @@ internal sealed class RpcHost : IDisposable
         }
         return ex switch
         {
-            HttpRequestException => $"连不上更新服务器：{ex.Message}",
+            // 不一定是更新服务器：下载 Minecraft 本体时连的是镜像或上游，主机名在 Message 里
+            HttpRequestException => $"网络连接失败：{ex.Message}",
             TaskCanceledException => "网络超时，检查一下网络或者更新服务器地址",
             UnauthorizedAccessException => $"没有权限访问文件：{ex.Message}",
             IOException => $"读写文件失败：{ex.Message}",

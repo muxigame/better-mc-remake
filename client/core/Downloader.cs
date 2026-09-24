@@ -77,6 +77,7 @@ public sealed class Downloader : IDisposable
         CancellationToken ct)
     {
         if (items.Count == 0) return;
+        items = DistinctTargets(items);
 
         long bytesTotal = items.Sum(i => Math.Max(0, i.ExpectedSize));
         long bytesDone = 0;
@@ -140,15 +141,32 @@ public sealed class Downloader : IDisposable
             throw new AggregateException($"有 {errors.Count} 个文件下载失败", errors);
     }
 
+    /// <summary>
+    /// 同一个目标只留一项。两个任务写同一个 .part，必有一个因为文件被占用而失败，
+    /// 失败那个再去问上游——国内连不上上游，整次安装就栽在一个本来已经下好的文件上。
+    /// </summary>
+    private static IReadOnlyList<DownloadItem> DistinctTargets(IReadOnlyList<DownloadItem> items)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var unique = new List<DownloadItem>(items.Count);
+        foreach (var item in items)
+            if (seen.Add(Path.GetFullPath(item.TargetPath))) unique.Add(item);
+        if (unique.Count != items.Count)
+            Log.Info($"下载清单里有 {items.Count - unique.Count} 个重复目标，已合并");
+        return unique;
+    }
+
     private async Task DownloadOneAsync(DownloadItem item, Action<long> onBytes, CancellationToken ct)
     {
-        const int maxAttempts = 3;
         var part = item.TargetPath + ".part";
         Directory.CreateDirectory(Path.GetDirectoryName(item.TargetPath)!);
 
         var upstream = item.Url;
-        var url = Mirror?.Rewrite(upstream) ?? upstream;
-        var usedMirror = url != upstream;
+        var mirrored = Mirror?.Rewrite(upstream);
+        var url = mirrored ?? upstream;
+        var usedMirror = mirrored is not null;
+        // 有镜像时镜像、上游交替着试，各两次。
+        var maxAttempts = mirrored is null ? 3 : 4;
 
         for (var attempt = 1; ; attempt++)
         {
@@ -178,6 +196,7 @@ public sealed class Downloader : IDisposable
                 {
                     Log.Info($"镜像缺少 {item.Display}，回落上游");
                     usedMirror = false;
+                    mirrored = null;
                     url = upstream;
                     attempt--;
                     if (File.Exists(part)) { try { File.Delete(part); } catch { } }
@@ -223,12 +242,18 @@ public sealed class Downloader : IDisposable
                 AtomicFile.Replace(part, item.TargetPath);
                 return;
             }
-            catch (OperationCanceledException) { throw; }
+            // HttpClient 自己超时抛的也是 TaskCanceledException，那种要重试，不是用户取消
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex) when (attempt < maxAttempts)
             {
                 Log.Warn($"下载重试 {attempt}/{maxAttempts}：{item.Display} — {ex.Message}");
-                // 镜像超时或 5xx，后面几次直接找上游，别在坏掉的镜像上耗完重试次数
-                if (usedMirror) { usedMirror = false; url = upstream; }
+                // 镜像和上游交替着试。以前是镜像一出错就把剩下的机会全押给上游，
+                // 国内很多玩家根本连不上上游，镜像抖一下就等于判了失败。
+                if (mirrored is not null)
+                {
+                    usedMirror = !usedMirror;
+                    url = usedMirror ? mirrored : upstream;
+                }
                 // 校验失败说明 part 不可信，删掉从头下
                 try { if (File.Exists(part)) File.Delete(part); } catch { }
                 if (reportedThisAttempt != 0) onBytes(-reportedThisAttempt);
@@ -284,21 +309,34 @@ public sealed class Downloader : IDisposable
         }
     }
 
-    /// <summary>单个小文件也照样先走镜像，失败了再问上游。</summary>
+    /// <summary>
+    /// 单个小文件也照样先走镜像，失败了再问上游；上游也不通而镜像刚才不是"没有这个文件"，
+    /// 就再给镜像一次机会——资源索引就是走这里，它下不来整个安装都进行不下去。
+    /// </summary>
     private async Task<T> ViaMirrorAsync<T>(string url, Func<string, Task<T>> fetch, CancellationToken ct)
     {
         var mirrored = Mirror?.Rewrite(url);
-        if (mirrored is not null)
+        if (mirrored is null) return await fetch(url).ConfigureAwait(false);
+
+        Exception mirrorError;
+        try { return await fetch(mirrored).ConfigureAwait(false); }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            try { return await fetch(mirrored).ConfigureAwait(false); }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                Log.Info($"镜像取不到 {mirrored}，回落上游：{ex.Message}");
-            }
-            ct.ThrowIfCancellationRequested();
+            Log.Info($"镜像取不到 {mirrored}，回落上游：{ex.Message}");
+            mirrorError = ex;
         }
-        return await fetch(url).ConfigureAwait(false);
+
+        try { return await fetch(url).ConfigureAwait(false); }
+        catch (Exception ex) when (!ct.IsCancellationRequested && !IsMissing(mirrorError))
+        {
+            Log.Info($"上游也取不到 {url}：{ex.Message}，再试一次镜像");
+        }
+        await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
+        return await fetch(mirrored).ConfigureAwait(false);
     }
+
+    private static bool IsMissing(Exception ex) =>
+        ex is HttpRequestException { StatusCode: HttpStatusCode.NotFound or HttpStatusCode.Forbidden };
 
     public HttpClient Http => _http;
 

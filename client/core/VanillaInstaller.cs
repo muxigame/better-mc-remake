@@ -81,10 +81,14 @@ public static class VanillaInstaller
             if (doc.RootElement.TryGetProperty("objects", out var objects))
             {
                 var objectsDir = Path.Combine(paths.AssetsDir, "objects");
+                // 不同名字可以指向同一个对象（polarbear/idle1.ogg 和 polarbear_baby/idle1.ogg），
+                // 每个哈希只下一次。
+                var planned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var obj in objects.EnumerateObject())
                 {
                     ct.ThrowIfCancellationRequested();
                     var hash = obj.Value.GetProperty("hash").GetString()!;
+                    if (!planned.Add(hash)) continue;
                     var size = obj.Value.TryGetProperty("size", out var s) ? s.GetInt64() : 0;
                     var prefix = hash[..2];
                     var target = Path.Combine(objectsDir, prefix, hash);

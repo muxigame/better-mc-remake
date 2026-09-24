@@ -12,11 +12,23 @@
 
 客户端按同样的规则改写地址（见 client/core/DownloadMirror.cs），镜像上没有的
 会自动回落上游，所以这个脚本可以分几次跑完，跑到一半也不会让谁装不上。
+但"回落上游"对国内玩家等于失败，所以镜像必须补全，跑完用 --verify-remote 核对。
+
+NeoForge 安装器是个例外：它是客户端下载后另起一个 Java 进程跑的，安装器自己
+还要联网拉 Mojang 的版本清单、映射表和一批库，这些请求根本不经过我们的镜像。
+所以镜像上放的不是官方安装器，而是在同一路径上换成一个"离线版"：
+    官方安装器 --generate-fat --fat-offline --fat-include-installer-libs --fat-include-minecraft
+再删掉客户端用不到的部分（服务端 jar/映射、原版运行库、客户端 jar——客户端 jar
+由启动器事先放进 versions/<mc>/<mc>.jar，见 NeoForgeInstaller.PrepareGameDir）。
+离线版会自己进入离线模式，全程不联网，装出来的文件和联网安装逐个 SHA-1 一致。
+**这个对象和上游不再逐字节相同**，旁边的 .sha1 也是离线版的。NeoForge 版本一变
+就要重跑本脚本，否则新版本在镜像上是 404，国内玩家会卡在"安装 NeoForge"。
 
 用法：
-    python scripts/mirror_minecraft.py            # 只下载到本地暂存目录
-    python scripts/mirror_minecraft.py --upload   # 下载完再传到 OSS
-    python scripts/mirror_minecraft.py --check    # 只统计缺什么，不动网络
+    python scripts/mirror_minecraft.py                  # 只下载到本地暂存目录
+    python scripts/mirror_minecraft.py --upload         # 下载完再传到 OSS
+    python scripts/mirror_minecraft.py --check          # 只统计缺什么，不动网络
+    python scripts/mirror_minecraft.py --verify-remote  # 按客户端的实际地址逐个 HEAD 线上镜像
 """
 
 from __future__ import annotations
@@ -29,6 +41,7 @@ import os
 import shutil
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
@@ -116,6 +129,155 @@ def collect(version_json, stage):
             "https://resources.download.minecraft.net/%s/%s" % (digest[:2], digest),
             digest, meta.get("size", 0), name))
     return items
+
+
+NEOFORGE_INSTALLER = ("https://maven.neoforged.net/releases/net/neoforged/neoforge/"
+                      "%s/neoforge-%s-installer.jar")
+
+
+def neoforge_version(version_json):
+    """版本 JSON 里 --fml.neoForgeVersion 后面那个值，和客户端 VersionJson 同一个来源。"""
+    data = json.loads(version_json.read_text(encoding="utf-8"))
+    args = [a for a in (data.get("arguments") or {}).get("game", []) if isinstance(a, str)]
+    for flag in ("--fml.neoForgeVersion", "--fml.forgeVersion"):
+        if flag in args and args.index(flag) + 1 < len(args):
+            return args[args.index(flag) + 1]
+    return None
+
+
+def _maven_paths(libraries):
+    out = set()
+    for lib in libraries:
+        downloads = lib.get("downloads") or {}
+        artifact = downloads.get("artifact")
+        if artifact and artifact.get("path"):
+            out.add("maven/" + artifact["path"])
+        for classifier in (downloads.get("classifiers") or {}).values():
+            if classifier.get("path"):
+                out.add("maven/" + classifier["path"])
+    return out
+
+
+def is_offline_installer(path):
+    """--fat-include-minecraft 才会带 maven/minecraft/<mc>.json，官方安装器没有。"""
+    import zipfile
+    try:
+        with zipfile.ZipFile(path) as jar:
+            return any(n.startswith("maven/minecraft/") and n.endswith(".json")
+                       for n in jar.namelist())
+    except (OSError, zipfile.BadZipFile):
+        return False
+
+
+def build_offline_installer(nf, stage, java):
+    """生成离线版 NeoForge 安装器，放到暂存目录里官方安装器的位置上。"""
+    import tempfile
+    import zipfile
+
+    item = Item(NEOFORGE_INSTALLER % (nf, nf))
+    target = stage / item.key
+    if is_offline_installer(target) and target.with_name(target.name + ".sha1").is_file():
+        return target, "skip"
+
+    with tempfile.TemporaryDirectory(prefix="neoforge-offline-") as work:
+        work = Path(work)
+        official = work / "installer.jar"
+        official.write_bytes(fetch(item.url, timeout=300))
+        expected = fetch(item.url + ".sha1").decode("ascii", "replace").strip()[:40].lower()
+        if sha1_of(official) != expected:
+            raise RuntimeError("官方安装器 SHA-1 不符：期望 %s" % expected)
+
+        # 生成胖安装器要联网拉 Mojang 和 NeoForge 的东西，得在能直连的机器上跑
+        fat = work / "fat.jar"
+        code = subprocess.call(
+            [java, "-jar", str(official), "--generate-fat", str(fat), "--fat-offline",
+             "--fat-include-installer-libs", "--fat-include-minecraft"],
+            cwd=str(work), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if code != 0 or not fat.is_file():
+            # 临时目录马上就删了，日志挪到暂存目录外面（放里面会被一起传上 OSS）
+            log = stage.parent / ("neoforge-%s-generate-fat.log" % nf)
+            try:
+                shutil.copyfile(work / "installer.jar.log", log)
+            except OSError:
+                pass
+            raise RuntimeError("生成胖安装器失败，退出码 %d，日志：%s" % (code, log))
+
+        with zipfile.ZipFile(fat) as src:
+            names = set(src.namelist())
+            mc_json = next(n for n in names
+                           if n.startswith("maven/minecraft/") and n.count("/") == 2 and n.endswith(".json"))
+            mc = mc_json[len("maven/minecraft/"):-len(".json")]
+            vanilla = _maven_paths(json.loads(src.read(mc_json)).get("libraries", []))
+            needed = (_maven_paths(json.loads(src.read("install_profile.json")).get("libraries", []))
+                      | _maven_paths(json.loads(src.read("version.json")).get("libraries", [])))
+            # 原版运行库由启动器自己下；安装器处理器要用的那几个（和原版重叠的）必须留着，
+            # 删多了离线安装会在"找不到 failureaccess"之类的地方失败。
+            drop = (vanilla - needed) | {
+                "maven/minecraft/%s/server.jar" % mc,
+                "maven/minecraft/%s/server_mappings.txt" % mc,
+                "maven/minecraft/%s/client.jar" % mc,
+                "data/server.lzma",
+            }
+            target.parent.mkdir(parents=True, exist_ok=True)
+            temp = target.with_name(target.name + ".part")
+            with zipfile.ZipFile(temp, "w", zipfile.ZIP_DEFLATED) as out:
+                for info in src.infolist():
+                    if info.filename not in drop:
+                        out.writestr(info, src.read(info.filename))
+        temp.replace(target)
+
+    target.with_name(target.name + ".sha1").write_text(sha1_of(target), encoding="ascii")
+    return target, "done"
+
+
+def find_java(explicit):
+    if explicit:
+        return explicit
+    home = os.getenv("JAVA_HOME")
+    if home:
+        candidate = Path(home) / "bin" / ("java.exe" if os.name == "nt" else "java")
+        if candidate.is_file():
+            return str(candidate)
+    return shutil.which("java")
+
+
+def client_url(base, key):
+    """和 DownloadMirror.Rewrite 拼出来的地址逐字一致：OSS 把路径里的 + 当空格，要转义。"""
+    return "%s/%s" % (base.rstrip("/"), key.replace("+", "%2B"))
+
+
+def verify_remote(items, base, workers):
+    """按客户端真正会请求的地址 HEAD 一遍。
+
+    以前只在本地核对过暂存目录，线上用 urllib 编码过的地址 HEAD 也全是 200，
+    结果客户端用字面 + 请求 sponge-mixin 拿到 404、回落上游，国内直接装不上。
+    所以这里的地址必须和客户端逐字一致；带 + 的键再按老客户端（≤1.1.33，不转义）
+    的地址查一遍。
+    """
+    def head(url):
+        request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return response.status, int(response.headers.get("Content-Length") or -1)
+        except urllib.error.HTTPError as error:
+            return error.code, -1
+        except Exception:
+            return 0, -1
+
+    checks = []
+    for item in items:
+        checks.append((item, client_url(base, item.key)))
+        if "+" in item.key:
+            checks.append((item, "%s/%s" % (base.rstrip("/"), item.key)))
+    bad = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        for (item, url), (status, length) in zip(checks, pool.map(lambda c: head(c[1]), checks)):
+            if status != 200 or (item.size and length != item.size):
+                bad.append((url, status, length, item.size))
+    for url, status, length, size in bad[:30]:
+        print("  [不可用] %s — HTTP %s，大小 %s（期望 %s）" % (url, status, length, size), file=sys.stderr)
+    print("线上核对：%d 个地址，%d 个不可用" % (len(checks), len(bad)))
+    return 1 if bad else 0
 
 
 ADOPTIUM_API = ("https://api.adoptium.net/v3/assets/latest/%d/hotspot"
@@ -206,7 +368,23 @@ def upload(stage, bucket, prefix, region):
     if region:
         command += ["--region", region]
     print("上传：%s -> %s" % (stage, target))
-    return subprocess.call(command)
+    code = subprocess.call(command)
+    if code != 0:
+        return code
+    # 客户端 ≤1.1.33 请求带 + 的对象时不转义，OSS 按空格解码。给它们在空格键名下
+    # 留一份副本，否则 sponge-mixin 这种构件在老客户端上永远是 404、回落上游。
+    for path in sorted(stage.rglob("*")):
+        relative = path.relative_to(stage).as_posix()
+        if "+" not in relative or not path.is_file() or path.name.endswith(".part"):
+            continue
+        legacy = "oss://%s/%s/%s" % (bucket, prefix.strip("/"), relative.replace("+", " "))
+        command = [ossutil, "cp", "-f", str(path), legacy]
+        if region:
+            command += ["--region", region]
+        code = subprocess.call(command)
+        if code != 0:
+            return code
+    return 0
 
 
 def main():
@@ -222,7 +400,13 @@ def main():
     parser.add_argument("--prefix", default="bmc/mirror")
     parser.add_argument("--with-java", action="store_true",
                         help="连 Adoptium 的 JRE 压缩包一起镜像")
+    parser.add_argument("--java", help="生成离线 NeoForge 安装器用的 java，默认 JAVA_HOME 或 PATH 里的")
+    parser.add_argument("--skip-neoforge", action="store_true", help="不生成离线 NeoForge 安装器")
+    parser.add_argument("--verify-remote", action="store_true",
+                        help="按客户端的实际地址逐个 HEAD 线上镜像；和 --upload 一起用时在上传后核对")
     args = parser.parse_args()
+    mirror_base = os.getenv("BMC_MIRROR_BASE_URL", "https://%s.oss-%s.aliyuncs.com/%s"
+                            % (args.bucket, args.region, args.prefix.strip("/")))
 
     if not args.version_json.is_file():
         print("找不到版本 JSON：%s" % args.version_json, file=sys.stderr)
@@ -238,6 +422,16 @@ def main():
               file=sys.stderr)
     items = [i for i in items if i.mirrored]
 
+    nf = None if args.skip_neoforge else neoforge_version(args.version_json)
+    if nf:
+        installer = Item(NEOFORGE_INSTALLER % (nf, nf))
+        remote_items = items + [installer, Item(installer.url + ".sha1")]
+    else:
+        remote_items = items
+
+    if args.verify_remote and not args.upload:
+        return verify_remote(remote_items, mirror_base, args.workers)
+
     java_meta = None
     if args.with_java:
         try:
@@ -251,6 +445,9 @@ def main():
     print("清单 %d 个文件（%s），本地已有 %d 个，还缺 %d 个（%s）" % (
         len(items), human(sum(i.size for i in items)),
         len(items) - len(missing), len(missing), human(sum(i.size for i in missing))))
+    if nf:
+        staged = args.stage / Item(NEOFORGE_INSTALLER % (nf, nf)).key
+        print("离线 NeoForge %s 安装器：%s" % (nf, "已生成" if is_offline_installer(staged) else "还没生成"))
     if args.check:
         return 0
 
@@ -269,6 +466,20 @@ def main():
                     if done % 200 == 0 or done == len(missing):
                         print("  已下载 %d/%d" % (done, len(missing)))
 
+    if nf:
+        java_exe = find_java(args.java)
+        if not java_exe:
+            failures.append((Item(NEOFORGE_INSTALLER % (nf, nf)), "找不到 java"))
+            print("  [失败] 离线 NeoForge 安装器：找不到 java，用 --java 指定", file=sys.stderr)
+        else:
+            try:
+                path, status = build_offline_installer(nf, args.stage, java_exe)
+                print("离线 NeoForge %s 安装器：%s（%s）" % (
+                    nf, "已是最新" if status == "skip" else "已生成", human(path.stat().st_size)))
+            except Exception as error:      # 没有它国内装不上 NeoForge，必须算失败
+                failures.append((Item(NEOFORGE_INSTALLER % (nf, nf)), str(error)))
+                print("  [失败] 离线 NeoForge 安装器 — %s" % error, file=sys.stderr)
+
     print("下载完成：成功 %d，失败 %d" % (done, len(failures)))
     if failures:
         print("有文件没下来，镜像不完整；客户端会对这些文件回落上游。", file=sys.stderr)
@@ -283,11 +494,7 @@ def main():
             else:
                 print("")
                 print("Java %s 已镜像。把这几个值填进 pack/packspec.json 的 java 段：" % java_semver)
-                print('    "url": "%s/%s",' % (
-                    os.getenv("BMC_MIRROR_BASE_URL",
-                              "https://%s.oss-%s.aliyuncs.com/%s"
-                              % (args.bucket, args.region, args.prefix.strip("/"))),
-                    java.key))
+                print('    "url": "%s/%s",' % (mirror_base, java.key))
                 print('    "sha256": "%s",' % digest)
                 print('    "size": %d' % staged.stat().st_size)
 
@@ -297,6 +504,10 @@ def main():
             print("上传失败，退出码 %d" % code, file=sys.stderr)
             return code
         print("镜像已上传到 oss://%s/%s" % (args.bucket, args.prefix))
+        if args.verify_remote:
+            code = verify_remote(remote_items, mirror_base, args.workers)
+            if code != 0:
+                return code
 
     return 1 if failures else 0
 

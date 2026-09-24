@@ -51,7 +51,9 @@ public sealed class DownloadMirror
         if (!Upstream.Contains(uri.Host)) return null;
         // 带查询串的地址按路径镜像会撞车，宁可不碰
         if (!string.IsNullOrEmpty(uri.Query)) return null;
-        return $"{_base}/{uri.Host}{uri.AbsolutePath}";
+        // OSS 把路径里的 + 当成空格解码。Maven 上真有带 + 的构件
+        // （sponge-mixin-0.15.2+mixin.0.8.7.jar），不转义就是 404、回落上游。
+        return $"{_base}/{uri.Host}{uri.AbsolutePath.Replace("+", "%2B")}";
     }
 
     /// <summary>给镜像补内容的工具用：列出所有需要镜像的上游主机。</summary>
