@@ -288,49 +288,75 @@ function onGameExited(p) {
    替代整合包原来带的 Crash Assistant：它的窗口按钮带倒计时关不掉，日志传到第三方，
    还夹着盗版提示和「模组被改过」提示。这里随时能关，玩家点了才上传，存到自己账号下。
    手动上传（设置 → 高级）也走这个框，只是没有崩溃原因。 */
-let crashMode = 'crash';
+let crashMode = 'crash';     // 'crash'：游戏异常退出；'feedback'：右下角的意见反馈
 let crashReportId = null;
 
 function showCrash(mode, p) {
   crashMode = mode;
   crashReportId = null;
+  const feedback = mode === 'feedback';
   const loggedIn = !!state.account;
-  $('crash-title').textContent = mode === 'crash' ? '游戏异常退出' : '上传日志';
-  $('crash-hint').textContent = mode === 'crash'
-    ? (p && p.hint) || ('游戏异常退出，退出码 ' + (p ? p.code : '?'))
-    : '把最近一次游戏和启动器的日志传到你的账号下，在玩家中心能看到。';
+  const st = state.settings || {};
+  $('crash-title').textContent = feedback ? '意见反馈' : '游戏异常退出';
+  $('crash-hint').textContent = feedback ? '' : (p && p.hint) || ('游戏异常退出，退出码 ' + (p ? p.code : '?'));
+  $('crash-hint').hidden = feedback;
   $('crash-summary').textContent = (p && p.summary) || '';
-  $('crash-summary').hidden = !(p && p.summary);
-  $('crash-env').checked = (state.settings || {}).crashReportEnvironment !== false;
+  $('crash-summary').hidden = feedback || !(p && p.summary);
+  $('crash-text').value = '';
+  $('crash-text').hidden = !feedback;
+  $('crash-text').disabled = false;
+  $('crash-env').checked = st.crashReportEnvironment !== false;
+  // 崩溃上传本来就是为了日志，总是带；意见反馈才让玩家选
+  $('crash-logs-row').hidden = !feedback;
+  $('crash-logs').checked = st.feedbackIncludeLogs !== false;
+  $('btn-crash-folder').hidden = feedback;
   $('crash-result').hidden = loggedIn;
   $('crash-result').classList.toggle('is-error', !loggedIn);
-  $('crash-result').textContent = loggedIn ? '' : '登录 muxi 账户后才能上传，日志会存到你的账号下。';
+  $('crash-result').textContent = loggedIn ? '' : '登录 muxi 账户后才能提交，会存到你的账号下。';
   $('btn-crash-upload').disabled = !loggedIn;
-  $('btn-crash-upload').textContent = '上传日志';
+  $('btn-crash-upload').textContent = feedback ? '提交' : '上传日志';
   $('btn-crash-view').hidden = true;
   $('crash').hidden = false;
+  if (feedback && loggedIn) $('crash-text').focus();
 }
 
 function uploadCrashLogs() {
+  const feedback = crashMode === 'feedback';
+  const message = $('crash-text').value.trim();
+  if (feedback && !message) {
+    $('crash-result').classList.add('is-error');
+    $('crash-result').textContent = '写几句遇到的问题或建议吧';
+    $('crash-result').hidden = false;
+    $('crash-text').focus();
+    return;
+  }
   const button = $('btn-crash-upload');
   button.disabled = true;
-  button.textContent = '正在上传…';
+  button.textContent = feedback ? '正在提交…' : '正在上传…';
   $('crash-result').hidden = true;
   const includeEnvironment = $('crash-env').checked;
-  rpc('logUpload', { kind: crashMode, includeEnvironment })
+  const includeLogs = $('crash-logs').checked;
+  rpc('logUpload', feedback
+    ? { kind: 'feedback', message, includeEnvironment, includeLogs }
+    : { kind: 'crash', includeEnvironment })
     .then((r) => {
       crashReportId = r.id;
       // sidecar 已经把这次的选择记进设置了，本地这份跟上，下次打开弹窗不回跳
-      if (state.settings) state.settings.crashReportEnvironment = includeEnvironment;
-      button.textContent = '已上传';
+      if (state.settings) {
+        state.settings.crashReportEnvironment = includeEnvironment;
+        if (feedback) state.settings.feedbackIncludeLogs = includeLogs;
+      }
+      button.textContent = feedback ? '已提交' : '已上传';
+      $('crash-text').disabled = true;
       $('crash-result').classList.remove('is-error');
-      $('crash-result').textContent = '已上传，编号 ' + r.id + '。找管理员帮忙时把编号发给他就行。';
+      $('crash-result').textContent = (feedback ? '已提交' : '已上传') + '，编号 ' + r.id
+        + '。找管理员帮忙时把编号发给他就行。';
       $('crash-result').hidden = false;
       $('btn-crash-view').hidden = false;
     })
     .catch((e) => {
       button.disabled = false;
-      button.textContent = '重新上传';
+      button.textContent = feedback ? '重新提交' : '重新上传';
       $('crash-result').classList.add('is-error');
       $('crash-result').textContent = e.message;
       $('crash-result').hidden = false;
@@ -972,7 +998,7 @@ function bind() {
   };
   $('btn-crash-folder').onclick = () => rpc('openPath', { which: 'gamelogs' }).catch((e) => toast(e.message, 'error'));
   // 开关只在点上传时带过去（sidecar 顺手记住），不单独存一次
-  $('btn-log-upload').onclick = () => { $('settings').hidden = true; showCrash('manual'); };
+  $('btn-feedback').onclick = () => showCrash('feedback');
 
   // ── 皮肤 ──
   $('btn-skin-pick').onclick = () => $('skin-file').click();

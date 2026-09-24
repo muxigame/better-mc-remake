@@ -47,6 +47,9 @@ public sealed class LauncherSettings
     /// <summary>上传崩溃日志时附带电脑环境（系统、CPU、内存、显卡与驱动、Java）。弹窗里的开关，记住上次的选择。</summary>
     public bool CrashReportEnvironment { get; set; } = true;
 
+    /// <summary>意见反馈时附带最新一次运行日志。同样记住上次的选择。</summary>
+    public bool FeedbackIncludeLogs { get; set; } = true;
+
     /// <summary>跳过文件校验直接启动。仅用于救急，界面上会红字警告。</summary>
     public bool SkipVerify { get; set; }
 

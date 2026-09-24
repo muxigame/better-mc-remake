@@ -8,7 +8,7 @@
   <title>玩家中心 · Better MC</title>
   <link rel="icon" href="/favicon.svg">
   <link rel="stylesheet" href="/styles.css?v=player-center-2">
-  <link rel="stylesheet" href="/player-center.css?v=crash-2">
+  <link rel="stylesheet" href="/player-center.css?v=crash-3">
 </head>
 <body class="player-page">
   <header class="site-nav">
@@ -67,16 +67,17 @@
       </aside>
     </div>
     <section class="pc-crash" id="crash-section" aria-labelledby="crash-heading" hidden>
-      <div class="pc-section-title"><span class="pc-index">03</span><div><h2 id="crash-heading">崩溃日志</h2><p>游戏异常退出时由启动器上传，只有你和管理员能看到。找管理员帮忙时，把编号发给他就行。</p></div></div>
-      <p class="pc-crash-empty" id="crash-empty" hidden>还没有上传过崩溃日志。</p>
+      <div class="pc-section-title"><span class="pc-index">03</span><div><h2 id="crash-heading">崩溃日志与反馈</h2><p>从启动器上传，只有你和管理员能看到。找管理员帮忙时，把编号发给他就行。</p></div></div>
+      <p class="pc-crash-empty" id="crash-empty" hidden>还没有上传过崩溃日志或反馈。</p>
       <p class="pc-message" id="crash-message" role="status" aria-live="polite" hidden></p>
       <ul class="pc-crash-list" id="crash-list"></ul>
     </section>
     <dialog class="pc-dialog pc-log-dialog" id="crash-dialog" aria-labelledby="crash-dialog-title">
       <div class="pc-log-head">
-        <div><p class="eyebrow">CRASH REPORT</p><h2 id="crash-dialog-title">崩溃日志</h2></div>
+        <div><p class="eyebrow" id="crash-dialog-kicker">CRASH REPORT</p><h2 id="crash-dialog-title">崩溃日志</h2></div>
         <button type="button" class="pc-log-close" id="crash-dialog-close" aria-label="关闭">×</button>
       </div>
+      <p class="pc-log-message" id="crash-dialog-message" hidden></p>
       <div class="pc-log-tabs" id="crash-files" role="tablist"></div>
       <p class="pc-log-note" id="crash-file-note" hidden>文件太长，只显示最后 2 MB；完整内容请下载。</p>
       <pre class="pc-log-body" id="crash-file-body"></pre>
@@ -85,6 +86,6 @@
   </main>
 
   <script src="/auth-nav.js?v=2" defer></script>
-  <script src="/account.js?v=crash-1" defer></script>
+  <script src="/account.js?v=crash-2" defer></script>
 </body>
 </html>

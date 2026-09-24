@@ -938,6 +938,23 @@ internal static class SelfTest
             var noEnv = CrashReport.Build(paths, crash, new System.Text.Json.Nodes.JsonObject { ["kind"] = "crash" }, null);
             using (var zip = Open(noEnv))
                 Check("关掉开关就不带电脑环境", zip.GetEntry("environment.json") is null);
+
+            // 意见反馈：不带崩溃报告（那是以前某次崩溃的），运行日志看开关
+            var feedbackNoLogs = CrashReport.Build(paths, null,
+                new System.Text.Json.Nodes.JsonObject { ["kind"] = "feedback", ["message"] = "卡" }, null, includeLogs: false);
+            using (var zip = Open(feedbackNoLogs))
+            {
+                Check("反馈关掉日志只剩摘要", zip.Entries.Count == 1 && zip.GetEntry("report.json") is not null,
+                    string.Join(",", zip.Entries.Select(e => e.FullName)));
+                using var report = new StreamReader(zip.GetEntry("report.json")!.Open());
+                Check("摘要标明不含运行日志", report.ReadToEnd().Contains("\"logsIncluded\": false"));
+            }
+            var feedbackLogs = CrashReport.Build(paths, null,
+                new System.Text.Json.Nodes.JsonObject { ["kind"] = "feedback", ["message"] = "卡" }, null, includeLogs: true);
+            using (var zip = Open(feedbackLogs))
+                Check("反馈带日志：有游戏日志、没有旧崩溃报告",
+                    zip.GetEntry("latest.log") is not null && zip.GetEntry("crash-report.txt") is null,
+                    string.Join(",", zip.Entries.Select(e => e.FullName)));
         }
         finally
         {

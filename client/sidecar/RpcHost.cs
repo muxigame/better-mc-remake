@@ -417,6 +417,7 @@ internal sealed class RpcHost : IDisposable
         ["gpu"] = _settings.Gpu,
         ["enabledOptional"] = new JsonArray(_settings.EnabledOptional.Select(x => (JsonNode)x).ToArray()),
         ["crashReportEnvironment"] = _settings.CrashReportEnvironment,
+        ["feedbackIncludeLogs"] = _settings.FeedbackIncludeLogs,
         ["shaderPack"] = _settings.ShaderPack ?? ShaderPresets.DefaultPack,
     };
 
@@ -1093,11 +1094,11 @@ internal sealed class RpcHost : IDisposable
         return uid;
     }
 
-    // ── 日志上传 ──
+    // ── 日志上传 / 意见反馈 ──
     //
     // 替代整合包原来带的 Crash Assistant（倒计时关不掉的弹窗、传到 mclo.gs、盗版提示）。
     // 游戏异常退出时界面问一句，玩家点了才打包上传，存到自己账号下，玩家中心能看到。
-    // 也能在设置里随时手动传一份（比如卡顿、掉线这种没崩的问题）。
+    // 右下角的「意见反馈」走同一条路：玩家写几句，运行日志和电脑环境各自可选。
 
     private static readonly System.Text.RegularExpressions.Regex CrashReportId = new("^[2-9A-HJKMNP-Z]{10}$");
 
@@ -1106,18 +1107,31 @@ internal sealed class RpcHost : IDisposable
         if (string.IsNullOrEmpty(_accountToken))
             throw new InvalidOperationException("请先登录 muxi 账户，日志会存到你的账号下");
 
-        var includeEnvironment = p["includeEnvironment"] is JsonValue flag && flag.TryGetValue<bool>(out var on)
-            ? on : _settings.CrashReportEnvironment;
-        if (includeEnvironment != _settings.CrashReportEnvironment)
+        bool Flag(string key, bool fallback) =>
+            p[key] is JsonValue value && value.TryGetValue<bool>(out var on) ? on : fallback;
+
+        // 意见反馈（右下角）和崩溃上传共用这一条路；反馈可以选带不带运行日志，崩溃总是带
+        var feedback = p["kind"]?.GetValue<string>() is "feedback" or "manual";
+        var message = (p["message"]?.GetValue<string>() ?? "").Trim();
+        if (message.Length > 2000) message = message[..2000];
+        if (feedback && message.Length == 0)
+            throw new InvalidOperationException("写几句遇到的问题或建议吧");
+
+        var includeEnvironment = Flag("includeEnvironment", _settings.CrashReportEnvironment);
+        var includeLogs = !feedback || Flag("includeLogs", _settings.FeedbackIncludeLogs);
+        if (includeEnvironment != _settings.CrashReportEnvironment
+            || (feedback && includeLogs != _settings.FeedbackIncludeLogs))
         {
             _settings.CrashReportEnvironment = includeEnvironment;
+            if (feedback) _settings.FeedbackIncludeLogs = includeLogs;
             _settings.Save(_paths.SettingsFile);
         }
 
-        var crash = p["kind"]?.GetValue<string>() == "manual" ? null : _lastCrash;
+        var crash = feedback ? null : _lastCrash;
         var summary = new JsonObject
         {
-            ["kind"] = crash is null ? "manual" : "crash",
+            ["kind"] = feedback ? "feedback" : "crash",
+            ["message"] = message.Length > 0 ? message : null,
             ["reason"] = crash?.Hint,
             ["summary"] = crash?.Summary,
             ["exitCode"] = crash?.ExitCode,
@@ -1131,8 +1145,10 @@ internal sealed class RpcHost : IDisposable
         var environment = includeEnvironment
             ? CrashReport.CollectEnvironment(_settings, _lastJava?.Path, _lastJava?.Version)
             : null;
-        var bundle = await Task.Run(() => CrashReport.Build(_paths, crash, summary, environment)).ConfigureAwait(false);
-        Log.Info($"上传日志：{bundle.Length / 1024} KB，{(includeEnvironment ? "含" : "不含")}电脑环境");
+        var bundle = await Task.Run(() => CrashReport.Build(_paths, crash, summary, environment, includeLogs))
+            .ConfigureAwait(false);
+        Log.Info($"上传{(feedback ? "意见反馈" : "崩溃日志")}：{bundle.Length / 1024} KB，"
+                 + $"{(includeEnvironment ? "含" : "不含")}电脑环境，{(includeLogs ? "含" : "不含")}运行日志");
 
         var (status, json) = await PostLogsAsync(bundle).ConfigureAwait(false);
         if (status == HttpStatusCode.Unauthorized && await RefreshAccountAsync().ConfigureAwait(false))

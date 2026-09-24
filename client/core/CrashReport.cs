@@ -79,11 +79,13 @@ public static class CrashReport
 
     /// <summary>
     /// 打包。<paramref name="summary"/> 写进 report.json，服务端列表只看它；
-    /// <paramref name="environment"/> 为 null 表示玩家关掉了"附带电脑环境"。
+    /// <paramref name="environment"/> 为 null 表示玩家关掉了"附带电脑环境"；
+    /// <paramref name="includeLogs"/> 是意见反馈里的"附带最新一次运行日志"（崩溃上传总是带）。
     /// </summary>
-    public static byte[] Build(LauncherPaths paths, GameCrash? crash, JsonObject summary, JsonObject? environment)
+    public static byte[] Build(LauncherPaths paths, GameCrash? crash, JsonObject summary, JsonObject? environment,
+        bool includeLogs = true)
     {
-        var since = crash?.StartedAt ?? DateTimeOffset.Now.AddDays(-1);
+        var since = crash?.StartedAt ?? DateTimeOffset.Now;
         using var buffer = new MemoryStream();
         using (var zip = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
         {
@@ -100,15 +102,23 @@ public static class CrashReport
                 catch (Exception ex) { Log.Warn($"打包 {name} 失败：{ex.Message}"); }
             }
 
-            AddFile("crash-report.txt", FindCrashReport(paths, since), CrashFileCap);
-            AddFile("hs_err.log", FindJvmCrash(paths, since), CrashFileCap);
-            AddFile("latest.log", Path.Combine(paths.GameDir, "logs", "latest.log"), LatestLogCap);
-            AddFile("game-output.log", Path.Combine(paths.LogDir, "game.log"), OutputLogCap);
-            AddFile("launcher.log", Log.FilePath, LauncherLogCap);
+            if (crash is not null)
+            {
+                // 崩溃报告和 JVM 崩溃文件只认这次崩溃的；意见反馈不带，免得把几天前的旧崩溃塞进来
+                AddFile("crash-report.txt", FindCrashReport(paths, since), CrashFileCap);
+                AddFile("hs_err.log", FindJvmCrash(paths, since), CrashFileCap);
+            }
+            if (includeLogs)
+            {
+                AddFile("latest.log", Path.Combine(paths.GameDir, "logs", "latest.log"), LatestLogCap);
+                AddFile("game-output.log", Path.Combine(paths.LogDir, "game.log"), OutputLogCap);
+                AddFile("launcher.log", Log.FilePath, LauncherLogCap);
+            }
             if (environment is not null)
                 AddText("environment.json", Redact(environment.ToJsonString(new JsonSerializerOptions { WriteIndented = true })));
 
             summary["environmentIncluded"] = environment is not null;
+            summary["logsIncluded"] = includeLogs;
             AddText("report.json", summary.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         }
         return buffer.ToArray();

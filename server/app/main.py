@@ -560,6 +560,11 @@ def crash_report_download(report_id: str, account=Depends(current_player_account
     return FileResponse(path, media_type="application/zip", filename=f"crash-{report_id}.zip")
 
 
+@app.get("/api/v1/admin/crash-reports")
+def admin_crash_reports(limit: int = 100, _account=Depends(admin_account)) -> dict:
+    return {"reports": crash_store.recent(limit)}
+
+
 @app.delete("/api/v1/player/crash-reports/{report_id}")
 def delete_crash_report(report_id: str, account=Depends(current_player_account)) -> dict:
     if not crash_store.delete(account.uid, report_id):

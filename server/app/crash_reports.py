@@ -42,8 +42,12 @@ REPORT_ID = re.compile(r"^[2-9A-HJKMNP-Z]{10}$")
 _SUMMARY_FIELDS = {
     "kind": 16, "reason": 400, "summary": 600, "exitCode": 0, "uptimeSeconds": 0,
     "launcherVersion": 32, "packVersion": 32, "minecraftVersion": 32, "loaderVersion": 48,
-    "crashedAt": 40, "environmentIncluded": 0,
+    "crashedAt": 40, "environmentIncluded": 0, "logsIncluded": 0,
+    # 意见反馈里玩家写的话
+    "message": 2000,
 }
+# crash：游戏异常退出后上传；feedback：右下角「意见反馈」；manual：早期的手动上传
+KINDS = ("crash", "feedback", "manual")
 
 
 class CrashReportError(ValueError):
@@ -66,7 +70,7 @@ def _clean_summary(raw: dict) -> dict:
             summary[key] = int(value)
         elif isinstance(value, str) and limit > 0:
             summary[key] = value[:limit]
-    if summary.get("kind") not in ("crash", "manual"):
+    if summary.get("kind") not in KINDS:
         summary["kind"] = "crash"
     return summary
 
@@ -188,6 +192,14 @@ class CrashReportStore:
         with self.connect() as db:
             rows = db.execute(
                 "SELECT * FROM crash_reports WHERE uid=? ORDER BY created_at DESC, rowid DESC", (uid,)).fetchall()
+        return [self._row(row) for row in rows]
+
+    def recent(self, limit: int = 100) -> list[dict]:
+        """管理后台用：所有人最近的崩溃日志和反馈。"""
+        limit = max(1, min(int(limit), 500))
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT * FROM crash_reports ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,)).fetchall()
         return [self._row(row) for row in rows]
 
     def get(self, report_id: str) -> dict | None:

@@ -76,17 +76,23 @@
     main.className = 'pc-crash-main';
     const reason = document.createElement('span');
     reason.className = 'pc-crash-reason';
-    // 崩溃报告里摘出来的那句（Description + 异常）最具体，没有才用启动器的判断
-    reason.textContent = report.summary || report.reason || (report.kind === 'manual' ? '手动上传的日志' : '游戏异常退出');
-    reason.title = [report.summary, report.reason].filter(Boolean).join('\n') || reason.textContent;
+    // 反馈看玩家写的话；崩溃看崩溃报告里摘出来的那句（Description + 异常），没有才用启动器的判断
+    const isCrash = report.kind === 'crash';
+    reason.textContent = isCrash
+      ? report.summary || report.reason || '游戏异常退出'
+      : (report.message || '').split('\n')[0] || '意见反馈';
+    reason.title = (isCrash ? [report.summary, report.reason] : [report.message]).filter(Boolean).join('\n')
+      || reason.textContent;
     const meta = document.createElement('span');
     meta.className = 'pc-crash-meta';
     const parts = [
       ['编号 ', report.id],
+      [isCrash ? '崩溃日志' : '意见反馈'],
       [when(report.createdAt)],
       report.packVersion ? ['整合包 ' + report.packVersion] : null,
-      report.exitCode !== undefined && report.kind !== 'manual' ? ['退出码 ' + report.exitCode] : null,
-      [report.environmentIncluded ? '含电脑环境' : '不含电脑环境'],
+      isCrash && report.exitCode !== undefined ? ['退出码 ' + report.exitCode] : null,
+      report.environmentIncluded ? ['含电脑环境'] : null,
+      !isCrash && report.logsIncluded ? ['含运行日志'] : null,
       [size(report.size)],
     ].filter(Boolean);
     parts.forEach(([label, mono]) => {
@@ -142,6 +148,9 @@
     try { report = (await api(`/api/v1/player/crash-reports/${id}`)).report; }
     catch (error) { crashMessage(error.message, true); return; }
     $('crash-dialog-title').textContent = id;
+    $('crash-dialog-kicker').textContent = report.kind === 'crash' ? 'CRASH REPORT' : 'FEEDBACK';
+    $('crash-dialog-message').textContent = report.message || '';
+    $('crash-dialog-message').hidden = !report.message;
     const tabs = $('crash-files');
     tabs.textContent = '';
     const rank = name => { const i = FILE_ORDER.indexOf(name); return i < 0 ? FILE_ORDER.length : i; };
@@ -166,9 +175,10 @@
       reports.forEach(report => $('crash-list').append(crashItem(report, report.id === focus)));
       showEmpty();
       $('crash-section').hidden = false;
-      // 启动器上传完会带着 #crash-编号 打开这里，直接展开那一份
-      if (focus && reports.some(r => r.id === focus)) {
-        $('crash-' + focus).scrollIntoView({ block: 'center' });
+      // 启动器上传完会带着 #crash-编号 打开这里，直接展开那一份。
+      // 不在自己列表里的编号也试着打开：管理员从后台点过来看别人的；普通玩家会得到"没有"
+      if (focus) {
+        if (reports.some(r => r.id === focus)) $('crash-' + focus).scrollIntoView({ block: 'center' });
         openCrash(focus);
       }
     } catch (error) {

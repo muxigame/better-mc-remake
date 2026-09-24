@@ -126,6 +126,32 @@ class CrashReportApiTests(unittest.TestCase):
         self.assertEqual(404, self.client.delete(f"/api/v1/player/crash-reports/{report_id}",
                                                  headers=self.auth("admin")).status_code)
 
+    def test_feedback_with_text_only(self):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr("report.json", json.dumps({
+                "kind": "feedback", "message": "进服就卡在加载地形" + "很" * 3000,
+                "environmentIncluded": False, "logsIncluded": False}, ensure_ascii=False))
+        report = self.upload(data=buffer.getvalue()).json()["report"]
+        self.assertEqual("feedback", report["kind"])
+        self.assertTrue(report["message"].startswith("进服就卡在加载地形"))
+        self.assertEqual(2000, len(report["message"]))
+        self.assertFalse(report["logsIncluded"])
+        self.assertEqual(["report.json"], [f["name"] for f in report["files"]])
+
+    def test_admin_sees_everyones_recent_reports(self):
+        self.upload("alice")
+        self.upload("bob")
+        sessions = {"admin-cookie": self.accounts["admin"], "alice-cookie": self.accounts["alice"]}
+        with patch.object(main.web_auth_store, "session", side_effect=lambda raw: sessions.get(raw)):
+            self.assertEqual(401, self.client.get("/api/v1/admin/crash-reports").status_code)
+            self.client.cookies.set("bmc_session", "alice-cookie")
+            self.assertEqual(403, self.client.get("/api/v1/admin/crash-reports").status_code)
+            self.client.cookies.set("bmc_session", "admin-cookie")
+            reports = self.client.get("/api/v1/admin/crash-reports").json()["reports"]
+            self.client.cookies.clear()
+        self.assertEqual({10000, 10001}, {r["uid"] for r in reports})
+
     def test_long_logs_show_their_tail(self):
         big = "x" * VIEW_LIMIT_BYTES + "\nTHE END\n"
         report_id = self.upload(data=bundle(files={"latest.log": big})).json()["report"]["id"]
