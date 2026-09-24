@@ -47,7 +47,7 @@ public static class QuicTunnel
             "False" => "OpenSSL（随包自带，不看系统版本）",
             _ => "未知",
         };
-        return $"QUIC 可用，msquic {Reflect("MsQuicLibraryVersion") ?? "?"}，后端 {backend}";
+        return $"QUIC 可用，msquic {Reflect("MsQuicLibraryVersion") ?? "?"}，后端 {backend}，{MsQuicMtu.Status}";
     }
 
     // 这里读的是 .NET 自己的内部字段，裁剪分析看不懂；本方法只用于诊断，
@@ -158,8 +158,11 @@ public static class QuicTunnel
         {
             ListenEndPoint = new IPEndPoint(any, localPort),
             ApplicationProtocols = [new SslApplicationProtocol(Alpn)],
-            ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(
-                new QuicServerConnectionOptions
+            ConnectionOptionsCallback = (connection, _, _) =>
+            {
+                // 趁握手还没完成把包长锁住，服务器往玩家那个方向就靠这一处，见 MsQuicMtu
+                MsQuicMtu.Cap(connection);
+                return ValueTask.FromResult(new QuicServerConnectionOptions
                 {
                     DefaultStreamErrorCode = 0x0A,
                     DefaultCloseErrorCode = 0x0B,
@@ -178,7 +181,8 @@ public static class QuicTunnel
                         ServerCertificate = certificate,
                         ClientCertificateRequired = false,
                     },
-                }),
+                });
+            },
         };
         return await QuicListener.ListenAsync(options, ct).ConfigureAwait(false);
     }
@@ -209,6 +213,7 @@ public static class QuicTunnel
                 RemoteCertificateValidationCallback = (_, _, _, _) => true,
             },
         };
-        return await QuicConnection.ConnectAsync(options, ct).ConfigureAwait(false);
+        // 在握手启动之前锁住包长，见 MsQuicMtu.ConnectAsync
+        return await MsQuicMtu.ConnectAsync(options, ct).ConfigureAwait(false);
     }
 }

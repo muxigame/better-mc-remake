@@ -676,7 +676,11 @@ internal sealed class PunchService
             accept.CancelAfter(TimeSpan.FromSeconds(20));
             await using var connection = await listener.AcceptConnectionAsync(accept.Token)
                 .ConfigureAwait(false);
-            Program.Log($"P2P 连接已建立 {connection.RemoteEndPoint}");
+            // 包长锁没锁住要写进日志：没锁住的连接跑久了大包过不去，游戏会卡住而连接看着活着
+            Program.Log($"P2P 连接已建立 {connection.RemoteEndPoint}，" +
+                        (MsQuicMtu.Read(connection) is { } mtu
+                            ? mtu.Max == MsQuicMtu.Mtu ? $"包长锁定 {mtu.Max}" : $"包长 {mtu.Min}~{mtu.Max}（没锁住）"
+                            : "包长上限读不到"));
 
             while (!ct.IsCancellationRequested)
             {

@@ -65,6 +65,7 @@ internal static class SelfTest
         MuxStreams();
         NetworkRouteProxy().GetAwaiter().GetResult();
         LaunchWithoutRoute().GetAwaiter().GetResult();
+        QuicPacketSize().GetAwaiter().GetResult();
         InstallLifecycle().GetAwaiter().GetResult();
         PipelineCompletionMarker().GetAwaiter().GetResult();
         InstallerProcessLifetime().GetAwaiter().GetResult();
@@ -1481,6 +1482,98 @@ internal static class SelfTest
             agent.Stop();
             try { await agentLoop; } catch { }
         }
+    }
+
+    /// <summary>
+    /// QUIC 的包长上限，见 <see cref="MsQuicMtu"/>。
+    ///
+    /// 实测事故：家宽到服务端的一条 P2P，连接用了几十分钟后，1300 字节的数据秒到、1400 字节
+    /// 以上一个字节都过不来——QUIC 自己把包长探到了这条路过不去的大小，而且不往回退。
+    /// 小包照常来回，连接一直"活着"，只有游戏数据停住，Minecraft 30 秒后两头各报超时。
+    ///
+    /// 本机回环的 MTU 很大，不锁的话 QUIC 很快就会把包长探到 1500（UDP 载荷 1472）。
+    /// 所以这里在中间夹一个 UDP 转发器，数一数过去的包最大有多大。
+    /// </summary>
+    private static async Task QuicPacketSize()
+    {
+        Section("QUIC 包长上限");
+        if (!QuicTunnel.IsSupported)
+        {
+            Check("本机不支持 QUIC，跳过", true);
+            return;
+        }
+        Check("包长锁定可用", MsQuicMtu.Status.StartsWith("包长锁定"), MsQuicMtu.Status);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+        await using var listener = await QuicTunnel.ListenAsync(
+            0, QuicTunnel.SharedEphemeralCertificate, AddressFamily.InterNetwork, cts.Token);
+        var server = new IPEndPoint(IPAddress.Loopback, listener.LocalEndPoint.Port);
+        using var relay = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        var relayEnd = (IPEndPoint)relay.Client.LocalEndPoint!;
+        int toListener = 0, toConnector = 0;
+        var pump = Task.Run(async () =>
+        {
+            IPEndPoint? client = null;
+            try
+            {
+                while (!cts.IsCancellationRequested)
+                {
+                    var got = await relay.ReceiveAsync(cts.Token);
+                    if (got.RemoteEndPoint.Equals(server))
+                    {
+                        if (got.Buffer.Length > toConnector) toConnector = got.Buffer.Length;
+                        if (client is not null) await relay.SendAsync(got.Buffer, client, cts.Token);
+                    }
+                    else
+                    {
+                        if (got.Buffer.Length > toListener) toListener = got.Buffer.Length;
+                        client = got.RemoteEndPoint;
+                        await relay.SendAsync(got.Buffer, server, cts.Token);
+                    }
+                }
+            }
+            catch (Exception error) when (error is OperationCanceledException or SocketException
+                                              or ObjectDisposedException) { }
+        });
+
+        const int Total = 4 * 1024 * 1024, Upload = 2 * 1024 * 1024;
+        var accept = listener.AcceptConnectionAsync(cts.Token).AsTask();
+        await using var connection = await QuicTunnel.ConnectAsync(0, relayEnd, cts.Token);
+        await using var serverConnection = await accept;
+        // 给 QUIC 留出试探包长的时间：不锁的话这 2 秒里它已经探到 1500 了
+        await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
+        var serverSide = Task.Run(async () =>
+        {
+            await using var s = await serverConnection.AcceptInboundStreamAsync(cts.Token);
+            var upload = new byte[1 + Upload];
+            await s.ReadExactlyAsync(upload, cts.Token);
+            var chunk = new byte[64 * 1024];
+            for (var sent = 0; sent < Total; sent += chunk.Length) await s.WriteAsync(chunk, cts.Token);
+            s.CompleteWrites();
+        });
+        await using var stream = await connection.OpenOutboundStreamAsync(
+            System.Net.Quic.QuicStreamType.Bidirectional, cts.Token);
+        await stream.WriteAsync(new byte[1 + Upload], cts.Token);
+        var buffer = new byte[64 * 1024];
+        long received = 0;
+        int n;
+        while ((n = await stream.ReadAsync(buffer, cts.Token)) > 0) received += n;
+        await serverSide;
+        cts.Cancel();
+        try { await pump; } catch { }
+
+        var clientMtu = MsQuicMtu.Read(connection);
+        var serverMtu = MsQuicMtu.Read(serverConnection);
+        Check("发起侧连接的包长上限已锁定", clientMtu?.Max == MsQuicMtu.Mtu,
+            clientMtu is { } c ? $"{c.Min}~{c.Max}" : "(读不到)");
+        Check("监听侧连接的包长上限已锁定", serverMtu?.Max == MsQuicMtu.Mtu,
+            serverMtu is { } s2 ? $"{s2.Min}~{s2.Max}" : "(读不到)");
+        Check("4 MB 经 QUIC 传完", received == Total, received.ToString());
+        // 两个方向分开看：服务器往玩家靠监听侧锁，玩家往服务器靠发起侧锁，互相替代不了
+        Check($"监听侧发出的 UDP 包不超过 {MsQuicMtu.Mtu - 28} 字节",
+            toConnector > 0 && toConnector <= MsQuicMtu.Mtu - 28, $"{toConnector} 字节");
+        Check($"发起侧发出的 UDP 包不超过 {MsQuicMtu.Mtu - 28} 字节",
+            toListener > 0 && toListener <= MsQuicMtu.Mtu - 28, $"{toListener} 字节");
     }
 
     private const int AgentMcDown = 0, AgentMcUp = 1, AgentPathDrop = 2;

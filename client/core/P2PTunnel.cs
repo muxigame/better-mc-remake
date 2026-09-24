@@ -348,8 +348,20 @@ public sealed class P2PTunnel : IMuxiTunnel
         catch (OperationCanceledException) { throw; }
         var connection = await QuicTunnel.ConnectAsync(livePort, peer, ct).ConfigureAwait(false);
         timing.Mark("QUIC握手");
-        Log.Info($"P2P(UDP/QUIC) 隧道已建立 {peer}，本地端口 {livePort}");
+        Log.Info($"P2P(UDP/QUIC) 隧道已建立 {peer}，本地端口 {livePort}，{DescribeMtu(connection)}");
         return new P2PTunnel(connection, peer);
+    }
+
+    /// <summary>
+    /// 这条连接实际的包长上限。没锁住的连接跑久了可能大包过不去、只剩小包能走——
+    /// 游戏卡住而连接看着活着，见 MsQuicMtu。日志里写明，出事时一眼就能对上。
+    /// </summary>
+    internal static string DescribeMtu(System.Net.Quic.QuicConnection connection)
+    {
+        if (!OperatingSystem.IsWindows()) return "包长上限未知";
+        return MsQuicMtu.Read(connection) is { } mtu
+            ? mtu.Max == MsQuicMtu.Mtu ? $"包长锁定 {mtu.Max}" : $"包长 {mtu.Min}~{mtu.Max}（没锁住）"
+            : "包长上限读不到";
     }
 
     /// <summary>
