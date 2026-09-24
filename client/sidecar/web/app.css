@@ -508,6 +508,8 @@ input  { font-family: inherit; font-size: inherit; }
 .row-title { font-weight: 600; margin-bottom: 2px; }
 .row-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
 .row-control { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; }
+/* 行里的按钮不参与压缩、字不折行：左边文字（尤其是长路径）再长，也只能自己换行或截断 */
+.row-control > .mc-btn { flex: 0 0 auto; white-space: nowrap; }
 .row-control.wide { flex: 1 1 300px; }
 .row.danger .row-title { color: var(--gold); }
 
@@ -602,7 +604,20 @@ input.text:focus, input.num:focus, .memory-control input:focus { border-color: v
 .list-item:last-child { border-bottom: 0; }
 .list-item:hover { background: rgba(255, 255, 255, .04); }
 .list-item .li-main { flex: 1 1 auto; min-width: 0; }
-.list-item .li-title { font-size: 12px; }
+.list-item .li-title {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/*
+ * 列表行尾的按钮（Java 的「选择 / 使用中」）固定尺寸。
+ *
+ * 原先它是默认的 flex-shrink: 1 且允许折行：路径一长，按钮就被挤窄、「使用中」折成两行。
+ * 让左边的文字区去截断，按钮保持原样；最小宽度让「选择」和「使用中」两种状态一样宽，
+ * 一列按钮对得齐。
+ */
+.list-item > .mc-btn { flex: 0 0 auto; white-space: nowrap; min-width: 68px; }
 .list-item .li-sub {
   font-size: 10.5px;
   color: var(--muted);
@@ -621,6 +636,16 @@ input.text:focus, input.num:focus, .memory-control input:focus { border-color: v
   letter-spacing: .04em;
 }
 .badge.ok { background: rgba(74, 156, 45, .26); color: #9ede7c; }
+
+/* 可选内容：和「游戏」页同一套 .row + .switch，组名用 .list-head */
+.option-rows > .list-head:first-child { margin-top: 0; }
+/* 只剩一行名字：不留给说明的下边距，太长就截断而不是折行 */
+.option-rows .row-title {
+  margin-bottom: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .folder-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 4px; }
 

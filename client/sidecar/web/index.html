@@ -185,7 +185,7 @@
           <div class="row">
             <div class="row-text">
               <div class="row-title">当前使用</div>
-              <div class="row-desc mono" id="java-current">自动选择</div>
+              <div class="row-desc mono breakable" id="java-current">自动选择</div>
             </div>
             <div class="row-control">
               <button class="mc-btn mc-btn-small" id="btn-java-browse">浏览…</button>
@@ -245,7 +245,8 @@
 
         <!-- 可选内容 -->
         <section class="tab" data-tab="optional">
-          <div class="list" id="optional-list"><div class="list-empty">启动一次后才能看到可选内容</div></div>
+          <!-- 和「游戏」页同一套行 + 开关，由 renderOptional() 按组填充 -->
+          <div class="option-rows" id="optional-list"><div class="list-empty">启动一次后才能看到可选内容</div></div>
         </section>
 
         <!-- 高级 -->

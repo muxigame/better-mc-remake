@@ -480,6 +480,13 @@ function humanSize(bytes) {
   return (i === 0 ? v : v.toFixed(1)) + ' ' + units[i];
 }
 
+// packspec 里的 label 写成「名字（说明）」，列表里只留名字。
+// 只认全角括号：光影包的 label 是文件名，半角括号可能是文件名本身的一部分。
+function optionalName(label) {
+  const raw = String(label || '');
+  return raw.replace(/（[^）]*）?/g, '').trim() || raw;
+}
+
 function renderOptional(items, enabled) {
   optionalItems = items;
   const box = $('optional-list');
@@ -490,24 +497,33 @@ function renderOptional(items, enabled) {
     return;
   }
 
-  // 按组归拢，一组里的文件通常一起开关
+  // 按组归拢，一组里的文件通常一起开关。
+  //
+  // 样式和布局照搬「游戏」页：每项一行，左边只有名字，右边同一个 .switch 开关；
+  // 组名用和「已检测到的 Java」一样的小标题。两处看起来就是同一套设置，而不是
+  // 一张带原生复选框的文件清单。大小和路径不再逐项列，挤。
   const groups = {};
   items.forEach((it) => { (groups[it.group] = groups[it.group] || []).push(it); });
 
   Object.keys(groups).forEach((g) => {
     const head = document.createElement('div');
-    head.className = 'list-item';
-    head.style.background = 'rgba(0,0,0,.25)';
-    head.innerHTML = '<div class="li-main"><div class="li-title">' + escapeHtml(g)
-      + '</div><div class="li-sub">' + groups[g].length + ' 个可选包 · '
-      + humanSize(groups[g].reduce((a, b) => a + (b.size || 0), 0)) + '</div></div>';
+    head.className = 'list-head';
+    head.innerHTML = '<span>' + escapeHtml(g) + '</span><span>' + groups[g].length + ' 项 · '
+      + humanSize(groups[g].reduce((a, b) => a + (b.size || 0), 0)) + '</span>';
     box.appendChild(head);
 
     groups[g].forEach((it) => {
-      const row = document.createElement('label');
-      row.className = 'list-item';
-      row.style.cursor = 'pointer';
+      const row = document.createElement('div');
+      row.className = 'row';
 
+      const text = document.createElement('div');
+      text.className = 'row-text';
+      text.innerHTML = '<div class="row-title">' + escapeHtml(optionalName(it.label)) + '</div>';
+
+      const control = document.createElement('div');
+      control.className = 'row-control';
+      const sw = document.createElement('label');
+      sw.className = 'switch';
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.checked = typeof it.enabled === 'boolean'
@@ -515,19 +531,12 @@ function renderOptional(items, enabled) {
         : (it.paths || [it.path]).every((p) => enabled.indexOf(p) >= 0);
       cb.addEventListener('change', onOptionalToggle);
       cb.dataset.index = String(optionalItems.indexOf(it));
+      sw.appendChild(cb);
+      sw.appendChild(document.createElement('span'));
+      control.appendChild(sw);
 
-      const main = document.createElement('div');
-      main.className = 'li-main';
-      main.innerHTML = '<div class="li-title">' + escapeHtml(it.label) + '</div>'
-        + '<div class="li-sub">' + escapeHtml(it.path) + '</div>';
-
-      const size = document.createElement('span');
-      size.className = 'badge';
-      size.textContent = humanSize(it.size);
-
-      row.appendChild(cb);
-      row.appendChild(main);
-      row.appendChild(size);
+      row.appendChild(text);
+      row.appendChild(control);
       box.appendChild(row);
     });
   });
