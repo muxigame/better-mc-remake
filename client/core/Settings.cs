@@ -137,9 +137,14 @@ public sealed class LauncherSettings
     public const int AutoMemoryCapMb = 12288;
 
     /// <summary>
-    /// 自动内存：有条件就给 12G；内存小的机器先给系统留 4G，剩下的全给游戏，最少 4G。
-    /// 16G 及以上的机器都是 12G（Windows 报的物理内存略少于标称，会落在 11.8G 左右），
-    /// 12G 的给 8G，8G 的给 4G。
+    /// 自动内存：有条件就给 12G；否则先留 6G，剩下的给游戏，最少 4G。
+    /// 18G 及以上的机器都是 12G，16G 的给 10G（Windows 报的物理内存略少于标称，约 9.8G），
+    /// 12G 的给 6G，8G 的给 4G。
+    ///
+    /// 留 6G 而不是 4G：堆之外游戏进程自己还要 2–4G（元空间、JIT 代码、显卡驱动和纹理缓冲、
+    /// WebDisplays 的 Chromium 子进程），Windows 和后台又要 3–4G。16G 的机器给 11.8G 的堆，
+    /// 堆一涨满（YSM 模型多时一定会）总量就超过物理内存开始换页，比堆小一点卡得多。
+    /// 页面文件不能算：G1 每轮回收都要碰遍整个堆，换出去的页全得从硬盘读回来。
     /// 405 个模组的包低于 4G 基本必崩；8G 装不下服务器上 1400 多个 YSM 模型——
     /// 加载到七八百个时堆就满了，G1 只剩整堆回收，游戏一停几秒、平均 1 帧。
     ///
@@ -169,5 +174,5 @@ public sealed class LauncherSettings
     }
 
     /// <summary>自动挡按物理内存算出的堆（还没套整合包下限和物理上限）。</summary>
-    public static long AutoMemoryMb(long totalMb) => Math.Clamp(totalMb - 4096, 4096, AutoMemoryCapMb);
+    public static long AutoMemoryMb(long totalMb) => Math.Clamp(totalMb - 6144, 4096, AutoMemoryCapMb);
 }

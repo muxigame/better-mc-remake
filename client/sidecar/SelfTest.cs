@@ -710,14 +710,15 @@ internal static class SelfTest
             var noLimits = new LauncherSettings { MaxMemoryMb = 999999 }.EffectiveMaxMemoryMb();
             Check("手填再大也要给系统留余量", noLimits <= physical, $"{noLimits} MB / 物理 {total} MB");
 
-            // 自动挡：有条件就 12G，内存小的先给系统留 4G，最少 4G
+            // 自动挡：有条件就 12G，否则先留 6G 给系统和游戏的堆外内存，最少 4G
             var auto = new LauncherSettings().EffectiveMaxMemoryMb(limits);
             Check("自动挡落在 12G 以内", auto >= 3000 && auto <= LauncherSettings.AutoMemoryCapMb && auto <= physical,
                 $"{auto} MB / 物理 {total} MB");
             Check("32G 的机器给 12G", LauncherSettings.AutoMemoryMb(32 * 1024) == 12288);
-            Check("16G 的机器给 12G", LauncherSettings.AutoMemoryMb(16 * 1024) == 12288);
-            Check("Windows 报 15.8G 的 16G 机器给 11.8G", LauncherSettings.AutoMemoryMb(16200) == 12104);
-            Check("12G 的机器给 8G，给系统留 4G", LauncherSettings.AutoMemoryMb(12 * 1024) == 8192);
+            Check("24G 的机器给 12G", LauncherSettings.AutoMemoryMb(24 * 1024) == 12288);
+            Check("16G 的机器给 10G，留 6G", LauncherSettings.AutoMemoryMb(16 * 1024) == 10240);
+            Check("Windows 报 15.8G 的 16G 机器给 9.8G", LauncherSettings.AutoMemoryMb(16200) == 10056);
+            Check("12G 的机器给 6G", LauncherSettings.AutoMemoryMb(12 * 1024) == 6144);
             Check("8G 的机器最少也给 4G", LauncherSettings.AutoMemoryMb(8 * 1024) == 4096);
 
             // 启动时把这次的堆写回 maximumClient，其余键原样保留
