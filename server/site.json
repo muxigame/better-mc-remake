@@ -8,9 +8,9 @@
   "filesPrefix": "files",
   "mirrorBaseUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/mirror",
   "announcement": {
-    "id": "mainline-tasks-2026-09-27",
-    "title": "1.4.8 整合包与主线任务更新",
-    "body": "F8 任务界面新增「主线任务」页签，当前任务为「请联系服务器管理员联系夏意」。每日任务、登录核验和昵称显示保持不变。请先更新整合包，再重新启动游戏后进入服务器。",
+    "id": "compact-task-hud-2026-09-27",
+    "title": "1.4.9 任务 HUD 更新",
+    "body": "任务 HUD 已缩小并改为紧凑常驻布局，现在会同时显示全部每日任务、详情和主线任务。打开聊天或背包后可悬浮查看完整说明，并直接领取或刷新；经验等级奖励改用附魔之瓶图标。请更新整合包并重启游戏。",
     "level": "highlight",
     "expiresAt": "2026-10-04T00:00:00Z"
   }
