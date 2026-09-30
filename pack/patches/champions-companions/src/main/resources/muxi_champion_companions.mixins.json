@@ -1,0 +1,25 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.muxigame.championcompanions.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "OwnedEligibilityMixin",
+    "OneRollMixin",
+    "TierDistributionMixin",
+    "TierBenefitsMixin",
+    "HastyHalfMixin",
+    "LivelyHalfMixin",
+    "ReflectiveHalfMixin",
+    "DampeningHalfMixin",
+    "AdaptableHalfMixin",
+    "ShieldingHalfMixin",
+    "KnockingHalfMixin",
+    "ParalyzingHalfMixin",
+    "WoundingHalfMixin",
+    "ReflectiveOwnerSafetyMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

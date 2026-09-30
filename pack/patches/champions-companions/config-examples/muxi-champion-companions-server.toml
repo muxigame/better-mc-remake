@@ -1,0 +1,6 @@
+[spawning]
+    # Owned Touhou maids and modular golems only: 33% chance, once per saved entity.
+    # Natural champion spawning is still configured separately in champions-server.toml.
+    # Owned companions use tier weights 50/25/15/7/3; natural entities keep 50/25/15/8/2.
+    # Beacon protection and half-strength benefits are unchanged.
+    ownedCompanionChance = 0.33

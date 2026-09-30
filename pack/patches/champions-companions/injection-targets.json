@@ -1,0 +1,59 @@
+[
+  {
+    "target": "top.theillusivec4.champions.common.champion.ChampionBuilder",
+    "method": "lambda$applyModifiers$17",
+    "invoke": "Lnet/minecraft/world/entity/ai/attributes/AttributeModifier;<init>(Lnet/minecraft/resources/ResourceLocation;DLnet/minecraft/world/entity/ai/attributes/AttributeModifier$Operation;)V"
+  },
+  {
+    "target": "top.theillusivec4.champions.common.affix.builtin.spawn_tick_affixes.HastyAffix",
+    "method": "applySpeed",
+    "invoke": "Lnet/minecraft/world/entity/ai/attributes/AttributeModifier;<init>(Lnet/minecraft/resources/ResourceLocation;DLnet/minecraft/world/entity/ai/attributes/AttributeModifier$Operation;)V"
+  },
+  {
+    "target": "top.theillusivec4.champions.common.affix.builtin.LivelyAffix",
+    "method": "lambda$registerHandlers$1",
+    "invoke": "Lnet/minecraft/world/entity/LivingEntity;heal(F)V"
+  },
+  {
+    "target": "top.theillusivec4.champions.common.affix.builtin.ReflectiveAffix",
+    "method": "lambda$registerHandlers$0",
+    "invoke": "Lnet/minecraft/world/entity/LivingEntity;hurt(Lnet/minecraft/world/damagesource/DamageSource;F)Z"
+  },
+  {
+    "target": "top.theillusivec4.champions.common.affix.builtin.StatelessCombatAffixes.DampeningAffix",
+    "method": "lambda$registerHandlers$0",
+    "invoke": "Ltop/theillusivec4/champions/api/affix/handler/event/HurtEvent;setDamage(F)V"
+  },
+  {
+    "target": "top.theillusivec4.champions.common.affix.builtin.AdaptableAffix",
+    "method": "lambda$registerHandlers$0",
+    "invoke": "Ltop/theillusivec4/champions/api/affix/handler/event/HurtEvent;setDamage(F)V"
+  },
+  {
+    "target": "top.theillusivec4.champions.common.affix.builtin.ShieldingAffix",
+    "method": "lambda$registerHandlers$1",
+    "invoke": "Ltop/theillusivec4/champions/api/affix/handler/event/HurtEvent;cancel()V"
+  },
+  {
+    "target": "top.theillusivec4.champions.common.affix.builtin.StatelessCombatAffixes.KnockingAffix",
+    "method": "applyKnockback",
+    "invoke": "Lnet/minecraft/world/entity/LivingEntity;knockback(DDD)V"
+  },
+  {
+    "target": "top.theillusivec4.champions.common.affix.builtin.StatelessCombatAffixes.KnockingAffix",
+    "method": "applyKnockback",
+    "invoke": "Lnet/minecraft/world/effect/MobEffectInstance;<init>(Lnet/minecraft/core/Holder;II)V"
+  },
+  {
+    "target": "top.theillusivec4.champions.common.affix.builtin.StatelessCombatAffixes.ParalyzingAffix",
+    "method": "lambda$registerHandlers$0"
+  },
+  {
+    "target": "top.theillusivec4.champions.common.affix.builtin.StatelessCombatAffixes.WoundingAffix",
+    "method": "lambda$registerHandlers$2"
+  },
+  {
+    "target": "top.theillusivec4.champions.common.affix.builtin.ReflectiveAffix",
+    "method": "lambda$registerHandlers$0"
+  }
+]
