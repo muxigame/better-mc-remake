@@ -7,6 +7,9 @@
 /pack/archive/
 /pack/staging/
 /pack/.hashcache-*.json
+/pack/packspec.json.bak-*
+/pack/patches/**/build/
+/.muxi-game-core-backups/
 /BMC5Pack/
 /BMC5Server/
 /BMC5Server.zip

@@ -10,6 +10,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$syncCheck = Join-Path $PSScriptRoot 'verify-server-client-sync.ps1'
+if (Test-Path -LiteralPath $syncCheck -PathType Leaf) {
+    & $syncCheck
+}
+
 function Import-DotEnv([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
     foreach ($line in Get-Content -LiteralPath $Path) {
