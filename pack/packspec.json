@@ -116,6 +116,10 @@
     {
       "glob": "versions/**",
       "policy": "Managed"
+    },
+    {
+      "glob": "tacz/muxi-phoenix-nine-private-20261001.zip",
+      "policy": "Managed"
     }
   ],
   "exclude": [
@@ -285,7 +289,7 @@
       "seedKeys": {
         "embeddiumextras/performance/distanceCulling/tileEntities/cullingMaxDistanceX": 4096,
         "embeddiumextras/performance/distanceCulling/entities/cullingMaxDistanceX": 9216,
-        "embeddiumextras/general/fpsDisplay": "ADVANCED"
+        "embeddiumextras/general/fpsDisplay": "OFF"
       },
       "createIfMissing": false
     },

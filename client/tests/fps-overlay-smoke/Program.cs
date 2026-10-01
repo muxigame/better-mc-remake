@@ -1,0 +1,27 @@
+using System.Text.Json;
+using BatterMC.Core;
+using BatterMC.Protocol;
+var audit=Path.GetFullPath(args.Length>0?args[0]:"fps-overlay-fixtures");
+var specPath=Path.GetFullPath(args.Length>1?args[1]:"../../../pack/packspec.json");
+using var json=JsonDocument.Parse(File.ReadAllText(specPath));
+var el=json.RootElement.GetProperty("overlays").EnumerateArray().Single(e=>e.GetProperty("path").GetString()=="config/sodiumextras-client.toml");
+var spec=JsonSerializer.Deserialize<ConfigOverlaySpec>(el.GetRawText(),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})!;
+const string key="embeddiumextras/general/fpsDisplay";
+void Check(bool pass,string name){if(!pass)throw new Exception(name);Console.WriteLine("PASS "+name);}
+Check(spec.SeedKeys[key].GetString()=="OFF" && !spec.Enforce.ContainsKey(key),"FPS uses one-time OFF seed, not permanent enforcement");
+var fixture=Path.Combine(audit,"fixtures");Directory.CreateDirectory(fixture);
+var paths=LauncherPaths.At(fixture);var file=paths.ResolveGameFile(spec.Path);Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+var original="# preserve comment\n[embeddiumextras.general]\nfullscreen = \"BORDERLESS\"\n\"fpsDisplay\" = \"ADVANCED\"\nfpsDisplayGravity = \"LEFT\"\nfpsDisplaySystem = \"OFF\"\n[embeddiumextras.performance.distanceCulling.tileEntities]\ncullingMaxDistanceX = 4096\n[embeddiumextras.performance.distanceCulling.entities]\ncullingMaxDistanceX = 9216\n";
+File.WriteAllText(file,original);
+var options=paths.ResolveGameFile("options.txt");var optionsText="fullscreen:true\nfullscreenResolution:1920x1080@60:24\nmaxFps:120\n";File.WriteAllText(options,optionsText);
+var state=new LocalState();foreach(var(k,v) in spec.SeedKeys)state.MarkOverlaySeed(spec.Path,k,k==key?"\"ADVANCED\"":v.GetRawText());
+var r=ConfigOverlay.Apply(spec,paths,state);var migrated=File.ReadAllText(file);
+Check(r.Error==null && r.Changed==1 && migrated==original.Replace("\"ADVANCED\"","\"OFF\""),"prior ADVANCED seed migrates exactly FPS key, preserving other TOML settings/comments");
+Check(File.ReadAllText(options)==optionsText,"actual fullscreen/resolution/maxFps options are untouched");
+state.Save(paths.StateFile);state=LocalState.Load(paths.StateFile);
+Check(!state.NeedsOverlaySeed(spec.Path,key,"\"OFF\""),"OFF seed migration persists across state reload");
+r=ConfigOverlay.Apply(spec,paths,state);Check(r.Changed==0 && File.ReadAllText(file)==migrated,"repeated launch is idempotent");
+File.WriteAllText(file,migrated.Replace("\"OFF\"","\"ADVANCED\"",StringComparison.Ordinal));var playerChoice=File.ReadAllText(file);
+r=ConfigOverlay.Apply(spec,paths,state);Check(r.Changed==0 && File.ReadAllText(file)==playerChoice,"later player re-enable is preserved after migration");
+File.WriteAllText(file,original);r=ConfigOverlay.Apply(spec,paths,new LocalState());Check(r.Error==null && File.ReadAllText(file).Contains("\"fpsDisplay\" = \"OFF\""),"legacy/unrecorded installation also gets OFF default");
+Console.WriteLine("All FPS migration checks passed; only isolated fixtures were modified.");

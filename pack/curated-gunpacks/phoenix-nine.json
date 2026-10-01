@@ -1,0 +1,27 @@
+{
+  "packPath": "tacz/muxi-phoenix-nine-private-20261001.zip",
+  "sha256": "cd0206c5c6e6f492e3f85afa5d269a9f861ea4fd77cbc5708ca8d521fd358fc5",
+  "bytes": 1747156,
+  "gunIds": [
+    "ra1k:fn57",
+    "ra1k:hk_mp5a5_bolt",
+    "ra1k:mp155",
+    "ra1k:nl545",
+    "ra1k:nl545_fde",
+    "ra1k:rhino19",
+    "ra1k:rsh12",
+    "ra1k:vssk",
+    "ra1k:vulkan"
+  ],
+  "recipesIntentionallyAbsent": [
+    "ra1k:hk_mp5a5_bolt",
+    "ra1k:vulkan"
+  ],
+  "gunRecipes": 7,
+  "ammoRecipes": 1,
+  "sourceTask": "task-11/review/phoenix",
+  "sharedDaffasAnimationPermissionUserAssumption": true,
+  "permissionIndependentlyVerified": false,
+  "additionalUnselectedGunsIncluded": false,
+  "newEconomyRecipesAdded": false
+}

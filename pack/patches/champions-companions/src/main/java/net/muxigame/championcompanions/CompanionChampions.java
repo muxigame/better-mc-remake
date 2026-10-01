@@ -59,10 +59,11 @@ public final class CompanionChampions {
         // Owner assignment can happen AFTER EntityJoinLevelEvent (altar/taming/assembly).
         // No world scans, and only one roll per saved entity, not a new roll each second.
         var entity = event.getEntity();
-        if (entity.tickCount % 20 != 0 || !(entity instanceof LivingEntity living)
+        if (!(entity instanceof LivingEntity living)
                 || !(entity.level() instanceof ServerLevel level) || !living.isAlive()
                 || !CompanionRules.isOwned(entity)) return;
         if (maidLoaded && MaidFilmBridge.restoreIfPending(living)) return;
+        if (entity.tickCount % 20 != 0) return;
         var existing = ChampionsApi.get().getChampion(living);
         if (existing.isPresent()) {
             // Old saves can still contain pre-restriction, full-strength champions.
