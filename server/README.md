@@ -1,5 +1,25 @@
 # Batter MC Remake 官网与 API
 
+## Terminal player-center login (not deployed)
+
+The final page is `https://mc.muxigame.com/account.html`. Optional
+`BMC_TERMINAL_SSO_ENABLED=1` enables the native handoff page at
+`/api/v1/auth/terminal`; its default is disabled. The same-origin JSON POST
+`/api/v1/auth/terminal/exchange` requires an exact configured `BMC_PUBLIC_URL`
+Origin, a custom action header and a PKCE-bound one-use ticket. It redeems that
+ticket with muxi-auth using the existing confidential OIDC client, rotates the
+normal host-only HttpOnly `bmc_session`, and returns only `/account.html`.
+
+No browser/packet UID, role or return target is accepted. Platform role comes from
+authenticated account claims; game OP/ban state cannot grant or deny platform
+login. Website logout removes `bmc_session`; an established website session keeps
+the normal 14-day lifetime independently of game disconnect. Failed/expired
+handoffs use the existing platform authorization entry.
+
+Both auth/platform feature gates, the updated web image (including Nginx's internal
+handoff page), launcher and client/server mods must be reviewed before rollout.
+This isolated implementation does not modify deployment configuration or publish.
+
 FastAPI 后端 + 无构建步骤的 HTML/CSS/JS 官网。Python 提供官网、OIDC 登录接入和管理 API；统一账户、注册、邮箱验证与密码都由独立的 muxi 账户 服务负责。客户端安装包与整合包文件直接从阿里云 OSS 下载。
 
 ```powershell
