@@ -593,14 +593,15 @@ internal sealed class RpcHost : IDisposable
                     Log.Info($"游戏里切换了全屏，启动器跟着改为{(fullscreenNow ? "全屏" : "窗口")}启动");
                 }
 
-                // 退出码不是 0 算崩；是 0 但这次运行写出了崩溃报告也算——模组加载失败时
-                // NeoForge 会显示错误页，玩家关掉它时进程可能是正常退出的。
-                // 玩家在启动器里点"中止游戏"走的是取消，到不了这里，不会弹窗。
-                var crashFile = CrashReport.FindCrashReport(_paths, startedAt);
-                var crashed = result.ExitCode != 0 || crashFile is not null;
-                var hint = result.CrashHint ?? (crashed ? "游戏崩溃了，已生成崩溃报告。" : null);
-                var summary = crashed ? CrashReport.Summarize(crashFile) : null;
-                if (crashed) _lastCrash = new GameCrash(result.ExitCode, hint, summary, startedAt, DateTimeOffset.Now);
+                // GameLauncher 在进程启动前先拍崩溃文件基线，并结合正常 Stopping! 标记统一判定。
+                // 这里不要再用时间戳重新猜一次，否则上一轮残留报告会把正常关闭误判成崩溃。
+                var crashed = result.Crashed;
+                var hint = result.CrashHint ?? (crashed ? "游戏异常退出。" : null);
+                var summary = crashed ? CrashReport.Summarize(result.CrashReportFile ?? result.JvmCrashFile) : null;
+                if (crashed)
+                    _lastCrash = new GameCrash(
+                        result.ExitCode, hint, summary, startedAt, DateTimeOffset.Now,
+                        result.CrashReportFile, result.JvmCrashFile);
                 Emit("gameExited", new JsonObject
                 {
                     ["code"] = result.ExitCode,

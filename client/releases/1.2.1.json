@@ -1,0 +1,21 @@
+{
+  "version": "1.2.1",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BMC [Remake] setup.exe",
+  "signatureFile": "BMC [Remake] setup.exe.sig",
+  "sha256": "0d8d7efa032fe3955e30707779c6c8c06361205aa2ed28fb390933cbc96537db",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3Zk9sNHN5b1BZSnFFRFZRUXNFb3VyUVhzMmxxM2JrbmFpWnNIR1NUamh3dzZUTjZMNVlPRm1VVEVhUmhBeFRLdlZZWmFwS2I2SnBGSVJSM1ZleVpaK0FrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwODI1MTcxCWZpbGU6Qk1DIFtSZW1ha2VdXzEuMi4xX3g2NC1zZXR1cC5leGUJdmVyc2lvbjoxLjIuMQo0N3VzSUJkMWtrcFFocU1PVlFXdmo5OEhxeldtcnFlczdPajJnTmJRRDFNK0xvanljQk95eHZQeHVGQi9aSzRWNHgzMVg5Y1RHU3RuMXliSEdlLzlBQT09Cg==",
+  "size": 34066200,
+  "pubDate": "2026-10-01T03:26:20.113288+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.2.1/BMC [Remake] setup.exe",
+  "signatureObject": "bmc/client/releases/1.2.1/BMC [Remake] setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.2.1/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.2.1/BMC%20%5BRemake%5D%20setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.2.1/BMC%20%5BRemake%5D%20setup.exe.sig",
+  "notes": "正式开服版本，功能与 1.1.39 相同。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

@@ -1,0 +1,21 @@
+{
+  "version": "1.2.2",
+  "architecture": "tauri-2-with-dotnet-sidecar",
+  "installer": "BMC [Remake] setup.exe",
+  "signatureFile": "BMC [Remake] setup.exe.sig",
+  "sha256": "a8b5e96a13b823dbf65ac47cca6b77f829942b2335fca26169cde29657b24d19",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbHpIRUlkR3Z3ZkQrdkxDWHo5L0RnOGxFYkpVamF4ZUVINk84U2ZMeFBuVnNnTEw2LzR5NVBJeXAwRG15dWhEdldmcW9OWk5vclYybm5lN1Zoa3pnYmg5OWJDVGdpNWdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwODI3Nzc4CWZpbGU6Qk1DIFtSZW1ha2VdXzEuMi4yX3g2NC1zZXR1cC5leGUJdmVyc2lvbjoxLjIuMgo4OENEempaK0l4VURqR2x1aWJ3bUJQR1I4UzUvTEphUWRtNkVleFh3YWZEdEhHVGRtNy9rZS9ITFBJR1A2dFRuZ0RnN1VsQy9BYTRKUGlYU3dNaC9CUT09Cg==",
+  "size": 34065577,
+  "pubDate": "2026-10-01T04:09:45.2379962+00:00",
+  "updaterCompatible": true,
+  "ossObject": "bmc/client/releases/1.2.2/BMC [Remake] setup.exe",
+  "signatureObject": "bmc/client/releases/1.2.2/BMC [Remake] setup.exe.sig",
+  "releaseObject": "bmc/client/releases/1.2.2/release.json",
+  "url": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.2.2/BMC%20%5BRemake%5D%20setup.exe",
+  "signatureUrl": "https://muxigame-prod-static-cn.oss-cn-hangzhou.aliyuncs.com/bmc/client/releases/1.2.2/BMC%20%5BRemake%5D%20setup.exe.sig",
+  "notes": "修复自动更新完成后仍显示旧客户端版本的问题。\n修复正常关闭 Minecraft 时被启动器误判为崩溃的问题。\n重新走完整签名、自检与发布流程，确保启动器、sidecar 与更新元数据版本一致。",
+  "minSupportedVersion": null,
+  "blockedVersions": [],
+  "updateReason": "",
+  "mandatory": false
+}

@@ -4,7 +4,14 @@ using BatterMC.Protocol;
 
 namespace BatterMC.Core;
 
-public sealed record LaunchResult(int ExitCode, string LogFile, string? CrashHint);
+public sealed record LaunchResult(
+    int ExitCode,
+    string LogFile,
+    string? CrashHint,
+    bool Crashed,
+    string? CrashReportFile,
+    string? JvmCrashFile,
+    bool CleanShutdown);
 
 public sealed class GameLauncher
 {
@@ -135,6 +142,7 @@ public sealed class GameLauncher
 
         var sw = Stopwatch.StartNew();
         var startedAt = DateTimeOffset.Now;
+        var crashBaseline = CrashReport.CaptureBaseline(_paths);
         process.Start();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
@@ -158,10 +166,34 @@ public sealed class GameLauncher
         string[] tailLines;
         lock (tail) tailLines = tail.ToArray();
 
-        var crashReportWritten = CrashReport.FindCrashReport(_paths, startedAt) is not null;
-        return new LaunchResult(exit, gameLog,
-            exit == 0 ? null : DiagnoseCrash(exit, tailLines, sw.Elapsed, crashReportWritten));
+        var crashReport = CrashReport.FindNewCrashReport(_paths, crashBaseline);
+        var jvmCrash = CrashReport.FindNewJvmCrash(_paths, crashBaseline);
+        var cleanShutdown = IsCleanShutdown(tailLines);
+        var crashed = IsCrashExit(exit, cleanShutdown, crashReport is not null, jvmCrash is not null);
+        if (!crashed && exit != 0)
+            Log.Info($"游戏留下了正常停止标记；忽略退出码 {exit}，按正常关闭处理");
+
+        string? hint = null;
+        if (crashed)
+        {
+            hint = exit == 0
+                ? crashReport is not null
+                    ? "游戏崩溃了，已生成崩溃报告。"
+                    : "Java 运行时异常，已生成 JVM 错误日志。"
+                : DiagnoseCrash(exit, tailLines, sw.Elapsed, crashReport is not null);
+        }
+        return new LaunchResult(exit, gameLog, hint, crashed, crashReport, jvmCrash, cleanShutdown);
     }
+
+    public static bool IsCleanShutdown(IReadOnlyList<string> tail)
+        => tail.Any(line =>
+            line.Contains("Stopping!", StringComparison.Ordinal)
+            && (line.Contains("net.minecraft.client.Minecraft", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("minecraft/Minecraft", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("[Render thread/INFO]", StringComparison.OrdinalIgnoreCase)));
+
+    public static bool IsCrashExit(int exitCode, bool cleanShutdown, bool crashReportWritten, bool jvmCrashWritten)
+        => crashReportWritten || jvmCrashWritten || (exitCode != 0 && !cleanShutdown);
 
     /// <summary>
     /// 在启动前告诉 Windows 这次要用哪块显卡。

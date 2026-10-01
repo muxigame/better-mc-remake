@@ -73,6 +73,31 @@ foreach ($path in @($installer,$signatureFile,$metadata)) {
 $meta = Get-Content -LiteralPath $metadata -Raw -Encoding UTF8 | ConvertFrom-Json
 $version = [string]$meta.version
 if ($version -notmatch '^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9._-]+)?$') { throw "客户端版本号不合法：$version" }
+
+# 发布时再做一遍“源码版本 → sidecar → Tauri 主程序 → release metadata”的闭环校验。
+# build.ps1 已经会检查一次，但发布脚本必须能独立挡住“手工 npm build / 复用旧 artifacts”
+# 这类错误。历史上出现过安装包提示更新成功，重启后界面仍显示旧版本，根因就是
+# NSIS 包里的 sidecar 还是上一版。
+$packageJson = Join-Path $workspaceRoot 'client\tauri\package.json'
+$sourceVersion = [string](Get-Content -LiteralPath $packageJson -Raw -Encoding UTF8 | ConvertFrom-Json).version
+if ($sourceVersion -ne $version) {
+    throw "发布产物版本 $version 与源码版本 $sourceVersion 不一致；请重新执行 scripts\build.ps1 -Target client -SelfTest"
+}
+function Get-ArtifactVersion([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "缺少版本核对产物：$Path" }
+    $value = (Get-Item -LiteralPath $Path).VersionInfo.ProductVersion
+    if (-not $value) { throw "产物没有 ProductVersion：$Path" }
+    return (($value -split '\+')[0]).Trim()
+}
+$sidecarVersion = Get-ArtifactVersion (Join-Path $OutDir 'client\battermc-backend.exe')
+$tauriVersion = Get-ArtifactVersion (Join-Path $OutDir 'client\BMC [Remake].exe')
+if ($sidecarVersion -ne $version) {
+    throw "sidecar 版本 $sidecarVersion 与发布版本 $version 不一致；拒绝发布旧 sidecar"
+}
+if ($tauriVersion -ne $version) {
+    throw "Tauri 主程序版本 $tauriVersion 与发布版本 $version 不一致；拒绝发布"
+}
+
 # 方括号是 PowerShell 通配符，产物名里有，必须走 -LiteralPath
 $sha = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($sha -ne [string]$meta.sha256) { throw "安装包 SHA-256 与 launcher-release.json 不一致" }

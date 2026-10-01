@@ -934,21 +934,42 @@ internal static class SelfTest
             Directory.CreateDirectory(reports);
             var old = Path.Combine(reports, "crash-2020-01-01_00.00.00-client.txt");
             File.WriteAllText(old, "Description: 上一次的崩溃");
-            File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddDays(-2));
-            File.WriteAllText(Path.Combine(reports, "crash-now-client.txt"),
+            // 故意把旧报告时间设得很新：基线机制不能把“上一轮刚崩、马上重开”误判成这轮崩溃。
+            File.SetLastWriteTimeUtc(old, DateTime.UtcNow);
+            var baseline = CrashReport.CaptureBaseline(paths);
+            Check("基线里的旧报告不会污染下一次正常退出",
+                CrashReport.FindNewCrashReport(paths, baseline) is null);
+
+            var currentReport = Path.Combine(reports, "crash-now-client.txt");
+            File.WriteAllText(currentReport,
                 "---- Minecraft Crash Report ----\nDescription: Rendering overlay\n\njava.lang.NullPointerException: boom\n\tat x.y(Z.java:1)\n");
             Directory.CreateDirectory(Path.Combine(paths.GameDir, "logs"));
             var latest = Path.Combine(paths.GameDir, "logs", "latest.log");
             File.WriteAllText(latest, new string('x', 100) + "\nLAST LINE\n");
 
             Check("只认这次运行的崩溃报告",
-                CrashReport.FindCrashReport(paths, started)?.EndsWith("crash-now-client.txt") == true);
-            var summary = CrashReport.Summarize(CrashReport.FindCrashReport(paths, started));
+                CrashReport.FindNewCrashReport(paths, baseline)?.EndsWith("crash-now-client.txt") == true);
+            var summary = CrashReport.Summarize(CrashReport.FindNewCrashReport(paths, baseline));
             Check("摘要取 Description 和第一行异常", summary == "Rendering overlay — java.lang.NullPointerException: boom", summary);
             var tail = CrashReport.ReadTail(latest, 20);
             Check("长日志只留尾部", tail.StartsWith("[前面") && tail.EndsWith("LAST LINE\n"), tail);
 
-            var crash = new GameCrash(-1, "内存不足", summary, started, DateTimeOffset.Now);
+            var jvmBaseline = CrashReport.CaptureBaseline(paths);
+            var jvmCrash = Path.Combine(paths.CrashDir, "hs_err_test.log");
+            File.WriteAllText(jvmCrash, "fatal error");
+            Check("只认这次运行新生成的 JVM 崩溃文件",
+                CrashReport.FindNewJvmCrash(paths, jvmBaseline)?.EndsWith("hs_err_test.log") == true);
+
+            Check("正常退出码不算崩溃", !GameLauncher.IsCrashExit(0, false, false, false));
+            Check("正常停止标记可覆盖异常退出码", !GameLauncher.IsCrashExit(-1, true, false, false));
+            Check("没有正常停止标记的非零退出仍算崩溃", GameLauncher.IsCrashExit(-1, false, false, false));
+            Check("正常停止时写了崩溃报告仍算崩溃", GameLauncher.IsCrashExit(0, true, true, false));
+            Check("识别客户端正常 Stopping 标记",
+                GameLauncher.IsCleanShutdown(["[Render thread/INFO] [net.minecraft.client.Minecraft/]: Stopping!"]));
+            Check("普通错误日志不误认成正常关闭",
+                !GameLauncher.IsCleanShutdown(["[Render thread/ERROR] [mod/X]: boom"]));
+
+            var crash = new GameCrash(-1, "内存不足", summary, started, DateTimeOffset.Now, currentReport, jvmCrash);
             System.IO.Compression.ZipArchive Open(byte[] bytes) => new(new MemoryStream(bytes));
             var withEnv = CrashReport.Build(paths, crash, new System.Text.Json.Nodes.JsonObject { ["kind"] = "crash" },
                 CrashReport.CollectEnvironment(new LauncherSettings(), "C:\\Users\\张三\\java.exe", "21.0.5"));

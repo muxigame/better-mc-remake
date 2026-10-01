@@ -9,7 +9,19 @@ using Microsoft.Win32;
 namespace BatterMC.Core;
 
 /// <summary>一次异常退出。启动器在游戏退出时记下来，玩家点"上传日志"时再打包。</summary>
-public sealed record GameCrash(int ExitCode, string? Hint, string? Summary, DateTimeOffset StartedAt, DateTimeOffset ExitedAt);
+public sealed record GameCrash(
+    int ExitCode,
+    string? Hint,
+    string? Summary,
+    DateTimeOffset StartedAt,
+    DateTimeOffset ExitedAt,
+    string? CrashReportPath = null,
+    string? JvmCrashPath = null);
+
+public sealed record CrashArtifactStamp(long LastWriteUtcTicks, long Length);
+public sealed record CrashArtifactBaseline(
+    IReadOnlyDictionary<string, CrashArtifactStamp> CrashReports,
+    IReadOnlyDictionary<string, CrashArtifactStamp> JvmCrashes);
 
 /// <summary>
 /// 崩溃日志打包，替代整合包原来带的 Crash Assistant。
@@ -37,14 +49,63 @@ public static class CrashReport
     public static string? FindJvmCrash(LauncherPaths paths, DateTimeOffset since)
         => Newest(paths.CrashDir, "hs_err_*.log", since);
 
+    /// <summary>
+    /// 启动游戏前拍一张崩溃文件快照。只靠时间戳判断“这次运行新生成”会有竞态：
+    /// 上一轮刚崩完、玩家马上重开时，旧报告可能落在时间容差里，导致下一次正常退出也弹崩溃框。
+    /// </summary>
+    public static CrashArtifactBaseline CaptureBaseline(LauncherPaths paths)
+        => new(
+            Snapshot(Path.Combine(paths.GameDir, "crash-reports"), "crash-*.txt"),
+            Snapshot(paths.CrashDir, "hs_err_*.log"));
+
+    public static string? FindNewCrashReport(LauncherPaths paths, CrashArtifactBaseline baseline)
+        => NewestChanged(Path.Combine(paths.GameDir, "crash-reports"), "crash-*.txt", baseline.CrashReports);
+
+    public static string? FindNewJvmCrash(LauncherPaths paths, CrashArtifactBaseline baseline)
+        => NewestChanged(paths.CrashDir, "hs_err_*.log", baseline.JvmCrashes);
+
+    private static Dictionary<string, CrashArtifactStamp> Snapshot(string dir, string pattern)
+    {
+        var result = new Dictionary<string, CrashArtifactStamp>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (!Directory.Exists(dir)) return result;
+            foreach (var file in new DirectoryInfo(dir).GetFiles(pattern))
+                result[file.FullName] = new CrashArtifactStamp(file.LastWriteTimeUtc.Ticks, file.Length);
+        }
+        catch { }
+        return result;
+    }
+
+    private static string? NewestChanged(
+        string dir,
+        string pattern,
+        IReadOnlyDictionary<string, CrashArtifactStamp> baseline)
+    {
+        try
+        {
+            if (!Directory.Exists(dir)) return null;
+            return new DirectoryInfo(dir).GetFiles(pattern)
+                .Where(file =>
+                {
+                    var now = new CrashArtifactStamp(file.LastWriteTimeUtc.Ticks, file.Length);
+                    return !baseline.TryGetValue(file.FullName, out var before) || before != now;
+                })
+                .OrderByDescending(file => file.LastWriteTimeUtc)
+                .FirstOrDefault()?.FullName;
+        }
+        catch { return null; }
+    }
+
     private static string? Newest(string dir, string pattern, DateTimeOffset since)
     {
         try
         {
             if (!Directory.Exists(dir)) return null;
             return new DirectoryInfo(dir).GetFiles(pattern)
-                // 文件系统时间精度和时钟都可能差一点，留几秒余量
-                .Where(f => f.LastWriteTimeUtc >= since.UtcDateTime.AddSeconds(-5))
+                // 游戏与启动器在同一台 Windows 主机上，NTFS 时间精度足够。
+                // 不向前留容差，否则上一轮刚写出的报告会污染下一轮正常退出。
+                .Where(f => f.LastWriteTimeUtc >= since.UtcDateTime)
                 .OrderByDescending(f => f.LastWriteTimeUtc)
                 .FirstOrDefault()?.FullName;
         }
@@ -105,8 +166,8 @@ public static class CrashReport
             if (crash is not null)
             {
                 // 崩溃报告和 JVM 崩溃文件只认这次崩溃的；意见反馈不带，免得把几天前的旧崩溃塞进来
-                AddFile("crash-report.txt", FindCrashReport(paths, since), CrashFileCap);
-                AddFile("hs_err.log", FindJvmCrash(paths, since), CrashFileCap);
+                AddFile("crash-report.txt", crash.CrashReportPath ?? FindCrashReport(paths, since), CrashFileCap);
+                AddFile("hs_err.log", crash.JvmCrashPath ?? FindJvmCrash(paths, since), CrashFileCap);
             }
             if (includeLogs)
             {
