@@ -5,14 +5,17 @@ param(
     [string]$Region,
     [string]$ManifestPath,
     [string]$PackFilesDir,
-    [string]$RemoteManifestUrl
+    [string]$RemoteManifestUrl,
+    [string]$ServerRoot,
+    [switch]$AllowTerminalClientOnlyUpdate,
+    [string]$EnvironmentFile
 )
 
 $ErrorActionPreference = 'Stop'
 
 $syncCheck = Join-Path $PSScriptRoot 'verify-server-client-sync.ps1'
 if (Test-Path -LiteralPath $syncCheck -PathType Leaf) {
-    & $syncCheck
+    & $syncCheck -ServerRoot $ServerRoot -AllowTerminalClientOnlyUpdate:$AllowTerminalClientOnlyUpdate
 }
 
 function Import-DotEnv([string]$Path) {
@@ -22,7 +25,7 @@ function Import-DotEnv([string]$Path) {
         if (-not $trimmed -or $trimmed.StartsWith('#')) { continue }
         if ($trimmed.StartsWith('export ')) { $trimmed = $trimmed.Substring(7).Trim() }
         $pair = $trimmed.Split('=', 2)
-        if ($pair.Count -ne 2) { throw "无效的 .env 行：$line" }
+        if ($pair.Count -ne 2) { throw 'Invalid release environment entry' }
         $name = $pair[0].Trim(); $value = $pair[1].Trim()
         if ($value.Length -ge 2 -and (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'")))) {
             $value = $value.Substring(1, $value.Length - 2)
@@ -41,7 +44,8 @@ function Get-Utf8Json([string]$Uri) {
 }
 
 $workspaceRoot = Split-Path $PSScriptRoot -Parent
-Import-DotEnv (Join-Path $workspaceRoot '.env')
+if (-not $EnvironmentFile) { $EnvironmentFile = Join-Path $workspaceRoot '.env' }
+Import-DotEnv $EnvironmentFile
 if (-not $Bucket) { $Bucket = $env:OSS_BUCKET }
 if (-not $Prefix) { $Prefix = $env:OSS_PREFIX }
 if (-not $Region) { $Region = $env:OSS_REGION }

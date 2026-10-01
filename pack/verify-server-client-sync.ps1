@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$ServerRoot
+    [string]$ServerRoot,
+    [switch]$AllowTerminalClientOnlyUpdate
 )
 
 $ErrorActionPreference = 'Stop'
@@ -63,11 +64,27 @@ $clientTerminal = @(Get-ChildItem -LiteralPath (Join-Path $clientRoot 'mods') -F
 if ($serverTerminal.Count -ne 1 -or $clientTerminal.Count -ne 1) {
     throw "Expected exactly one muxi-terminal JAR on each side (server=$($serverTerminal.Count), client=$($clientTerminal.Count))."
 }
-if ($serverTerminal[0].Name -ne $clientTerminal[0].Name) {
+if ($AllowTerminalClientOnlyUpdate) {
+    $python = (Get-Command python -ErrorAction Stop).Source
+    & $python (Join-Path $PSScriptRoot 'verify-terminal-compatibility.py') --server $serverTerminal[0].FullName --client $clientTerminal[0].FullName
+    if ($LASTEXITCODE -ne 0) { throw 'Terminal client update changes the server contract; coordinated server deployment is required.' }
+} elseif ($serverTerminal[0].Name -ne $clientTerminal[0].Name) {
     throw "muxi-terminal version mismatch: server=$($serverTerminal[0].Name), client=$($clientTerminal[0].Name)"
-}
-if ((Get-Sha256 $serverTerminal[0].FullName) -ne (Get-Sha256 $clientTerminal[0].FullName)) {
+} elseif ((Get-Sha256 $serverTerminal[0].FullName) -ne (Get-Sha256 $clientTerminal[0].FullName)) {
     throw 'muxi-terminal filename matches but bytes differ.'
 }
 
-Write-Host 'Client/server-sensitive Ice and Fire files, muxi-game-core and muxi-terminal are synchronized.' -ForegroundColor Green
+$serverOutbreak = @(Get-ChildItem -LiteralPath (Join-Path $ServerRoot 'mods') -File -Filter 'muxi-outbreak-*.jar')
+$clientOutbreak = @(Get-ChildItem -LiteralPath (Join-Path $clientRoot 'mods') -File -Filter 'muxi-outbreak-*.jar')
+$packSpec = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'packspec.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($packSpec.exclude -contains 'mods/muxi-outbreak-*.jar') {
+    # Outbreak is an independent server-side battle mode. It is intentionally
+    # excluded from the Better MC main client release, but its server artifact
+    # may still exist on the server. Only verify the client does not ship it.
+    if ($clientOutbreak.Count -ne 0) { throw 'Outbreak is excluded from this client release but remains in the client package.' }
+} elseif ($serverOutbreak.Count -ne 1 -or $clientOutbreak.Count -ne 1) {
+    throw 'Expected exactly one muxi-outbreak JAR on each side.'
+} elseif ($serverOutbreak[0].Name -ne $clientOutbreak[0].Name -or (Get-Sha256 $serverOutbreak[0].FullName) -ne (Get-Sha256 $clientOutbreak[0].FullName)) {
+    throw 'muxi-outbreak client/server artifact mismatch.'
+}
+Write-Host 'Client/server-sensitive Ice and Fire files, Core, terminal server contract and Outbreak checks passed.' -ForegroundColor Green

@@ -1,0 +1,34 @@
+{
+  "published": false,
+  "pack_version": "1.4.25",
+  "terminal_version": "0.2.1",
+  "sso_enabled": false,
+  "game_server_restarted": false,
+  "game_server_modified": false,
+  "stage": "validated",
+  "updated_utc": "2026-10-01T07:39:25.942647+00:00",
+  "manifest_delta": {
+    "added": [
+      "mods/muxi-terminal-0.2.1.jar"
+    ],
+    "removed": [
+      "mods/muxi-terminal-0.2.0.jar"
+    ],
+    "changed": []
+  },
+  "terminal_sha256": "734dd89a5b38b8681af1b6aa49294d14d210dc8f28085cbfdce94bf30def7528",
+  "core_sha256": "38d817a8d0469365e8c33cc799da9f354f7d728e24847ee648ecb9a1e9a6837c",
+  "source_baseline_terminal": "a0ba0ec1ac3df1694ed8dd497d0ec88fc2f5cd50",
+  "source_baseline_pack": "f499a12400edc0e6a992209e79aeab3d8fcbdfae",
+  "server_terminal_sha256": "f51e0ad99a16f63fa0d6e5a779da77d00a70884d8706b8bbabf1c0bd99331d6a",
+  "runtime_evidence": "Independent eight hand-state screenshots and task/icon/ChallengeScreen checks passed; local native MCEF SSO transport passed separately",
+  "sso_dependencies": {
+    "auth": "production v0.2.7; SSO feature not deployed",
+    "website": "v0.1.17; SSO feature not deployed",
+    "launcher": "1.2.3; restricted SSO bootstrap not released",
+    "core": "1.12.0; no TerminalPassportApi"
+  },
+  "no_sso_activation": "Core server update needs separately authorized restart; no configuration, persistent credentials or auth/site/launcher deployment in this package release",
+  "ci": "Existing pack publish is local build + OSS; Better tag workflow deploys website and is not triggered for this client-only pack release",
+  "qa_limits": "Real production login/join acceptance is performed by the user; synthetic private runtime does not establish production full SSO"
+}
