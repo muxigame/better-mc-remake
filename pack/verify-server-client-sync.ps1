@@ -93,5 +93,5 @@ foreach ($module in @('muxi-minigames', 'muxi-zombie-challenge', 'muxi-champion-
     if ($serverFiles.Count -ne 1 -or $clientFiles.Count -ne 1) { throw "Expected exactly one $module JAR on each candidate side." }
     if ($serverFiles[0].Name -ne $clientFiles[0].Name -or (Get-Sha256 $serverFiles[0].FullName) -ne (Get-Sha256 $clientFiles[0].FullName)) { throw "$module candidate artifact mismatch." }
 }
-Assert-SameFile 'tacz/muxi-phoenix-nine-private-20261001.zip'
+Assert-SameFile 'tacz/muxi-phoenix-six-netnew-20261001.zip'
 Write-Host 'Client/server-sensitive Ice and Fire files, six modules and the selected nine-gun pack checked.' -ForegroundColor Green
