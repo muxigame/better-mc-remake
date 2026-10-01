@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hmac
 import json
 import os
 import re
@@ -15,6 +16,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from .player_platform import PlatformStore
 from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
 from .skins import MAX_BYTES as SKIN_MAX_BYTES, SkinError, SkinStore
 from .crash_reports import MAX_BUNDLE_BYTES, CrashReportError, CrashReportStore
@@ -65,13 +67,15 @@ def human_size(size: int) -> str:
     return f"{size} B"
 
 
-load_dotenv(WORKSPACE_ROOT / ".env")
+if os.getenv("BMC_SKIP_DOTENV") != "1":
+    load_dotenv(WORKSPACE_ROOT / ".env")
 
 database_setting = os.getenv("BMC_DATABASE_PATH", "server/data/battermc.db")
 database_path = Path(database_setting)
 if not database_path.is_absolute():
     database_path = WORKSPACE_ROOT / database_path
 web_auth_store = WebsiteAuthStore(database_path)
+platform_store = PlatformStore(database_path)
 skin_store = SkinStore(database_path, database_path.parent / "skins")
 crash_store = CrashReportStore(database_path, database_path.parent / "crash-reports")
 oidc_issuer = os.getenv("BMC_AUTH_ISSUER", "https://account.muxigame.com").rstrip("/")
@@ -430,7 +434,7 @@ def me(account=Depends(current_account)) -> dict:
 @app.get("/api/v1/player/profile")
 def player_profile(account=Depends(current_player_account)) -> dict:
     profile = web_auth_store.player_profile(account)
-    return {"user": account.public(), "player": profile.public()}
+    return {"user": account.public(), "player": profile.public(), "permissions": {**platform_store.permissions(account.uid), "platformAdmin": account.role == "admin" or platform_store.permissions(account.uid)["platformAdmin"]}}
 
 
 def player_skin_payload(uid: int) -> dict:
@@ -592,6 +596,57 @@ def admin_users(limit: int = 200, _account=Depends(admin_account)) -> dict:
 @app.get("/download")
 def download_launcher() -> JSONResponse:
     return JSONResponse(launcher_release(site_config()))
+
+
+def platform_service_key(request: Request):
+    key = os.getenv("BMC_GAME_SERVICE_KEY", "")
+    if os.getenv("BMC_GAME_PLATFORM_ENABLED") != "1" or len(key) < 32:
+        raise HTTPException(503, "Game platform integration is disabled")
+    supplied = request.headers.get("x-muxi-server-key", "")
+    if not hmac.compare_digest(key.encode(), supplied.encode()):
+        raise HTTPException(401, "Invalid game service credential")
+
+
+@app.post("/api/internal/game/task-claims", dependencies=[Depends(platform_service_key)], include_in_schema=False)
+async def game_task_claim(request: Request):
+    raw = await request.body()
+    if len(raw) > 4096:
+        raise HTTPException(413, "Event too large")
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict) or set(data) != {"uid", "day", "taskId", "hard"}:
+            raise ValueError("Invalid event fields")
+        added = platform_store.credit(data["uid"], data["day"], data["taskId"], data["hard"])
+    except LookupError as error:
+        raise HTTPException(409, str(error))
+    except (ValueError, TypeError) as error:
+        raise HTTPException(400, str(error))
+    return {"ok": True, "credited": added}
+
+
+@app.get("/api/internal/game/admission/{uid}", dependencies=[Depends(platform_service_key)], include_in_schema=False)
+def game_admission(uid: int):
+    try:
+        return {"uid": uid, "allowed": not platform_store.banned(uid)}
+    except ValueError as error:
+        raise HTTPException(400, str(error))
+
+
+@app.post("/api/v1/platform/game-bans/{uid}")
+async def platform_game_ban(uid: int, request: Request, account=Depends(current_account)):
+    # Cookie writes require the actual site origin; arbitrary cross-site forms are refused.
+    origin = request.headers.get("origin", "")
+    expected = os.getenv("BMC_PUBLIC_URL", str(request.base_url).rstrip("/"))
+    if origin != expected.rstrip("/") or request.headers.get("content-type", "").split(";")[0] != "application/json":
+        raise HTTPException(403, "Same-origin JSON request required")
+    try:
+        data = await request.json()
+        platform_store.set_ban(account.uid, uid, data["banned"], data["reason"], account.role == "admin")
+    except PermissionError as error:
+        raise HTTPException(403, str(error))
+    except (ValueError, TypeError, KeyError) as error:
+        raise HTTPException(400, str(error))
+    return {"ok": True, "uid": uid, "banned": platform_store.banned(uid)}
 
 
 if os.getenv("BMC_SERVE_WEB", "1") == "1":

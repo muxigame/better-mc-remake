@@ -126,3 +126,11 @@
 @media (prefers-reduced-motion: reduce) {
   .player-page * { scroll-behavior: auto !important; transition: none !important; }
 }
+#platform-management{margin-top:28px;border:1px solid #303034;padding:36px}
+#platform-management h2{margin-top:0}
+#platform-management>p{color:#aaa;font-size:14px;line-height:1.7}
+#game-ban-form{display:grid;grid-template-columns:1fr 2fr;gap:18px}
+#game-ban-form label{display:grid;gap:8px}
+#game-ban-form select,#game-ban-form button{min-height:44px;background:#19191d;border:1px solid #444;color:#eee;padding:10px 14px;font:inherit}
+#game-ban-form button{background:#f3d33f;color:#111;font-weight:700;cursor:pointer}
+@media(max-width:620px){#platform-management{padding:24px}#game-ban-form{grid-template-columns:1fr}}

@@ -44,6 +44,7 @@
           <label for="game-name">游戏身份 · UID</label>
           <input id="game-name" type="text" readonly aria-describedby="game-name-help">
           <p class="pc-field-help" id="game-name-help">固定使用平台 UID 登录。修改用户名或昵称，不会改变游戏身份。</p>
+          <p>官网积分：<strong id="player-points">—</strong>（普通任务 +1，困难任务 +3；暂不支持兑换）</p>
           <label for="game-display-name">游戏内昵称</label>
           <input id="game-display-name" type="text" readonly>
           <p class="pc-field-help">与 muxi 昵称同步，支持中文。进入服务器后自动显示。</p>
@@ -82,6 +83,7 @@
       <p class="pc-log-note" id="crash-file-note" hidden>文件太长，只显示最后 2 MB；完整内容请下载。</p>
       <pre class="pc-log-body" id="crash-file-body"></pre>
     </dialog>
+    <section id="platform-management" class="pc-game" hidden><h2>游戏入服管理</h2><p>仅限制后续入服；玩家仍能登录官网。不会踢出在线玩家。</p><form id="game-ban-form" class="pc-form"><label>目标 UID <input id="ban-uid" required pattern="[1-9][0-9]{4,15}"></label><label>原因 <input id="ban-reason" required maxlength="300"></label><select id="ban-action"><option value="ban">禁止入服</option><option value="unban">解除限制</option></select><button type="submit">保存</button></form><p id="ban-message" role="status"></p></section>
     <div class="pc-foot"><span>BETTER MC</span><p>把世界留给故事。把复杂留给系统。</p><a href="/#download">获取客户端 ↗</a></div>
   </main>
 

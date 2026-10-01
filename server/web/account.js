@@ -23,7 +23,7 @@
     $('profile-message').classList.toggle('is-error', error);
     $('profile-message').hidden = !text;
   }
-  function render({ user, player }) {
+  function render({ user, player, permissions }) {
     if (!user || !player || !player.gameName) throw new Error('玩家资料不完整，请重新登录。');
     const nickname = user.nickname || user.username || '玩家';
     $('player-display-name').textContent = nickname;
@@ -33,6 +33,8 @@
     $('identity-nickname').textContent = nickname;
     $('identity-username').textContent = '@' + user.username;
     $('identity-uid').textContent = user.uid;
+    $('player-points').textContent = String(player.points);
+    $('platform-management').hidden = !permissions || !permissions.platformAdmin;
     $('identity-email').textContent = user.email || '未绑定';
     $('identity-email-status').textContent = user.email ? (user.emailVerified ? '已验证' : '待验证') : '前往账户中心管理';
     $('identity-email-status').classList.toggle('is-unverified', !user.emailVerified);
@@ -45,6 +47,15 @@
     $('player-content').hidden = false;
     $('player-load-state').hidden = true;
   }
+  $('game-ban-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const uid = $('ban-uid').value.trim();
+    if (!/^[1-9][0-9]{4,15}$/.test(uid)) return;
+    const button = event.target.querySelector('button'); button.disabled = true;
+    try { await api('/api/v1/platform/game-bans/' + uid, {method: 'POST', body: JSON.stringify({banned: $('ban-action').value === 'ban', reason: $('ban-reason').value})}); $('ban-message').textContent = '已保存入服限制；官网登录不受影响。'; }
+    catch (error) { $('ban-message').textContent = error.message; }
+    finally { button.disabled = false; }
+  });
   function handleError(error) {
     if (error.status === 401) {
       $('player-content').hidden = true;

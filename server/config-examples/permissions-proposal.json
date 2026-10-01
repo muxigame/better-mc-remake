@@ -1,0 +1,7 @@
+{
+  "applyAutomatically": false,
+  "description": "仅本地待审阅方案，不赋予真实权限，不同步 Minecraft ops.json",
+  "permissions": [
+    {"uid": 10000, "platformAdmin": true, "gameOpLevel": 4}
+  ]
+}
