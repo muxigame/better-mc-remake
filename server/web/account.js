@@ -23,7 +23,7 @@
     $('profile-message').classList.toggle('is-error', error);
     $('profile-message').hidden = !text;
   }
-  function render({ user, player, permissions }) {
+  function render({ user, player, permissions, gameOp }) {
     if (!user || !player || !player.gameName) throw new Error('玩家资料不完整，请重新登录。');
     const nickname = user.nickname || user.username || '玩家';
     $('player-display-name').textContent = nickname;
@@ -35,6 +35,8 @@
     $('identity-uid').textContent = user.uid;
     $('player-points').textContent = String(player.points);
     $('platform-management').hidden = !permissions || !permissions.platformAdmin;
+    $('op-management').hidden = !permissions || !permissions.canManageGameOp;
+    showOpStatus('own-op-status', gameOp);
     $('identity-email').textContent = user.email || '未绑定';
     $('identity-email-status').textContent = user.email ? (user.emailVerified ? '已验证' : '待验证') : '前往账户中心管理';
     $('identity-email-status').classList.toggle('is-unverified', !user.emailVerified);
@@ -56,6 +58,88 @@
     catch (error) { $('ban-message').textContent = error.message; }
     finally { button.disabled = false; }
   });
+
+  const OP_STATES = {observed: '游戏服务端只读回报', not_requested: '尚未请求同步，游戏实际等级未知', pending: '等待游戏服务端同步', applied: '已同步',
+    changed_in_game: '游戏内已调整，官网设定保持不变', failed: '同步失败，服务端将重试', stale: '状态已过期，服务器可能离线'};
+  let opTarget = null;
+  function showOpStatus(id, result) {
+    if (!result) { $(id).textContent = '游戏 OP 状态未知'; return; }
+    const sync = result.sync;
+    const actual = sync.observedLevel === null ? '未知' : (sync.observedLevel === 0 ? '非 OP' : 'OP ' + sync.observedLevel)
+      + (sync.observedState === 'stale' ? '（回报已过期，当前等级未知）' : '');
+    const time = sync.observedAt ? new Date(sync.observedAt).toLocaleString('zh-CN', {hour12: false}) : '无服务端回报';
+    $(id).textContent = '官网设定：' + (result.desiredLevel === 0 ? '非 OP' : 'OP ' + result.desiredLevel)
+      + '；游戏最近回报：' + actual + '。' + (OP_STATES[sync.state] || '状态未知') + ' · ' + time;
+  }
+  function clearOpTarget() {
+    opTarget = null; $('op-target').hidden = true; $('op-set-form').hidden = true;
+  }
+  async function lookupOpTarget(uid) {
+    const {target} = await api('/api/v1/platform/game-ops/' + uid);
+    if ($('op-uid').value.trim() !== uid) return; // A late lookup must not authorize another typed UID.
+    opTarget = target;
+    $('op-target-name').textContent = target.displayName + ' · @' + target.username;
+    $('op-target-identity').textContent = 'UID ' + target.uid + ' · UUID ' + target.offlineUuid;
+    showOpStatus('op-target-status', target); $('op-level').value = String(target.desiredLevel);
+    $('op-target').hidden = false; $('op-set-form').hidden = false;
+  }
+  $('op-uid').addEventListener('input', clearOpTarget);
+  $('op-lookup-form').addEventListener('submit', async event => {
+    event.preventDefault(); clearOpTarget();
+    const uid = $('op-uid').value.trim();
+    if (!/^[1-9][0-9]{4,15}$/.test(uid)) return;
+    const button = event.target.querySelector('button'); button.disabled = true; $('op-message').textContent = '';
+    try { await lookupOpTarget(uid); }
+    catch (error) { $('op-message').textContent = error.message; if (error.status === 401) handleError(error); }
+    finally { button.disabled = false; }
+  });
+  $('op-set-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const target = opTarget;
+    if (!target || target.uid !== $('op-uid').value.trim()) return;
+    const level = Number($('op-level').value), reason = $('op-reason').value.trim();
+    if (!reason) return;
+    const summary = target.displayName + ' (@' + target.username + ')\nUID ' + target.uid
+      + '\n官网设定：OP ' + target.desiredLevel + ' → OP ' + level
+      + '\n原因：' + reason + '\n此操作将下发到游戏服务器，不授予官网管理权。确认保存？';
+    if (!confirm(summary)) return;
+    const button = event.target.querySelector('button[type="submit"]'); button.disabled = true;
+    try {
+      const result = await api('/api/v1/platform/game-ops/' + target.uid, {method: 'POST', body: JSON.stringify({
+        level, expectedRevision: target.sync.revision, expectedLevel: target.desiredLevel,
+        identityConfirmation: target.identityConfirmation, reason})});
+      opTarget = {...target, ...result}; showOpStatus('op-target-status', result);
+      $('op-message').textContent = '官网设定已保存（版本 ' + result.sync.revision + '），等待服务端回报后确认游戏生效。';
+    } catch (error) {
+      $('op-message').textContent = error.message + '。请查询玩家确认当前版本，再决定是否保存。';
+      clearOpTarget(); // Never blindly retry an unknown write outcome.
+      if (error.status === 401) handleError(error);
+    } finally { button.disabled = false; }
+  });
+  $('op-target-refresh').addEventListener('click', async () => {
+    if (!opTarget) return;
+    try { await lookupOpTarget(opTarget.uid); }
+    catch (error) { $('op-message').textContent = error.message; }
+  });
+  async function refreshOwnOp() {
+    try { showOpStatus('own-op-status', await api('/api/v1/player/game-op')); }
+    catch (error) { if (error.status === 401) handleError(error); else $('own-op-status').textContent = '状态暂时无法读取，请稍后刷新'; }
+  }
+  $('own-op-refresh').addEventListener('click', refreshOwnOp);
+  setInterval(async () => {
+    if (document.hidden || $('player-content').hidden) return;
+    await refreshOwnOp();
+    if (opTarget) {
+      try {
+        const {target} = await api('/api/v1/platform/game-ops/' + opTarget.uid);
+        if (opTarget && target.uid === opTarget.uid) {
+          if (target.sync.revision !== opTarget.sync.revision) {
+            clearOpTarget(); $('op-message').textContent = '官网设定已更新，请重新查询后再保存。';
+          } else showOpStatus('op-target-status', target);
+        }
+      } catch (_) {}
+    }
+  }, 15000);
   function handleError(error) {
     if (error.status === 401) {
       $('player-content').hidden = true;

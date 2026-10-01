@@ -434,7 +434,7 @@ def me(account=Depends(current_account)) -> dict:
 @app.get("/api/v1/player/profile")
 def player_profile(account=Depends(current_player_account)) -> dict:
     profile = web_auth_store.player_profile(account)
-    return {"user": account.public(), "player": profile.public(), "permissions": {**platform_store.permissions(account.uid), "platformAdmin": account.role == "admin" or platform_store.permissions(account.uid)["platformAdmin"]}}
+    return {"user": account.public(), "player": profile.public(), "gameOp": platform_store.op_status(account.uid), "permissions": {**platform_store.permissions(account.uid), "canManageGameOp": platform_store.permissions(account.uid)["platformAdmin"], "platformAdmin": account.role == "admin" or platform_store.permissions(account.uid)["platformAdmin"]}}
 
 
 def player_skin_payload(uid: int) -> dict:
@@ -647,6 +647,109 @@ async def platform_game_ban(uid: int, request: Request, account=Depends(current_
     except (ValueError, TypeError, KeyError) as error:
         raise HTTPException(400, str(error))
     return {"ok": True, "uid": uid, "banned": platform_store.banned(uid)}
+
+
+
+def platform_op_admin(account=Depends(current_account)):
+    if not platform_store.permissions(account.uid)["platformAdmin"]:
+        raise HTTPException(403, "Platform administrator required")
+    return account
+
+
+@app.get("/api/v1/player/game-op")
+def own_game_op(account=Depends(current_player_account)):
+    return {"uid": str(account.uid), **platform_store.op_status(account.uid)}
+
+
+@app.get("/api/v1/platform/game-ops/{uid}")
+def platform_op_target(uid: int, account=Depends(platform_op_admin)):
+    try:
+        return {"target": platform_store.op_target(account.uid, uid)}
+    except PermissionError as error:
+        raise HTTPException(403, str(error))
+    except LookupError as error:
+        raise HTTPException(404, str(error))
+    except ValueError as error:
+        raise HTTPException(400, str(error))
+
+
+@app.post("/api/v1/platform/game-ops/{uid}")
+async def platform_set_op(uid: int, request: Request, account=Depends(platform_op_admin)):
+    expected = os.getenv("BMC_PUBLIC_URL", str(request.base_url).rstrip("/")).rstrip("/")
+    if request.headers.get("origin") != expected or request.headers.get("content-type", "").split(";")[0] != "application/json":
+        raise HTTPException(403, "Same-origin JSON request required")
+    raw = await request.body()
+    if len(raw) > 4096:
+        raise HTTPException(413, "Request too large")
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict) or set(data) != {"level","expectedRevision","expectedLevel","identityConfirmation","reason"}:
+            raise ValueError("Invalid OP request fields")
+        result = platform_store.set_op(account.uid, uid, data["level"], data["expectedRevision"],
+            data["expectedLevel"], data["identityConfirmation"], data["reason"])
+    except PermissionError as error:
+        raise HTTPException(403, str(error))
+    except LookupError as error:
+        raise HTTPException(404, str(error))
+    except RuntimeError as error:
+        raise HTTPException(409, str(error))
+    except (ValueError, TypeError) as error:
+        raise HTTPException(400, str(error))
+    return {"uid": str(uid), **result}
+
+
+def op_sync_service_key(request: Request):
+    # Existing website server-key trust, with independent explicit rollout opt-in.
+    if os.getenv("BMC_GAME_OP_SYNC_ENABLED") != "1":
+        raise HTTPException(503, "Game OP synchronization is disabled")
+    key = os.getenv("BMC_GAME_SERVICE_KEY", "")
+    supplied = request.headers.get("x-muxi-server-key", "")
+    if len(key) < 32 or not hmac.compare_digest(key.encode(), supplied.encode()):
+        raise HTTPException(401, "Server authentication required")
+
+
+@app.get("/api/internal/game/ops-sync/", dependencies=[Depends(op_sync_service_key)], include_in_schema=False)
+def game_op_feed(afterUid: int = 0):
+    try:
+        return platform_store.op_feed(afterUid)
+    except ValueError as error:
+        raise HTTPException(400, str(error))
+    except (LookupError, RuntimeError) as error:
+        raise HTTPException(409, str(error))
+
+
+@app.post("/api/internal/game/ops-sync/ack", dependencies=[Depends(op_sync_service_key)], include_in_schema=False)
+async def game_op_ack(request: Request):
+    raw = await request.body()
+    if len(raw) > 4096:
+        raise HTTPException(413, "Acknowledgement too large")
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict) or set(data) != {"uid","revision","applied","observedLevel","error"}:
+            raise ValueError("Invalid acknowledgement fields")
+        # UID is sent as canonical decimal text to avoid browser/JSON integer rounding.
+        uid_text = data["uid"]
+        if not isinstance(uid_text, str) or not uid_text.isascii() or not uid_text.isdecimal() or str(int(uid_text)) != uid_text:
+            raise ValueError("Invalid UID")
+        result = platform_store.acknowledge_op(int(uid_text), data["revision"], data["applied"], data["observedLevel"], data["error"])
+    except (RuntimeError, LookupError) as error:
+        raise HTTPException(409, str(error))
+    except (ValueError, TypeError) as error:
+        raise HTTPException(400, str(error))
+    return {"ok": True, **result}
+
+
+
+@app.post("/api/internal/game/ops-sync/observations", dependencies=[Depends(op_sync_service_key)], include_in_schema=False)
+async def game_op_observations(request: Request):
+    raw = await request.body()
+    if len(raw) > 65536:
+        raise HTTPException(413, "Observation batch too large")
+    try:
+        accepted = platform_store.observe_ops(json.loads(raw))
+    except (ValueError, TypeError) as error:
+        raise HTTPException(400, str(error))
+    return {"ok": True, "accepted": accepted}
 
 
 if os.getenv("BMC_SERVE_WEB", "1") == "1":

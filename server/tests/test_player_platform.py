@@ -8,8 +8,9 @@ from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-spec=importlib.util.spec_from_file_location('player_platform',Path(__file__).resolve().parents[1]/'app/player_platform.py')
-module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from app import player_platform as module
 PlatformStore=module.PlatformStore
 
 @contextmanager

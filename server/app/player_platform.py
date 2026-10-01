@@ -3,6 +3,8 @@
 No account-center disabled flag or Minecraft ops file is changed here.
 """
 import sqlite3
+import hashlib
+from .game_identity import offline_uuid
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -22,6 +24,23 @@ class PlatformStore:
               CREATE TABLE IF NOT EXISTS platform_permissions (
                 uid INTEGER PRIMARY KEY, platform_admin INTEGER NOT NULL DEFAULT 0,
                 game_op_level INTEGER NOT NULL DEFAULT 0 CHECK(game_op_level BETWEEN 0 AND 4));
+              CREATE TABLE IF NOT EXISTS game_op_observations (
+                uid INTEGER PRIMARY KEY, level INTEGER NOT NULL CHECK(level BETWEEN 0 AND 4),
+                observed_at TEXT NOT NULL);
+              CREATE TABLE IF NOT EXISTS game_op_sync (
+                uid INTEGER PRIMARY KEY, subject TEXT NOT NULL, revision INTEGER NOT NULL,
+                desired_level INTEGER NOT NULL CHECK(desired_level BETWEEN 0 AND 4),
+                state TEXT NOT NULL, observed_level INTEGER, observed_at TEXT, error TEXT,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+              CREATE TABLE IF NOT EXISTS game_op_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, actor_uid INTEGER NOT NULL,
+                target_uid INTEGER NOT NULL, revision INTEGER NOT NULL,
+                before_level INTEGER NOT NULL, after_level INTEGER NOT NULL, reason TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+              CREATE TABLE IF NOT EXISTS game_op_sync_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, target_uid INTEGER NOT NULL,
+                revision INTEGER NOT NULL, applied INTEGER NOT NULL, observed_level INTEGER,
+                error TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
               CREATE TABLE IF NOT EXISTS game_bans (
                 uid INTEGER PRIMARY KEY, reason TEXT NOT NULL, actor_uid INTEGER NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
@@ -111,3 +130,160 @@ class PlatformStore:
         with self.connect() as db:
             db.execute('INSERT INTO platform_permissions VALUES(?,?,?) ON CONFLICT(uid) DO UPDATE SET platform_admin=excluded.platform_admin,game_op_level=excluded.game_op_level',
                        (uid,int(platform_admin),game_op_level))
+
+    @staticmethod
+    def _player(db, uid):
+        rows = db.execute('SELECT subject FROM player_profiles WHERE uid=?', (uid,)).fetchall()
+        if len(rows) != 1:
+            raise LookupError('Player must sign in to the website first')
+        return rows[0]['subject']
+
+    @staticmethod
+    def _sync_public(row):
+        if row is None:
+            return {'revision': 0, 'state': 'not_requested', 'observedLevel': None, 'observedAt': None}
+        state = row['state']
+        # Success is an observation, not a promise that an offline server still has this level.
+        if row['observed_at'] and state in ('applied', 'changed_in_game'):
+            observed = datetime.fromisoformat(row['observed_at'])
+            if datetime.now(timezone.utc) - observed > timedelta(minutes=5):
+                state = 'stale'
+        return {'revision': row['revision'], 'state': state, 'observedLevel': row['observed_level'],
+                'observedAt': row['observed_at'], 'error': row['error']}
+
+    def op_status(self, uid):
+        self.validate_uid(uid)
+        with self.connect() as db:
+            row = db.execute('SELECT * FROM game_op_sync WHERE uid=?', (uid,)).fetchone()
+            permission = db.execute('SELECT game_op_level FROM platform_permissions WHERE uid=?', (uid,)).fetchone()
+            observation = db.execute('SELECT * FROM game_op_observations WHERE uid=?', (uid,)).fetchone()
+        sync = self._sync_public(row)
+        if observation:
+            sync['observedLevel'] = observation['level']
+            sync['observedAt'] = observation['observed_at']
+            stale = datetime.now(timezone.utc) - datetime.fromisoformat(observation['observed_at']) > timedelta(minutes=5)
+            if row is None:
+                sync['state'] = 'stale' if stale else 'observed'
+            elif row['state'] in ('applied','changed_in_game'):
+                sync['state'] = 'stale' if stale else ('applied' if observation['level'] == row['desired_level'] else 'changed_in_game')
+        # Actual-state freshness is independent of the latest authorization event's outcome.
+        # A pending/failed new event must not make an old game observation look current.
+        sync['observedState'] = 'unknown'
+        if sync['observedLevel'] is not None and sync['observedAt']:
+            stale = datetime.now(timezone.utc) - datetime.fromisoformat(sync['observedAt']) > timedelta(minutes=5)
+            sync['observedState'] = 'stale' if stale else 'fresh'
+        return {'desiredLevel': permission[0] if permission else 0, 'sync': sync}
+
+    def op_target(self, actor_uid, uid):
+        self.validate_uid(actor_uid); self.validate_uid(uid)
+        with self.connect() as db:
+            actor = db.execute('SELECT platform_admin FROM platform_permissions WHERE uid=?', (actor_uid,)).fetchone()
+            if not actor or not actor[0]:
+                raise PermissionError('Platform administrator required')
+            subject = self._player(db, uid)
+            identity = db.execute('SELECT username,nickname FROM oidc_web_sessions WHERE uid=? AND subject=? ORDER BY expires_at DESC LIMIT 1', (uid, subject)).fetchone()
+        if identity is None:
+            raise LookupError('Target identity is unavailable; ask the player to sign in again')
+        return {'uid': str(uid), 'username': identity['username'], 'displayName': identity['nickname'],
+                'offlineUuid': offline_uuid(uid), 'identityConfirmation': hashlib.sha256(subject.encode()).hexdigest(),
+                **self.op_status(uid)}
+
+    def set_op(self, actor_uid, target_uid, level, expected_revision, expected_level, identity_confirmation, reason):
+        self.validate_uid(actor_uid); self.validate_uid(target_uid)
+        if type(level) is not int or not 0 <= level <= 4 or type(expected_level) is not int or not 0 <= expected_level <= 4:
+            raise ValueError('OP level must be an integer from 0 to 4')
+        if type(expected_revision) is not int or not 0 <= expected_revision < 9007199254740991:
+            raise ValueError('Invalid expected revision')
+        if not isinstance(reason, str) or not 1 <= len(reason.strip()) <= 300:
+            raise ValueError('Provide a reason of 1-300 characters')
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            actor = db.execute('SELECT platform_admin FROM platform_permissions WHERE uid=?', (actor_uid,)).fetchone()
+            if not actor or not actor[0]:
+                raise PermissionError('Platform administrator required')
+            subject = self._player(db, target_uid)
+            if identity_confirmation != hashlib.sha256(subject.encode()).hexdigest():
+                raise RuntimeError('Target identity changed; look up the UID again')
+            old = db.execute('SELECT * FROM game_op_sync WHERE uid=?', (target_uid,)).fetchone()
+            permission = db.execute('SELECT game_op_level FROM platform_permissions WHERE uid=?', (target_uid,)).fetchone()
+            before = permission[0] if permission else 0
+            if expected_revision != (old['revision'] if old else 0) or expected_level != before:
+                raise RuntimeError('Permissions changed; look up the UID again')
+            revision = expected_revision + 1
+            # Only this column changes. A game OP never acquires platform administration.
+            db.execute('INSERT INTO platform_permissions(uid,game_op_level) VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET game_op_level=excluded.game_op_level', (target_uid, level))
+            db.execute("""INSERT INTO game_op_sync(uid,subject,revision,desired_level,state) VALUES(?,?,?,?,'pending')
+                ON CONFLICT(uid) DO UPDATE SET subject=excluded.subject,revision=excluded.revision,
+                desired_level=excluded.desired_level,state='pending',error=NULL,updated_at=CURRENT_TIMESTAMP""", (target_uid,subject,revision,level))
+            db.execute('INSERT INTO game_op_audit(actor_uid,target_uid,revision,before_level,after_level,reason) VALUES(?,?,?,?,?,?)', (actor_uid,target_uid,revision,before,level,reason.strip()))
+        return self.op_status(target_uid)
+
+    def op_feed(self, after_uid=0):
+        if type(after_uid) is not int or not 0 <= after_uid <= 9999999999999999:
+            raise ValueError('Invalid cursor')
+        with self.connect() as db:
+            rows = db.execute('SELECT * FROM game_op_sync WHERE uid>? ORDER BY uid LIMIT 101', (after_uid,)).fetchall()
+            records = []
+            for row in rows[:100]:
+                if self._player(db, row['uid']) != row['subject']:
+                    raise RuntimeError('OP target identity changed')
+                records.append({'uid':str(row['uid']), 'offlineUuid':offline_uuid(row['uid']),
+                                'revision':row['revision'], 'level':row['desired_level']})
+        return {'records':records, 'nextUid':str(rows[99]['uid']) if len(rows)>100 else None}
+
+    def acknowledge_op(self, uid, revision, applied, observed_level, error):
+        self.validate_uid(uid)
+        if type(revision) is not int or not 1 <= revision <= 9007199254740991 or type(applied) is not bool:
+            raise ValueError('Invalid acknowledgement')
+        if observed_level is not None and (type(observed_level) is not int or not 0 <= observed_level <= 4):
+            raise ValueError('Invalid observed OP level')
+        if applied and observed_level is None:
+            raise ValueError('Successful acknowledgement requires an observation')
+        # Fixed error codes keep credentials and arbitrary remote text out of the database/UI.
+        if error not in (None, 'apply_failed', 'identity_mismatch', 'journal_failed'):
+            raise ValueError('Invalid sync error')
+        if applied == bool(error):
+            raise ValueError('Invalid sync outcome')
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            old = db.execute('SELECT * FROM game_op_sync WHERE uid=?', (uid,)).fetchone()
+            if old is None or old['revision'] != revision:
+                raise RuntimeError('Stale OP acknowledgement')
+            if self._player(db, uid) != old['subject']:
+                raise RuntimeError('OP target identity changed')
+            if applied:
+                db.execute('INSERT INTO game_op_observations VALUES(?,?,?) ON CONFLICT(uid) DO UPDATE SET level=excluded.level,observed_at=excluded.observed_at', (uid,observed_level,now))
+            state = ('applied' if observed_level == old['desired_level'] else 'changed_in_game') if applied else 'failed'
+            # Repeated observations refresh freshness; identical retries do not duplicate the audit.
+            if old['state'] != state or old['observed_level'] != observed_level or old['error'] != error:
+                db.execute('INSERT INTO game_op_sync_audit(target_uid,revision,applied,observed_level,error) VALUES(?,?,?,?,?)', (uid,revision,int(applied),observed_level,error))
+            db.execute('UPDATE game_op_sync SET state=?,observed_level=?,observed_at=?,error=? WHERE uid=?', (state,observed_level,now,error,uid))
+        return self.op_status(uid)
+
+    def observe_ops(self, records):
+        if not isinstance(records, list) or len(records) > 100:
+            raise ValueError('Invalid observation batch')
+        from .game_identity import uid_login_name
+        validated = []
+        seen = set()
+        for record in records:
+            if not isinstance(record, dict) or set(record) != {'uid','offlineUuid','level'}:
+                raise ValueError('Invalid observation fields')
+            text = record['uid']
+            if not isinstance(text, str) or not text.isascii() or not text.isdecimal():
+                raise ValueError('Invalid UID')
+            uid = int(text)
+            if uid_login_name(uid) != text or record['offlineUuid'] != offline_uuid(uid) or uid in seen:
+                raise ValueError('Invalid observed identity')
+            if type(record['level']) is not int or not 0 <= record['level'] <= 4:
+                raise ValueError('Invalid observed level')
+            seen.add(uid); validated.append((uid,record['level']))
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            # Unknown website users are not auto-created by game reports.
+            known = [(uid,level,now) for uid,level in validated
+                     if len(db.execute('SELECT subject FROM player_profiles WHERE uid=?',(uid,)).fetchall()) == 1]
+            db.executemany('INSERT INTO game_op_observations VALUES(?,?,?) ON CONFLICT(uid) DO UPDATE SET level=excluded.level,observed_at=excluded.observed_at', known)
+        return len(known)

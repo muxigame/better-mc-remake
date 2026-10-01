@@ -8,7 +8,7 @@
   <title>玩家中心 · Better MC</title>
   <link rel="icon" href="/favicon.svg">
   <link rel="stylesheet" href="/styles.css?v=player-center-2">
-  <link rel="stylesheet" href="/player-center.css?v=crash-3">
+  <link rel="stylesheet" href="/player-center.css?v=op-sync-1">
 </head>
 <body class="player-page">
   <header class="site-nav">
@@ -45,6 +45,7 @@
           <input id="game-name" type="text" readonly aria-describedby="game-name-help">
           <p class="pc-field-help" id="game-name-help">固定使用平台 UID 登录。修改用户名或昵称，不会改变游戏身份。</p>
           <p>官网积分：<strong id="player-points">—</strong>（普通任务 +1，困难任务 +3；暂不支持兑换）</p>
+          <div class="pc-op-status"><h3>我的游戏 OP</h3><p id="own-op-status" role="status">正在读取…</p><button id="own-op-refresh" class="button button-outline" type="button">刷新状态</button></div>
           <label for="game-display-name">游戏内昵称</label>
           <input id="game-display-name" type="text" readonly>
           <p class="pc-field-help">与 muxi 昵称同步，支持中文。进入服务器后自动显示。</p>
@@ -84,10 +85,22 @@
       <pre class="pc-log-body" id="crash-file-body"></pre>
     </dialog>
     <section id="platform-management" class="pc-game" hidden><h2>游戏入服管理</h2><p>仅限制后续入服；玩家仍能登录官网。不会踢出在线玩家。</p><form id="game-ban-form" class="pc-form"><label>目标 UID <input id="ban-uid" required pattern="[1-9][0-9]{4,15}"></label><label>原因 <input id="ban-reason" required maxlength="300"></label><select id="ban-action"><option value="ban">禁止入服</option><option value="unban">解除限制</option></select><button type="submit">保存</button></form><p id="ban-message" role="status"></p></section>
+    <section id="op-management" class="pc-game" hidden aria-labelledby="op-management-heading">
+      <div class="pc-section-title"><span class="pc-index">04</span><div><h2 id="op-management-heading">游戏 OP 管理</h2><p>按 UID 确认玩家后授予、调整或撤销。不会授予官网管理权。</p></div></div>
+      <form id="op-lookup-form" class="pc-form"><label for="op-uid">目标 UID</label><div class="pc-op-lookup"><input id="op-uid" required pattern="[1-9][0-9]{4,15}" inputmode="numeric" autocomplete="off"><button class="button button-outline" type="submit">查询玩家</button></div></form>
+      <div id="op-target" class="pc-notice" hidden><strong id="op-target-name"></strong><p id="op-target-identity" class="pc-mono"></p><p id="op-target-status" role="status"></p></div>
+      <form id="op-set-form" class="pc-form" hidden>
+        <label for="op-level">官网设定等级</label><select id="op-level"><option value="0">0 · 撤销 OP</option><option value="1">OP 1</option><option value="2">OP 2</option><option value="3">OP 3</option><option value="4">OP 4 · 可在游戏内管理 OP</option></select>
+        <label for="op-reason">变更原因</label><input id="op-reason" required maxlength="300">
+        <p class="pc-field-help">保存后由游戏服务端同步，包括离线玩家。同等级保存也会重新下发。游戏内仅 OP4 可管理 OP，其修改不回写官网；下次官网明确保存时才覆盖。</p>
+        <div class="pc-form-actions"><button class="button button-primary" type="submit">确认并同步</button><button id="op-target-refresh" class="button button-outline" type="button">刷新状态</button></div>
+      </form>
+      <p id="op-message" class="pc-message" role="status" aria-live="polite"></p>
+    </section>
     <div class="pc-foot"><span>BETTER MC</span><p>把世界留给故事。把复杂留给系统。</p><a href="/#download">获取客户端 ↗</a></div>
   </main>
 
   <script src="/auth-nav.js?v=2" defer></script>
-  <script src="/account.js?v=crash-2" defer></script>
+  <script src="/account.js?v=op-sync-1" defer></script>
 </body>
 </html>

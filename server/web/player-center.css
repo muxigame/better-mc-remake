@@ -134,3 +134,15 @@
 #game-ban-form select,#game-ban-form button{min-height:44px;background:#19191d;border:1px solid #444;color:#eee;padding:10px 14px;font:inherit}
 #game-ban-form button{background:#f3d33f;color:#111;font-weight:700;cursor:pointer}
 @media(max-width:620px){#platform-management{padding:24px}#game-ban-form{grid-template-columns:1fr}}
+
+.pc-op-status {margin:22px 0;padding:16px 0;border-block:1px solid var(--line)}
+.pc-op-status h3 {margin:0;font-size:14px}
+.pc-op-status p,#op-target-status {color:#aaa;font-size:12px;line-height:1.8}
+.pc-op-status .button,#op-management .button {font-family:inherit;cursor:pointer}
+.pc-op-status .button-outline,#op-management .button-outline {color:var(--text)}
+#op-management {margin-top:24px;border:1px solid var(--line)}
+.pc-op-lookup {display:flex;gap:12px}
+.pc-op-lookup input {min-width:0}
+.pc-op-lookup .button {flex-shrink:0;cursor:pointer}
+#op-set-form select {width:100%;min-height:48px;margin-bottom:20px;background:#17171a;color:var(--text);border:1px solid #414145;padding:10px 14px;font:inherit}
+@media(max-width:620px){.pc-op-lookup{flex-wrap:wrap}.pc-op-lookup .button{width:100%}}
