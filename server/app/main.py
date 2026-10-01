@@ -627,9 +627,27 @@ async def game_task_claim(request: Request):
 @app.get("/api/internal/game/admission/{uid}", dependencies=[Depends(platform_service_key)], include_in_schema=False)
 def game_admission(uid: int):
     try:
-        return {"uid": uid, "allowed": not platform_store.banned(uid)}
+        return {"uid": uid, "allowed": not platform_store.banned(uid), "points": platform_store.point_balance(uid)}
     except ValueError as error:
         raise HTTPException(400, str(error))
+
+
+@app.post("/api/internal/game/results", dependencies=[Depends(platform_service_key)], include_in_schema=False)
+async def game_result(request: Request):
+    raw = await request.body()
+    if len(raw) > 4096:
+        raise HTTPException(413, "Event too large")
+    try:
+        rewards = json.loads(os.getenv("BMC_MINIGAME_REWARDS_JSON", "{}"))
+    except (ValueError, TypeError):
+        raise HTTPException(503, "Invalid minigame reward configuration") from None
+    try:
+        result = platform_store.credit_game_result(json.loads(raw), rewards)
+    except LookupError as error:
+        raise HTTPException(409, str(error)) from error
+    except (ValueError, TypeError) as error:
+        raise HTTPException(400, str(error)) from error
+    return {"ok": True, **result}
 
 
 @app.post("/api/v1/platform/game-bans/{uid}")

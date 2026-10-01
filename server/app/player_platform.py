@@ -48,6 +48,11 @@ class PlatformStore:
                 id INTEGER PRIMARY KEY AUTOINCREMENT, actor_uid INTEGER NOT NULL,
                 target_uid INTEGER NOT NULL, banned INTEGER NOT NULL, reason TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+              CREATE TABLE IF NOT EXISTS minigame_result_ledger (
+                uid INTEGER NOT NULL, game TEXT NOT NULL, session TEXT NOT NULL,
+                event TEXT NOT NULL, points INTEGER NOT NULL CHECK(points BETWEEN 0 AND 10000),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY(uid,game,session));
             ''')
 
     @contextmanager
@@ -100,10 +105,61 @@ class PlatformStore:
                        (points, rows[0]['subject']))
         return True
 
+    def point_balance(self, uid):
+        self.validate_uid(uid)
+        with self.connect() as db:
+            rows = db.execute('SELECT points FROM player_profiles WHERE uid=?', (uid,)).fetchall()
+        return str(rows[0]['points']) if len(rows) == 1 else None
+
     def banned(self, uid):
         self.validate_uid(uid)
         with self.connect() as db:
             return db.execute('SELECT 1 FROM game_bans WHERE uid=?', (uid,)).fetchone() is not None
+
+    def credit_game_result(self, event, rewards=None):
+        """Service-authenticated results. Reward policy belongs to this server, never the packet.
+
+        Existing local game scores/coins are not website points. Empty policy records
+        results with zero points until the operator configures the reviewed amounts.
+        Bans control participation, not replay of an already earned durable result.
+        """
+        import json
+        from uuid import UUID
+        if not isinstance(event, dict) or set(event) != {'uid', 'game', 'session', 'win', 'score', 'difficulty', 'seconds'}:
+            raise ValueError('Invalid result fields')
+        self.validate_uid(event['uid'])
+        game, session = event['game'], event['session']
+        if game not in ('zombie-challenge', 'outbreak') or not isinstance(session, str):
+            raise ValueError('Unknown game or invalid session')
+        parsed = UUID(session)
+        if str(parsed) != session or parsed.version != 4:
+            raise ValueError('Canonical UUID4 session required')
+        if type(event['win']) is not bool:
+            raise ValueError('Invalid win')
+        for key, maximum in (('score', 10**12), ('difficulty', 4 if game == 'zombie-challenge' else 3), ('seconds', 10**9)):
+            if type(event[key]) is not int or not 0 <= event[key] <= maximum:
+                raise ValueError('Invalid result ' + key)
+        policy = {} if rewards is None else rewards
+        if not isinstance(policy, dict) or any(name not in ('zombie-challenge', 'outbreak') for name in policy):
+            raise ValueError('Invalid reward policy')
+        for name, amounts in policy.items():
+            if not isinstance(amounts, dict) or any(str(level) not in [str(n) for n in range(5 if name == 'zombie-challenge' else 4)] or type(amount) is not int or not 0 <= amount <= 10000 for level, amount in amounts.items()):
+                raise ValueError('Invalid reward policy')
+        points = policy.get(game, {}).get(str(event['difficulty']), 0) if event['win'] else 0
+        canonical = json.dumps(event, sort_keys=True, separators=(',', ':'))
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            old = db.execute('SELECT event,points FROM minigame_result_ledger WHERE uid=? AND game=? AND session=?', (event['uid'], game, session)).fetchone()
+            if old is not None:
+                if old['event'] != canonical:
+                    raise ValueError('Conflicting result replay')
+                return {'credited': False, 'points': old['points']}
+            rows = db.execute('SELECT subject FROM player_profiles WHERE uid=?', (event['uid'],)).fetchall()
+            if len(rows) != 1:
+                raise LookupError('Player must sign in to the website first')
+            db.execute('INSERT INTO minigame_result_ledger(uid,game,session,event,points) VALUES(?,?,?,?,?)', (event['uid'], game, session, canonical, points))
+            db.execute('UPDATE player_profiles SET points=points+?, updated_at=CURRENT_TIMESTAMP WHERE subject=?', (points, rows[0]['subject']))
+        return {'credited': True, 'points': points}
 
     def set_ban(self, actor_uid, target_uid, banned, reason, account_admin=False):
         self.validate_uid(actor_uid); self.validate_uid(target_uid)
