@@ -8,10 +8,6 @@ let callback
 let checks = 0
 vm.runInNewContext(fs.readFileSync(filename, 'utf8'), {
   LootJS: { lootTables(fn) { assert.equal(callback, undefined); callback = fn } },
-  Java: { loadClass(name) {
-    assert.equal(name, 'net.minecraft.world.level.storage.loot.providers.number.ConstantValue')
-    return { exactly(value) { return { type: 'constant', value } } }
-  } },
   console: { info() {} }
 }, { filename })
 assert.equal(typeof callback, 'function'); checks++
@@ -44,7 +40,7 @@ for (let reload = 0; reload < 3; reload++) {
     const p = pools[i]
     assert.equal(p.conditions.length, 2)
     assert.equal(p.conditions[0], 'existing_tier_' + (i + 1))
-    assert.equal(p.conditions[1].value, 0.5)
+    assert.equal(p.conditions[1], 0.5)
     assert.equal(p.entries[0].count, i + 1)
     assert.equal(p.entries[0].weight, 10)
     assert.equal(p.rolls, 1)

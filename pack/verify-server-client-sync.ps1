@@ -58,4 +58,16 @@ if ((Get-Sha256 $serverCore[0].FullName) -ne (Get-Sha256 $clientCore[0].FullName
     throw 'muxi-game-core filename matches but bytes differ.'
 }
 
-Write-Host 'Client/server-sensitive Ice and Fire files and muxi-game-core are synchronized.' -ForegroundColor Green
+$serverTerminal = @(Get-ChildItem -LiteralPath (Join-Path $ServerRoot 'mods') -File -Filter 'muxi-terminal-*.jar')
+$clientTerminal = @(Get-ChildItem -LiteralPath (Join-Path $clientRoot 'mods') -File -Filter 'muxi-terminal-*.jar')
+if ($serverTerminal.Count -ne 1 -or $clientTerminal.Count -ne 1) {
+    throw "Expected exactly one muxi-terminal JAR on each side (server=$($serverTerminal.Count), client=$($clientTerminal.Count))."
+}
+if ($serverTerminal[0].Name -ne $clientTerminal[0].Name) {
+    throw "muxi-terminal version mismatch: server=$($serverTerminal[0].Name), client=$($clientTerminal[0].Name)"
+}
+if ((Get-Sha256 $serverTerminal[0].FullName) -ne (Get-Sha256 $clientTerminal[0].FullName)) {
+    throw 'muxi-terminal filename matches but bytes differ.'
+}
+
+Write-Host 'Client/server-sensitive Ice and Fire files, muxi-game-core and muxi-terminal are synchronized.' -ForegroundColor Green
