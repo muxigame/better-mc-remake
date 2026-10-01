@@ -672,6 +672,12 @@ let skin = null;          // 控制面上的 {model, hash, png}；null = 默认�
 let skinDefault = null;   // 没上传时别人看到的样子（Steve），控制面随响应带回来
 let skinImage = null;     // { hash, img }，解码过的贴图，render 频繁不能每次重解
 let skinBusy = false;
+let skinReadRevision = 0;
+let skinOwnerGeneration = 0;
+
+function skinAccountOwner() {
+  return state.account ? String(state.account.muxi_uid || state.account.sub || '') : null;
+}
 
 // 正面各部位：贴图里的 [x, y, 宽, 高] → 16×32 人形里的落点 [x, y]。
 // 贴图里的"右臂"是角色自己的右手，画在观众左边；纤细模型的手臂窄一列。
@@ -748,10 +754,14 @@ let skinOwner = null;     // 当前 skin 属于哪个账号；换号要重新取
 
 function renderSkin() {
   const loggedIn = !!state.account;
-  const owner = loggedIn ? String(state.account.muxi_uid || state.account.sub || '') : null;
+  const owner = skinAccountOwner();
   if (owner !== skinOwner) {
     skinOwner = owner;
+    skinOwnerGeneration++;
+    skinReadRevision++;
     skin = null;
+    skinDefault = null;
+    skinImage = null;
     const open = document.querySelector('.tab.is-active[data-tab="skin"]');
     if (loggedIn && open) { loadSkin(); return; }
   }
@@ -786,27 +796,51 @@ function takeSkin(r) {
 
 function loadSkin() {
   if (!state.account) { renderSkin(); return; }
-  rpc('skinGet')
-    .then(takeSkin)
-    .catch((e) => toast(e.message, 'error'))
-    .finally(renderSkin);
+  if (skinBusy) return;
+  const owner = skinAccountOwner(), generation = skinOwnerGeneration;
+  const revision = ++skinReadRevision;
+  const current = () => owner === skinAccountOwner() && generation === skinOwnerGeneration
+    && revision === skinReadRevision;
+  return rpc('skinGet')
+    .then((r) => { if (current()) takeSkin(r); })
+    .catch((e) => { if (current()) toast(e.message, 'error'); })
+    .finally(() => { if (current()) renderSkin(); });
 }
 
 function skinCall(method, params, done) {
+  if (skinBusy || !state.account) return;
+  renderSkin();
+  const owner = skinAccountOwner(), generation = skinOwnerGeneration;
+  // Invalidate older reads before sending the mutation. Their default/stale
+  // result must never replace a successfully persisted skin.
+  const revision = ++skinReadRevision;
+  const current = () => owner === skinAccountOwner() && generation === skinOwnerGeneration
+    && revision === skinReadRevision;
   skinBusy = true;
   renderSkin();
-  rpc(method, params)
-    .then((r) => { takeSkin(r); toast(done, 'good'); })
-    .catch((e) => toast(e.message, 'error'))
-    .finally(() => { skinBusy = false; renderSkin(); });
+  return rpc(method, params)
+    .then((r) => { if (current()) { takeSkin(r); toast(done, 'good'); } })
+    .catch((e) => { if (current()) toast(e.message, 'error'); })
+    .finally(() => {
+      skinBusy = false;
+      if (owner !== skinAccountOwner() || generation !== skinOwnerGeneration) loadSkin();
+      else renderSkin();
+    });
 }
 
 async function onSkinFile() {
   const file = $('skin-file').files[0];
+  const owner = skinAccountOwner(), generation = skinOwnerGeneration;
+  const current = () => owner !== null && owner === skinAccountOwner()
+    && generation === skinOwnerGeneration && !skinBusy;
   $('skin-file').value = '';   // 同一个文件再选一次也要能触发
   if (!file) return;
   if (file.size > 64 * 1024) { toast('皮肤文件太大（上限 64 KB）', 'error'); return; }
-  const png = bytesToBase64(new Uint8Array(await file.arrayBuffer()));
+  if (!current()) return;
+  let png;
+  try { png = bytesToBase64(new Uint8Array(await file.arrayBuffer())); }
+  catch { if (current()) toast('无法读取皮肤文件，请重新选择', 'error'); return; }
+  if (!current()) return;
   let img;
   try { img = await decodePng(png); } catch { toast('不是有效的 PNG 图片', 'error'); return; }
   if (img.width !== 64 || (img.height !== 64 && img.height !== 32)) {
@@ -814,6 +848,7 @@ async function onSkinFile() {
     return;
   }
   const model = looksSlim(img) ? 'slim' : 'default';
+  if (!current()) return;
   $('skin-model').value = model;
   skinCall('skinSave', { png, model }, '皮肤已保存，其他玩家重新进服后看到');
 }
