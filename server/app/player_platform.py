@@ -116,6 +116,20 @@ class PlatformStore:
         with self.connect() as db:
             return db.execute('SELECT 1 FROM game_bans WHERE uid=?', (uid,)).fetchone() is not None
 
+    @staticmethod
+    def flight_contribution_points(score):
+        """Configurable diminishing curve: recommended score 14 -> 10 points, no hard ten cap."""
+        import os
+        from math import isqrt
+        reference_score = os.getenv('BMC_FLIGHT_REWARD_REFERENCE_SCORE', '14')
+        reference_points = os.getenv('BMC_FLIGHT_REWARD_REFERENCE_POINTS', '10')
+        if not reference_score.isascii() or not reference_score.isdigit() or not reference_points.isascii() or not reference_points.isdigit():
+            raise ValueError('Invalid flight reward curve')
+        unit, points = int(reference_score), int(reference_points)
+        if not 1 <= unit <= 10000 or not 1 <= points <= 100 or type(score) is not int or not 0 <= score <= 10000:
+            raise ValueError('Invalid flight contribution or reward curve')
+        return isqrt(score * points * points // unit)
+
     def credit_game_result(self, event, rewards=None):
         """Service-authenticated results. Reward policy belongs to this server, never the packet.
 
@@ -136,11 +150,11 @@ class PlatformStore:
             raise ValueError('Canonical UUID4 session required')
         if type(event['win']) is not bool:
             raise ValueError('Invalid win')
-        for key, maximum in (('score', 10**12), ('difficulty', {'zombie-challenge': 4, 'outbreak': 3, 'flight': 0, 'horse_racing': 5}[game]), ('seconds', 10**9)):
+        for key, maximum in (('score', 10**12), ('difficulty', {'zombie-challenge': 4, 'outbreak': 3, 'flight': 5, 'horse_racing': 5}[game]), ('seconds', 10**9)):
             if type(event[key]) is not int or not 0 <= event[key] <= maximum:
                 raise ValueError('Invalid result ' + key)
-        if game == 'flight' and (event['win'] or event['score'] != 0):
-            raise ValueError('Flight training has no win or reward score')
+        if game == 'flight' and (event['win'] or event['score'] > 10000):
+            raise ValueError('Flight contribution requires no declared win and bounded server score')
         if game == 'horse_racing' and (not 1 <= event['difficulty'] <= 5 or not 1 <= event['score'] <= 10 or event['win'] != (event['score'] == 10)):
             raise ValueError('Horse score must be 1..10, winner 10, difficulty 1..5')
         policy = {} if rewards is None else rewards
@@ -149,7 +163,7 @@ class PlatformStore:
         for name, amounts in policy.items():
             if not isinstance(amounts, dict) or any(str(level) not in [str(n) for n in range(5 if name == 'zombie-challenge' else 4)] or type(amount) is not int or not 0 <= amount <= 10000 for level, amount in amounts.items()):
                 raise ValueError('Invalid reward policy')
-        points = event['score'] if game == 'horse_racing' else (policy.get(game, {}).get(str(event['difficulty']), 0) if event['win'] else 0)
+        points = self.flight_contribution_points(event['score']) if game == 'flight' else event['score'] if game == 'horse_racing' else (policy.get(game, {}).get(str(event['difficulty']), 0) if event['win'] else 0)
         canonical = json.dumps(event, sort_keys=True, separators=(',', ':'))
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
