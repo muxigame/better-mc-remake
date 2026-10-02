@@ -1,0 +1,46 @@
+{
+  "releaseStatus": "ready",
+  "acceptanceScope": "Original-task static closure and model dedup handoff; real-engine and visible GUI acceptance remain separate gates",
+  "scriptClosureVerified": true,
+  "defaultModelDeduplicationVerified": true,
+  "nativeScriptActionsVerified": true,
+  "packPath": "tacz/muxi-phoenix-six-netnew-20261001.zip",
+  "sha256": "fbdbe4f1fccf1aa8ee61377925b0353003267904f7a67c7777e1083d579660c9",
+  "bytes": 1448889,
+  "gunIds": [
+    "ra1k:fn57",
+    "ra1k:mp155",
+    "ra1k:nl545",
+    "ra1k:rsh12",
+    "ra1k:vssk",
+    "ra1k:vulkan"
+  ],
+  "recipesIntentionallyAbsent": [
+    "ra1k:vulkan"
+  ],
+  "gunRecipes": 5,
+  "ammoRecipes": 1,
+  "sourceTask": "task-11/review/phoenix/RELEASE-HANDOFF.json",
+  "sharedDaffasAnimationPermissionUserAssumption": true,
+  "permissionIndependentlyVerified": false,
+  "additionalUnselectedGunsIncluded": false,
+  "newEconomyRecipesAdded": false,
+  "excludedSameModelIds": [
+    {
+      "id": "hk_mp5a5_bolt",
+      "defaultModel": "tacz:hk_mp5a5",
+      "reason": "Exact same default primary model (857/857 cubes); manual-action variant does not create a new model."
+    },
+    {
+      "id": "rhino19",
+      "defaultModel": "tacz:rhino357",
+      "reason": "Rhino calibre variant; same default texture and animation, 371 exact main-model cubes shared, 67 identical bone count. Excluded as a same-platform calibre variant."
+    },
+    {
+      "id": "nl545_fde",
+      "defaultModel": null,
+      "reason": "Same selected NL-545 model family with FDE finish/config variant; keep standard NL-545 once rather than count a second new model."
+    }
+  ],
+  "retiredSha256": "cd0206c5c6e6f492e3f85afa5d269a9f861ea4fd77cbc5708ca8d521fd358fc5"
+}

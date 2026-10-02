@@ -3,7 +3,7 @@ loaderVersion="[4,)"
 license="MIT"
 [[mods]]
 modId="muxi_champion_companions"
-version="1.0.4"
+version="1.0.5"
 displayName="muxi Champions Companion Balance"
 description="Owned maids and modular golems: restricted champion eligibility and half-strength additional benefits."
 [[mixins]]

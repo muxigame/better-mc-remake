@@ -87,4 +87,11 @@ if ($packSpec.exclude -contains 'mods/muxi-outbreak-*.jar') {
 } elseif ($serverOutbreak[0].Name -ne $clientOutbreak[0].Name -or (Get-Sha256 $serverOutbreak[0].FullName) -ne (Get-Sha256 $clientOutbreak[0].FullName)) {
     throw 'muxi-outbreak client/server artifact mismatch.'
 }
-Write-Host 'Client/server-sensitive Ice and Fire files, Core, terminal server contract and Outbreak checks passed.' -ForegroundColor Green
+foreach ($module in @('muxi-minigames', 'muxi-zombie-challenge', 'muxi-champion-companions')) {
+    $serverFiles = @(Get-ChildItem -LiteralPath (Join-Path $ServerRoot 'mods') -File -Filter "$module-*.jar")
+    $clientFiles = @(Get-ChildItem -LiteralPath (Join-Path $clientRoot 'mods') -File -Filter "$module-*.jar")
+    if ($serverFiles.Count -ne 1 -or $clientFiles.Count -ne 1) { throw "Expected exactly one $module JAR on each candidate side." }
+    if ($serverFiles[0].Name -ne $clientFiles[0].Name -or (Get-Sha256 $serverFiles[0].FullName) -ne (Get-Sha256 $clientFiles[0].FullName)) { throw "$module candidate artifact mismatch." }
+}
+Assert-SameFile 'tacz/muxi-phoenix-six-netnew-20261001.zip'
+Write-Host 'Client/server-sensitive Ice and Fire files, six modules and the repaired six-gun pack checked.' -ForegroundColor Green

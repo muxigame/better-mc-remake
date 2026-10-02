@@ -5,6 +5,7 @@ import struct
 import tempfile
 import unittest
 import zlib
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -96,6 +97,37 @@ class SkinApiTests(unittest.TestCase):
         self.assertEqual(401, self.client.get("/api/v1/player/skin").status_code)
         self.assertEqual(401, self.client.put("/api/v1/player/skin", json={"model": "slim"},
                                               headers={"Authorization": "Bearer nope"}).status_code)
+
+    def test_synthetic_uids_persist_distinct_uploads_after_reopen(self):
+        # All auth and storage are local test fixtures; no real accounts are contacted.
+        self.account = replace(self.account, uid=90001, game_name="90001", subject="fixture-a")
+        first = self.client.put("/api/v1/player/skin", json={"model": "default",
+            "png": base64.b64encode(png(height=32)).decode()}, headers=self.auth)
+        self.assertEqual(200, first.status_code)
+        a = first.json()["skin"]
+        self.account = replace(self.account, uid=90002, game_name="90002", subject="fixture-b")
+        second = self.client.put("/api/v1/player/skin", json={"model": "slim",
+            "png": base64.b64encode(png()).decode()}, headers=self.auth)
+        self.assertEqual(200, second.status_code)
+        b = second.json()["skin"]
+        self.assertNotEqual(a["hash"], b["hash"])
+        reopened = SkinStore(self.store.database, self.store.textures)
+        with patch.object(main, "skin_store", reopened):
+            for uid, skin in ((90001, a), (90002, b)):
+                profile = self.client.get(f"/api/v1/skins/csl/{uid}.json")
+                self.assertEqual(200, profile.status_code)
+                self.assertEqual({skin["model"]: skin["hash"]}, profile.json()["skins"])
+                texture = self.client.get("/api/v1/skins/csl/textures/" + skin["hash"])
+                self.assertEqual(200, texture.status_code)
+                self.assertEqual(base64.b64decode(skin["png"]), texture.content)
+
+    def test_upload_uses_authenticated_uid_not_body_uid(self):
+        self.account = replace(self.account, uid=90001, game_name="90001", subject="fixture-a")
+        saved = self.client.put("/api/v1/player/skin", json={"uid": 90002, "loginName": "90002",
+            "model": "default", "png": base64.b64encode(png()).decode()}, headers=self.auth)
+        self.assertEqual(200, saved.status_code)
+        self.assertIsNotNone(self.store.get(90001))
+        self.assertIsNone(self.store.get(90002))
 
     def test_players_without_upload_are_steve(self):
         steve = (Path(main.__file__).parent / "assets" / "steve.png").read_bytes()
