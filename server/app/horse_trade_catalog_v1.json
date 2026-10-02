@@ -1,0 +1,11 @@
+{
+  "version": "horse-trade-v1", "maxRacePlayerReward": 37,
+  "buybackPercent": 55, "quoteSeconds": 120, "reservationSeconds": 600,
+  "catalog": [
+    {"sku":"seabiscuit","name":"Seabiscuit","tier":1,"speed":0.17,"jump":0.6,"health":18,"purchase":120,"rent":5,"variant":3,"markings":0,"traits":["稳步","轻巧","易养"]},
+    {"sku":"winx","name":"Winx","tier":2,"speed":0.21,"jump":0.7,"health":22,"purchase":250,"rent":9,"variant":4,"markings":0,"traits":["敏捷","稳栏","均衡"]},
+    {"sku":"secretariat","name":"Secretariat","tier":3,"speed":0.25,"jump":0.8,"health":26,"purchase":600,"rent":16,"variant":2,"markings":1,"traits":["快步","跃栏","耐久"]},
+    {"sku":"frankel","name":"Frankel","tier":4,"speed":0.29,"jump":0.9,"health":28,"purchase":1200,"rent":28,"variant":3,"markings":1,"traits":["迅捷","高跃","健壮"]},
+    {"sku":"equinox","name":"Equinox","tier":5,"speed":0.3375,"jump":1.0,"health":30,"purchase":2400,"rent":45,"variant":5,"markings":0,"traits":["疾驰","跃栏大师","健壮"]}
+  ]
+}
