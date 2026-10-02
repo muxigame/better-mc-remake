@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .player_platform import PlatformStore
+from .social_api import social_router
 from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
 from .skins import MAX_BYTES as SKIN_MAX_BYTES, SkinError, SkinStore
 from .crash_reports import MAX_BUNDLE_BYTES, CrashReportError, CrashReportStore
@@ -109,7 +110,7 @@ async def security_headers(request: Request, call_next):
     )
     if request.url.scheme == "https" or os.getenv("BMC_PUBLIC_URL", "").lower().startswith("https://"):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    if (request.url.path.startswith(("/api/v1/auth", "/api/v1/admin", "/api/v1/player"))
+    if (request.url.path.startswith(("/api/v1/auth", "/api/v1/admin", "/api/v1/player", "/api/internal/game/social"))
             or request.url.path in {"/account", "/account.html", "/admin.html"}):
         response.headers["Cache-Control"] = "private, no-store"
         response.headers["Vary"] = "Cookie"
@@ -809,6 +810,8 @@ async def game_op_observations(request: Request):
         raise HTTPException(400, str(error))
     return {"ok": True, "accepted": accepted}
 
+
+app.include_router(social_router(database_path, current_player_account))
 
 if os.getenv("BMC_SERVE_WEB", "1") == "1":
     @app.get("/favicon.ico", include_in_schema=False)
