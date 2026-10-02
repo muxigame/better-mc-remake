@@ -129,23 +129,25 @@ class PlatformStore:
             raise ValueError('Invalid result fields')
         self.validate_uid(event['uid'])
         game, session = event['game'], event['session']
-        if game not in ('zombie-challenge', 'outbreak') or not isinstance(session, str):
+        if game not in ('zombie-challenge', 'outbreak', 'horse_racing') or not isinstance(session, str):
             raise ValueError('Unknown game or invalid session')
         parsed = UUID(session)
         if str(parsed) != session or parsed.version != 4:
             raise ValueError('Canonical UUID4 session required')
         if type(event['win']) is not bool:
             raise ValueError('Invalid win')
-        for key, maximum in (('score', 10**12), ('difficulty', 4 if game == 'zombie-challenge' else 3), ('seconds', 10**9)):
+        for key, maximum in (('score', 10**12), ('difficulty', {'zombie-challenge': 4, 'outbreak': 3, 'horse_racing': 5}[game]), ('seconds', 10**9)):
             if type(event[key]) is not int or not 0 <= event[key] <= maximum:
                 raise ValueError('Invalid result ' + key)
+        if game == 'horse_racing' and (not 1 <= event['difficulty'] <= 5 or not 1 <= event['score'] <= 10 or event['win'] != (event['score'] == 10)):
+            raise ValueError('Horse score must be 1..10, winner 10, difficulty 1..5')
         policy = {} if rewards is None else rewards
         if not isinstance(policy, dict) or any(name not in ('zombie-challenge', 'outbreak') for name in policy):
             raise ValueError('Invalid reward policy')
         for name, amounts in policy.items():
             if not isinstance(amounts, dict) or any(str(level) not in [str(n) for n in range(5 if name == 'zombie-challenge' else 4)] or type(amount) is not int or not 0 <= amount <= 10000 for level, amount in amounts.items()):
                 raise ValueError('Invalid reward policy')
-        points = policy.get(game, {}).get(str(event['difficulty']), 0) if event['win'] else 0
+        points = event['score'] if game == 'horse_racing' else (policy.get(game, {}).get(str(event['difficulty']), 0) if event['win'] else 0)
         canonical = json.dumps(event, sort_keys=True, separators=(',', ':'))
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')

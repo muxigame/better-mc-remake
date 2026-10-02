@@ -1,0 +1,58 @@
+{
+  "atUTC": "2026-10-02T12:40:53.001109+00:00",
+  "patchReviewed": true,
+  "combinedFlightHorseSourceSHA256": "99a84fbeae408a7376e6e365baa54880aeb7875bbb89812673c7138eee0279f7",
+  "horseOnlyStageSourceSHA256": "20e0586a0d2b6db75e0e68bd148a1893a10b5931d3209da6474ffe777b178631",
+  "horseOwnerSourceCommit": "7608dbbd92fc8adf6f7c21b4a6d62de40aa4c01f",
+  "patchSHA256": "08f95f23132be13bec89013db639ce75e26ad7ccfa81f2ee7a403e9450e3f198",
+  "actualCurrentWorkingAPI": {
+    "success": true,
+    "tests": 15,
+    "actualLoopbackHTTP": true,
+    "actualCurrentAppAndSQLite": true,
+    "productionMutation": false,
+    "temporaryDatabaseRemoved": true,
+    "httpRequests": 142,
+    "responseStatuses": {
+      "200": 81,
+      "400": 51,
+      "401": 5,
+      "409": 1,
+      "413": 1,
+      "500": 1,
+      "503": 2
+    },
+    "ownHTTPServerExited": true,
+    "trustedUIDScope": "API requires authenticated game service plus known website UID; existing GameRuntime/GamePlatform validates connection-bound TrustedAccounts before sending. Browser cookies alone cannot write results."
+  },
+  "exactHorseOnlyStagedAPI": {
+    "success": true,
+    "tests": 15,
+    "actualLoopbackHTTP": true,
+    "actualCurrentAppAndSQLite": true,
+    "productionMutation": false,
+    "temporaryDatabaseRemoved": true,
+    "httpRequests": 142,
+    "responseStatuses": {
+      "200": 81,
+      "400": 51,
+      "401": 5,
+      "409": 1,
+      "413": 1,
+      "500": 1,
+      "503": 2
+    },
+    "ownHTTPServerExited": true,
+    "trustedUIDScope": "API requires authenticated game service plus known website UID; existing GameRuntime/GamePlatform validates connection-bound TrustedAccounts before sending. Browser cookies alone cannot write results."
+  },
+  "existingRegressionTests": {
+    "minigameLedger": 7,
+    "flightZeroReward": 3,
+    "platformAPIAuthAndRoles": 4
+  },
+  "flightDirtyPreserved": true,
+  "productionMutation": false,
+  "minecraftStarted": false,
+  "push": false,
+  "deploy": false
+}
