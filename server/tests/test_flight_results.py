@@ -20,7 +20,7 @@ class FlightRewards(unittest.TestCase):
         self.assertEqual(1,sum(r['credited'] for r in results));self.assertEqual((17,321),self.values())
         with patch.dict(os.environ,{'BMC_FLIGHT_REWARD_REFERENCE_POINTS':'99'}):self.assertEqual({'credited':False,'points':10},self.store.credit_game_result(event))
     def test_anti_farm_bounds(self):
-        for key,value in [('win',True),('score',10001),('score',-1),('score',True),('difficulty',6)]:
+        for key,value in [('win',1),('score',10001),('score',-1),('score',True),('difficulty',6)]:
             with self.assertRaises(ValueError):self.store.credit_game_result({**self.flight(),key:value})
         for value in ('0','abc','10001'):
             with patch.dict(os.environ,{'BMC_FLIGHT_REWARD_REFERENCE_SCORE':value}):

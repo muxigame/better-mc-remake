@@ -1,0 +1,61 @@
+{
+  "atUTC": "2026-10-02T16:58:02.221826+00:00",
+  "sourceBaseSHA": "7e68802ca921dd746c7537c35edffe98a5712509",
+  "upstreamFlightCommit": "33801f70866714122054fcb5e03dc535804aab97",
+  "candidatePatchSHA256": "94caa9a4c2091b87f899c0f8938a76c2032908b6f5c56db5262856c8ce346758",
+  "productChangedLines": 2,
+  "review": "win is a boolean server-reported outcome, not the point amount. Both outcomes use the existing configured personal contribution curve. Keep strict fields/types/UID/ranges, authenticated service, score<=10000, per-UID/game/session canonical replay and atomic ledger/profile transaction.",
+  "beforeActualHTTPReproduction": {
+    "success": false,
+    "tests": 1,
+    "actualLoopbackHTTP": true,
+    "actualCurrentAppAndSQLite": true,
+    "productionMutation": false,
+    "httpRequests": 1,
+    "responseStatuses": {
+      "400": 1
+    },
+    "temporaryDatabaseRemoved": true,
+    "ownHTTPServerExited": true,
+    "scope": "Synthetic local HTTP settlement; server credential plus existing website UID. No new game-side identity admission test."
+  },
+  "afterActualHTTPVerification": {
+    "success": true,
+    "tests": 12,
+    "actualLoopbackHTTP": true,
+    "actualCurrentAppAndSQLite": true,
+    "productionMutation": false,
+    "httpRequests": 145,
+    "responseStatuses": {
+      "200": 91,
+      "400": 42,
+      "401": 8,
+      "409": 1,
+      "413": 1,
+      "500": 1,
+      "503": 1
+    },
+    "temporaryDatabaseRemoved": true,
+    "ownHTTPServerExited": true,
+    "scope": "Synthetic local HTTP settlement; server credential plus existing website UID. No new game-side identity admission test."
+  },
+  "regressions": {
+    "existingFlightRewards": 5,
+    "horseHTTP": 15,
+    "minigameLedger": 7,
+    "platformAPIAndRoles": 4,
+    "allPassed": true
+  },
+  "sourceSHA256": {
+    "server/app/player_platform.py": "f5ecb57638ca06877aa193c6139edb4500309ad2ac9274d6db7df244e0ce8836",
+    "server/tests/test_flight_results.py": "fad72608ac7d1606f48702b6bc9cbdc8de0004fb83d0f3d170bf03d9d19aa10d",
+    "server/tests/test_flight_battle_http.py": "aa2a936fffdc270c945167f96c6e7510464daaa24cc86f99e122c78bb3acbc67"
+  },
+  "scope": "Local actual HTTP API and SQLite with synthetic profiles. API service authentication/known UID verified; no new native Minecraft identity admission or battle rendering test.",
+  "productionMutation": false,
+  "productionPointsTouched": false,
+  "minecraftStarted": false,
+  "pushed": false,
+  "tagged": false,
+  "deployed": false
+}

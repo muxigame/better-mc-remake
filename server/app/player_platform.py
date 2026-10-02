@@ -153,8 +153,8 @@ class PlatformStore:
         for key, maximum in (('score', 10**12), ('difficulty', {'zombie-challenge': 4, 'outbreak': 3, 'flight': 5, 'horse_racing': 5}[game]), ('seconds', 10**9)):
             if type(event[key]) is not int or not 0 <= event[key] <= maximum:
                 raise ValueError('Invalid result ' + key)
-        if game == 'flight' and (event['win'] or event['score'] > 10000):
-            raise ValueError('Flight contribution requires no declared win and bounded server score')
+        if game == 'flight' and event['score'] > 10000:
+            raise ValueError('Flight contribution requires bounded server score')
         if game == 'horse_racing' and (not 1 <= event['difficulty'] <= 5 or not 1 <= event['score'] <= 10 or event['win'] != (event['score'] == 10)):
             raise ValueError('Horse score must be 1..10, winner 10, difficulty 1..5')
         policy = {} if rewards is None else rewards
