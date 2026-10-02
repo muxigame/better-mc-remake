@@ -1,0 +1,109 @@
+{
+  "atUTC": "2026-10-02T19:57:27.868017+08:00",
+  "success": true,
+  "productionMutation": false,
+  "testProductionSSO": false,
+  "identityTicketCallbackFixtureMixinsUsed": false,
+  "actualDedicatedServerListeners": true,
+  "actualRpcHostNativeBrokerDPAPI": true,
+  "actualCEFHTTPSOwnCookies": true,
+  "freshMinecraftProcesses": 3,
+  "nativePOSTs": 12,
+  "legalListenerBoundResultPackets": 12,
+  "actualLoginEvents": 6,
+  "actualDisconnectRevokeEvents": 6,
+  "ordinaryPlayerPermissionsAndReversibleSkinOperations": true,
+  "bothSkinsRestored": true,
+  "interactiveBrowserAuthRequests": 0,
+  "terminalArtifactSHA256": "48187f774c4a4921960a53610a8536e5b562887cfa0b330b3e07788cc50f842b",
+  "coreArtifactSHA256": "15f60e2b046e30260847d1498eaf6b2692ce905bcfc7585bc9a723836011860f",
+  "scope": "Actual isolated 131 source-access expiry, website expiry, Esc reopen, in-flight disconnect/reconnect, A-to-B switch, fresh B MC/CEF processes and B source revocation. No production deployment or blanket claim about unrelated player-center features.",
+  "suiteLab": "build/sso-mcef-20261002-194425-465213-e3ca058b",
+  "rounds": [
+    {
+      "phase": "switch-account",
+      "uid": 10000,
+      "success": true,
+      "gameExitCode": 0,
+      "nativeExchangePOSTs": 4,
+      "actualRefreshRotations": 1,
+      "dpapiSessionRetainedAtGameExit": true,
+      "realChecks": [
+        "real multiplayer player and dedicated-server connection",
+        "actual RpcHost pipe, proof HTTP, game packets and website cookie; reversible player operation",
+        "actual source-access and website-session expiry renew silently through launcher",
+        "Esc close/reopen proves native authority again",
+        "real disconnect while issuer ticket is in flight rejects late old listener; new listener issues fresh ticket",
+        "actual native account boundary blocks old view and retained cookies"
+      ]
+    },
+    {
+      "phase": "preserve",
+      "uid": 10001,
+      "success": true,
+      "gameExitCode": 0,
+      "nativeExchangePOSTs": 4,
+      "actualRefreshRotations": 1,
+      "dpapiSessionRetainedAtGameExit": true,
+      "realChecks": [
+        "real multiplayer player and dedicated-server connection",
+        "actual RpcHost pipe, proof HTTP, game packets and website cookie; reversible player operation",
+        "actual source-access and website-session expiry renew silently through launcher",
+        "Esc close/reopen proves native authority again",
+        "real disconnect while issuer ticket is in flight rejects late old listener; new listener issues fresh ticket"
+      ]
+    },
+    {
+      "phase": "revoke",
+      "uid": 10001,
+      "success": true,
+      "gameExitCode": 0,
+      "nativeExchangePOSTs": 4,
+      "actualRefreshRotations": 1,
+      "dpapiSessionRetainedAtGameExit": false,
+      "realChecks": [
+        "real multiplayer player and dedicated-server connection",
+        "actual RpcHost pipe, proof HTTP, game packets and website cookie; reversible player operation",
+        "actual source-access and website-session expiry renew silently through launcher",
+        "Esc close/reopen proves native authority again",
+        "real disconnect while issuer ticket is in flight rejects late old listener; new listener issues fresh ticket",
+        "actual native account boundary blocks old view and retained cookies"
+      ]
+    }
+  ],
+  "offlineVerification": {
+    "navigationAssertions": 70,
+    "threeRoundComponentAssertions": 42,
+    "actualRpcHostUnitAssertions": 13,
+    "nativeJavaPipeTLSProbeAssertions": 17,
+    "crossLanguageBrokerAssertions": 9,
+    "tlsServiceChainAssertions": 59,
+    "coreSelfTests": 6942
+  },
+  "ownedProcessesGone": true,
+  "productionSourceSHA256": {
+    "better-mc-remake": {
+      "client/core/GameLauncher.cs": "6d05f140b7a66faa1cdd81543add8ebea9c37f69a892572e410f90d29f903857",
+      "client/core/OfflineAuth.cs": "c738f277f5e338145647db10c6005d078c1e8c2bf9666cb81ee8eaa07ba58587",
+      "client/core/TerminalCredentialEnvironment.cs": "6595dbfc264c494844b6abc37226c1c77b8cbb484afde803c4add95c58e49cfd",
+      "client/core/TerminalCredentialBroker.cs": "5e4a12b39f86407ba23584a2e04cc1c72c7637ca2899e0108337c9d66e51aef8",
+      "client/sidecar/RpcHost.cs": "b069e4fd6e8d60644f200d0d5f7ba8ff32b7252f2a93af897f523b506143eb00",
+      "server/app/main.py": "22a075bb0efcc3e4bbcfcb3fbfc72feacf71d1ddffbde3bc79fac15c61f5c754",
+      "server/web/terminal-login.js": "9a66fde5e7e12ddc2b45657301a04b4562cee720384b7697068c2af3005a0226",
+      "tests/run_terminal_mcef.py": "120302183d5b3715014e21751e4da524bfa98faac86ae0a98a4a5ea41ae1a51a",
+      "tests/run_terminal_mcef_backend.py": "eb27c0b4e0f5b3bf358c4bc2bd717fd0bdb0cc51f1dc894a8db83c8ceff3fe99",
+      "tests/run_terminal_navigation.py": "e6ffad6d26538870d437bea84b10d916fab544cad913d03f2460a114c83ab4e1"
+    },
+    "muxi-game-core": {
+      "src/main/java/net/muxigame/core/client/TerminalPassportApi.java": "6274046e5af621faa9c3063f43b5e37b231d1a9ed6d6e0fe92ca19995f7f88f1",
+      "src/main/java/net/muxigame/core/client/TerminalCredentialBrokerClient.java": "d175b8c00d8e1c75be8b316ebc93e3ab8e54cac9422ec146c34c5e6cf61acede"
+    },
+    "muxi-terminal": {
+      "src/main/java/net/muxigame/terminal/client/TerminalPassportNavigation.java": "960824cae8e3759443c134196d1f3468f7eea239ba211a829a607e14e0490820",
+      "src/main/java/net/muxigame/terminal/client/TerminalViewClient.java": "db677106f294a26bd1cfffd10848ed0455406c9e589c992e674da9b1d47f5482",
+      "src/main/java/net/muxigame/terminal/client/TerminalBrowserSession.java": "f878df96cb63be319e7ce198e743f312b0213bcda5e811f7d6e6af2cbd3174e3",
+      "src/main/java/net/muxigame/terminal/client/TerminalClient.java": "07ea798aaf083ffaccf72beba9dabb18f24659cdbc1268ccebb79da52ac834bb",
+      "src/main/java/net/muxigame/terminal/client/TerminalScreen.java": "d17ecbef721b818d0d333f2363e55a3b45babf2d0531aa7681704e2426068eac"
+    }
+  }
+}

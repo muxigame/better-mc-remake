@@ -8,6 +8,8 @@ namespace BatterMC.Core;
 public sealed record GameSession(string Username, string UuidDashed, string UuidPlain, string AccessToken)
 {
     public string? TerminalCredential { get; init; }
+    public string? TerminalBrokerPipe { get; init; }
+    public string? TerminalBrokerSecret { get; init; }
     public override string ToString() => $"GameSession[Username={Username}, Uuid={UuidDashed}, credentials=<redacted>]";
     public static GameSession OfflineUid(long uid) => Offline(OfflineAuth.UidLoginName(uid));
 

@@ -35,6 +35,8 @@ internal sealed class RpcHost : IDisposable
     private bool _shutdown;
     private string? _accountToken;
     private string? _accountRefreshToken;
+    private long _terminalAccountGeneration;
+    private readonly object _accountSessionLock = new();
     private readonly object _terminalCredentialLock = new();
     private readonly HashSet<string> _terminalCredentials = new(StringComparer.Ordinal);
     private JsonObject? _account;
@@ -584,18 +586,26 @@ internal sealed class RpcHost : IDisposable
                 _lastJava = ctx.Java;
                 var fullscreenBefore = GameOptions.SnapshotFullscreen(_paths);
                 LaunchResult result;
+                var gameCredentials = new List<string>();
+                var credentialBroker = CreateTerminalCredentialBroker(session.Username, gameCredentials);
                 try
                 {
                     session = session with
                     {
-                        TerminalCredential = await MintTerminalCredentialAsync(ct).ConfigureAwait(false)
+                        TerminalCredential = await MintTerminalCredentialAsync(ct).ConfigureAwait(false),
+                        TerminalBrokerPipe = credentialBroker.PipeName,
+                        TerminalBrokerSecret = credentialBroker.Secret
                     };
                     result = await launcher.LaunchAsync(
                         ctx.Version!, ctx.Java!, _manifest, session, proxy?.LocalAddress, ct).ConfigureAwait(false);
                 }
                 finally
                 {
+                    await credentialBroker.DisposeAsync().ConfigureAwait(false);
                     await RevokeTerminalCredentialAsync(session.TerminalCredential).ConfigureAwait(false);
+                    string[] retired;
+                    lock (gameCredentials) retired = gameCredentials.ToArray();
+                    foreach (var credential in retired) await RevokeTerminalCredentialAsync(credential).ConfigureAwait(false);
                 }
 
                 // 玩家在游戏里切过全屏（F11 或视频设置）就记下来，下次按他最后的选择启动
@@ -1012,9 +1022,15 @@ internal sealed class RpcHost : IDisposable
                 throw new InvalidOperationException(json?["error_description"]?.GetValue<string>() ?? $"登录失败（HTTP {(int)response.StatusCode}）");
             }
 
+            lock (_accountSessionLock)
+            {
+                Interlocked.Increment(ref _terminalAccountGeneration);
+                _account = null; _player = null;
+                _accountToken = json?["access_token"]?.GetValue<string>();
+                _accountRefreshToken = json?["refresh_token"]?.GetValue<string>();
+                _lastRefresh = default;
+            }
             await RevokeTerminalCredentialsAsync().ConfigureAwait(false);
-            _accountToken = json?["access_token"]?.GetValue<string>();
-            _accountRefreshToken = json?["refresh_token"]?.GetValue<string>();
             if (string.IsNullOrEmpty(_accountToken))
             {
                 await WriteBrowserResultAsync(stream, false).ConfigureAwait(false);
@@ -1045,15 +1061,21 @@ internal sealed class RpcHost : IDisposable
 
     private async Task LoadAccountAsync()
     {
-        if (string.IsNullOrEmpty(_accountToken)) throw new InvalidOperationException("请先登录 muxi 账户");
+        long accountGeneration; string? sourceToken;
+        lock (_accountSessionLock) { accountGeneration = _terminalAccountGeneration; sourceToken = _accountToken; }
+        if (string.IsNullOrEmpty(sourceToken)) throw new InvalidOperationException("请先登录 muxi 账户");
         using var request = new HttpRequestMessage(HttpMethod.Get, AccountApi("/oauth/userinfo"));
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", sourceToken);
         using var response = await _accountHttp.SendAsync(request).ConfigureAwait(false);
         var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var json = JsonNode.Parse(text)?.AsObject();
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(json?["error_description"]?.GetValue<string>() ?? "统一账户会话无效");
-        _account = json;
+        lock (_accountSessionLock)
+        {
+            if (_terminalAccountGeneration != accountGeneration || _accountToken != sourceToken) return;
+            _account = json;
+        }
         await LoadPlayerProfileAsync().ConfigureAwait(false);
         var gameName = OfflineAuth.UidLoginName(AuthenticatedUid());
         if (!OfflineAuth.IsValidUsername(gameName))
@@ -1066,18 +1088,23 @@ internal sealed class RpcHost : IDisposable
 
     private async Task LoadPlayerProfileAsync()
     {
-        if (string.IsNullOrEmpty(_accountToken))
-            throw new InvalidOperationException("请先登录 muxi 账户");
+        long accountGeneration, uid; string? sourceToken;
+        lock (_accountSessionLock) { accountGeneration = _terminalAccountGeneration; sourceToken = _accountToken; uid = AuthenticatedUid(); }
+        if (string.IsNullOrEmpty(sourceToken)) throw new InvalidOperationException("请先登录 muxi 账户");
         using var request = new HttpRequestMessage(HttpMethod.Get, GameApi("/api/v1/player/profile"));
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", sourceToken);
         using var response = await _accountHttp.SendAsync(request).ConfigureAwait(false);
         var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var json = JsonNode.Parse(text)?.AsObject();
-        if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException(json?["detail"]?.GetValue<string>() ?? "无法读取 Better MC 玩家资料");
-        _player = json?["player"]?.AsObject();
-        if (_player?["uid"]?.GetValue<long>() != AuthenticatedUid())
-            throw new InvalidOperationException("玩家资料 UID 与登录账户不匹配");
+        if (!response.IsSuccessStatusCode) throw new InvalidOperationException(json?["detail"]?.GetValue<string>() ?? "无法获取 Better MC 玩家资料");
+        var player = json?["player"]?.AsObject();
+        lock (_accountSessionLock)
+        {
+            if (_terminalAccountGeneration != accountGeneration || _accountToken != sourceToken || AuthenticatedUid() != uid)
+                throw new InvalidOperationException("账户已切换，请重新获取玩家资料");
+            if (player?["uid"]?.GetValue<long>() != uid) throw new InvalidOperationException("玩家资料 UID 与登录账户不匹配");
+            _player = player;
+        }
     }
 
     /// <summary>
@@ -1112,39 +1139,99 @@ internal sealed class RpcHost : IDisposable
         return response.StatusCode;
     }
 
+    // One implementation is used both by the actual game launch and native-chain QA.
+    private TerminalCredentialBroker CreateTerminalCredentialBroker(string credentialUid, List<string> gameCredentials)
+    {
+        var credentialGeneration = Interlocked.Read(ref _terminalAccountGeneration);
+        return new TerminalCredentialBroker(async token =>
+                {
+        if (Interlocked.Read(ref _terminalAccountGeneration) != credentialGeneration
+            || _account is null || AuthenticatedUid().ToString(System.Globalization.CultureInfo.InvariantCulture) != credentialUid) return null;
+        var value = await MintTerminalCredentialAsync(token).ConfigureAwait(false);
+        if (token.IsCancellationRequested || Interlocked.Read(ref _terminalAccountGeneration) != credentialGeneration
+            || _account is null || AuthenticatedUid().ToString(System.Globalization.CultureInfo.InvariantCulture) != credentialUid)
+        {
+            await RevokeTerminalCredentialAsync(value).ConfigureAwait(false);
+            return null;
+        }
+        if (TerminalCredentialEnvironment.Valid(value))
+        {
+            string? superseded;
+            lock (gameCredentials) { superseded = gameCredentials.LastOrDefault(); gameCredentials.Add(value!); }
+            // A heartbeat and a new opening can overlap after pipe delivery. Let the
+            // already-issued native proof complete; account change/logout revoke all immediately.
+            if (superseded is not null && superseded != value) _ = RetireGameCredentialAsync(superseded, gameCredentials);
+        }
+        return value;
+                });
+    }
+
+    private async Task RetireGameCredentialAsync(string credential, List<string> gameCredentials)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(20)).ConfigureAwait(false);
+        await RevokeTerminalCredentialAsync(credential).ConfigureAwait(false);
+        bool revoked;
+        lock (_terminalCredentialLock) revoked = !_terminalCredentials.Contains(credential);
+        // Keep failed revocations in this game's exit cleanup as well as global logout cleanup.
+        if (revoked) lock (gameCredentials) gameCredentials.Remove(credential);
+    }
+
     private async Task<string?> MintTerminalCredentialAsync(CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(_accountToken)) return null;
+        long accountGeneration, expectedUid; string? sourceToken;
+        lock (_accountSessionLock)
+        {
+            if (string.IsNullOrEmpty(_accountToken) || _account is null) return null;
+            accountGeneration = _terminalAccountGeneration; expectedUid = AuthenticatedUid(); sourceToken = _accountToken;
+        }
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(5));
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, AccountApi("/api/launcher/minecraft/terminal-bootstrap"));
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
-            using var response = await _accountHttp.SendAsync(request, timeout.Token).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode) return null;
-            var text = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
-            var json = JsonNode.Parse(text)?.AsObject();
-            var credential = json?["credential"]?.GetValue<string>();
-            if (json?["uid"]?.GetValue<long>() != AuthenticatedUid() || !TerminalCredentialEnvironment.Valid(credential)) return null;
-            lock (_terminalCredentialLock) _terminalCredentials.Add(credential!);
-            return credential;
+            for (var attempt = 0; attempt < 2; attempt++)
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, AccountApi("/api/launcher/minecraft/terminal-bootstrap"));
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", sourceToken);
+                using var response = await _accountHttp.SendAsync(request, timeout.Token).ConfigureAwait(false);
+                if (attempt == 0 && response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    if (!await RefreshAccountAsync().WaitAsync(timeout.Token).ConfigureAwait(false)) return null;
+                    lock (_accountSessionLock)
+                    {
+                        if (_terminalAccountGeneration != accountGeneration || _account is null || AuthenticatedUid() != expectedUid) return null;
+                        sourceToken = _accountToken;
+                    }
+                    continue;
+                }
+                if (!response.IsSuccessStatusCode) return null;
+                var json = JsonNode.Parse(await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false))?.AsObject();
+                var credential = json?["credential"]?.GetValue<string>();
+                lock (_accountSessionLock)
+                {
+                    if (timeout.IsCancellationRequested || _terminalAccountGeneration != accountGeneration || _account is null
+                        || AuthenticatedUid() != expectedUid || json?["uid"]?.GetValue<long>() != expectedUid || !TerminalCredentialEnvironment.Valid(credential)) return null;
+                    lock (_terminalCredentialLock) _terminalCredentials.Add(credential!);
+                }
+                return credential;
+            }
         }
         catch (Exception) when (!ct.IsCancellationRequested)
         {
-            // Never put response bodies or credentials into launcher output/crash reports.
-            Log.Info("Terminal automatic login unavailable; normal account login remains available.");
-            return null;
+            Log.Info("Terminal automatic session unavailable; retry from the client account.");
         }
+        return null;
     }
 
     private long AuthenticatedUid()
     {
-        if (string.IsNullOrEmpty(_accountToken) || _account?["muxi_uid"] is not JsonValue value
-            || !value.TryGetValue<long>(out var uid))
-            throw new InvalidOperationException("登录身份缺少有效平台 UID，请重新登录");
-        _ = OfflineAuth.UidLoginName(uid);
-        return uid;
+        lock (_accountSessionLock)
+        {
+            if (string.IsNullOrEmpty(_accountToken) || _account?["muxi_uid"] is not JsonValue value
+                || !value.TryGetValue<long>(out var uid))
+                throw new InvalidOperationException("客户端账户缺少有效 UID");
+            _ = OfflineAuth.UidLoginName(uid);
+            return uid;
+        }
     }
 
     // ── 日志上传 / 意见反馈 ──
@@ -1282,8 +1369,13 @@ internal sealed class RpcHost : IDisposable
 
     private async Task<JsonNode> AccountLogoutAsync()
     {
+        string? revoke;
+        lock (_accountSessionLock)
+        {
+            revoke = _accountRefreshToken ?? _accountToken;
+            DropAccountSession(false);
+        }
         await RevokeTerminalCredentialsAsync().ConfigureAwait(false);
-        var revoke = _accountRefreshToken ?? _accountToken;
         if (!string.IsNullOrEmpty(revoke))
         {
             try
@@ -1297,7 +1389,6 @@ internal sealed class RpcHost : IDisposable
             }
             catch { }
         }
-        DropAccountSession();
         Emit("state", BuildState());
         return BuildState();
     }
@@ -1321,25 +1412,33 @@ internal sealed class RpcHost : IDisposable
                 && DateTimeOffset.UtcNow - _lastRefresh < TimeSpan.FromSeconds(30)) return true;
 
             if (string.IsNullOrEmpty(_accountRefreshToken)) return false;
+            long accountGeneration; string? refreshSource;
+            lock (_accountSessionLock) { accountGeneration = _terminalAccountGeneration; refreshSource = _accountRefreshToken; }
             using var content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["grant_type"] = "refresh_token",
                 ["client_id"] = "better-mc-launcher",
-                ["refresh_token"] = _accountRefreshToken,
+                ["refresh_token"] = refreshSource!,
             });
             using var response = await _accountHttp.PostAsync(AccountApi("/oauth/token"), content).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode) return false;
             var json = JsonNode.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false))?.AsObject();
-            _accountToken = json?["access_token"]?.GetValue<string>();
-            _accountRefreshToken = json?["refresh_token"]?.GetValue<string>();
-            var ok = !string.IsNullOrEmpty(_accountToken) && !string.IsNullOrEmpty(_accountRefreshToken);
-            if (ok)
+            // A late renewal must never overwrite a newly selected account or undo logout.
+            lock (_accountSessionLock)
             {
-                _lastRefresh = DateTimeOffset.UtcNow;
+                if (_terminalAccountGeneration != accountGeneration || _accountRefreshToken != refreshSource) return false;
+                var access = json?["access_token"]?.GetValue<string>();
+                var refresh = json?["refresh_token"]?.GetValue<string>();
+                var ok = !string.IsNullOrEmpty(access) && !string.IsNullOrEmpty(refresh);
+                if (ok)
+                {
+                    _accountToken = access; _accountRefreshToken = refresh;
+                    _lastRefresh = DateTimeOffset.UtcNow;
                 // 旧的已经被上游吊销了，这里不立刻落盘，进程一退玩家就登不回来
-                PersistAccountSession();
+                    PersistAccountSession();
+                }
+                return ok;
             }
-            return ok;
         }
         finally
         {
@@ -1390,6 +1489,8 @@ internal sealed class RpcHost : IDisposable
 
     private void PersistAccountSession()
     {
+        lock (_accountSessionLock)
+        {
         if (string.IsNullOrEmpty(_accountToken) || string.IsNullOrEmpty(_accountRefreshToken)) return;
         try
         {
@@ -1404,16 +1505,19 @@ internal sealed class RpcHost : IDisposable
         {
             Log.Warn($"保存登录态失败，下次可能需要重新登录：{ex.Message}");
         }
+        }
     }
 
-    private void DropAccountSession()
+    private void DropAccountSession(bool revokeTerminal = true)
     {
-        _ = RevokeTerminalCredentialsAsync();
-        _accountToken = null;
-        _accountRefreshToken = null;
-        _account = null;
-        _player = null;
-        AccountStore.Clear(_paths.AccountFile);
+        lock (_accountSessionLock)
+        {
+            Interlocked.Increment(ref _terminalAccountGeneration);
+            _accountToken = null; _accountRefreshToken = null; _account = null; _player = null;
+            _lastRefresh = default;
+            AccountStore.Clear(_paths.AccountFile);
+        }
+        if (revokeTerminal) _ = RevokeTerminalCredentialsAsync();
     }
 
     private async Task RevokeTerminalCredentialsAsync()

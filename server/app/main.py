@@ -458,7 +458,7 @@ async def terminal_login_exchange(request: Request):
             raise ValueError()
         account = await run_in_threadpool(oidc_client.exchange_terminal_ticket,payload)
     except (ValueError, RuntimeError):
-        raise HTTPException(status_code=401, detail="Terminal login expired; use normal platform login") from None
+        raise HTTPException(status_code=401, detail="Terminal session expired") from None
     token = web_auth_store.create_session(account)
     web_auth_store.logout(request.cookies.get("bmc_session"))
     response = RedirectResponse("/account.html", status_code=303, headers={"Cache-Control":"private, no-store"})
