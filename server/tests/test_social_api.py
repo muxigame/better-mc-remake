@@ -10,7 +10,9 @@ os.environ['BMC_SKIP_DOTENV'] = '1'
 os.environ['BMC_DATABASE_PATH'] = str(Path(temp.name)/'synthetic.db')
 os.environ['BMC_PUBLIC_URL'] = 'http://testserver'
 os.environ['BMC_GAME_SERVICE_KEY'] = 'synthetic-test-credential-only-00000000'
-os.environ['BMC_GAME_PLATFORM_ENABLED'] = '1'
+os.environ['BMC_GAME_PLATFORM_ENABLED'] = '0'
+os.environ['BMC_GAME_SOCIAL_ENABLED'] = '1'
+os.environ['BMC_GAME_SOCIAL_KEY'] = 'synthetic-social-only-credential-00000000'
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from app import main
@@ -24,7 +26,7 @@ class SocialAPITests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.path = Path(self.tmp.name)/'social.db'
         app = FastAPI()
-        app.include_router(social_router(self.path,main.current_player_account,main.platform_service_key))
+        app.include_router(social_router(self.path,main.current_player_account))
         self.client = TestClient(app)
         self.accounts = [WebsiteAccount(subject=f'social-test-{uid}',uid=uid,username='synthetic',nickname='same display',game_name=str(uid),email=None,email_verified=False,role='player') for uid in (10000,10001)]
         self.cookies = [main.web_auth_store.create_session(a) for a in self.accounts]
@@ -75,12 +77,12 @@ class SocialAPITests(unittest.TestCase):
         path='/api/internal/game/social/presence'
         body={'players':[{'uid':'10000','uuid':offline_uuid(10000),'gameName':'10000'},{'uid':'10001','uuid':offline_uuid(10001),'gameName':'10001'}]}
         self.assertEqual(401,self.client.put(path,json=body).status_code)
-        headers={'x-muxi-server-key':os.environ['BMC_GAME_SERVICE_KEY']}
+        headers={'x-muxi-server-key':os.environ['BMC_GAME_SOCIAL_KEY']}
         self.assertEqual(200,self.client.put(path,json=body,headers=headers).status_code)
         endpoint='/api/internal/game/social/eligibility/10000/10001'
         self.assertTrue(self.client.get(endpoint,headers=headers).json()['allowed'])
         self.assertFalse(self.client.get(endpoint+'?source=friends',headers=headers).json()['allowed'])
-        with patch.dict(os.environ,{'BMC_GAME_PLATFORM_ENABLED':'0'}):
+        with patch.dict(os.environ,{'BMC_GAME_SOCIAL_ENABLED':'0'}):
             self.assertEqual(503,self.client.put(path,json=body,headers=headers).status_code)
         body['players'][1]['gameName']='@a'
         self.assertEqual(400,self.client.put(path,json=body,headers=headers).status_code)

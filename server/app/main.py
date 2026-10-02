@@ -811,7 +811,7 @@ async def game_op_observations(request: Request):
     return {"ok": True, "accepted": accepted}
 
 
-app.include_router(social_router(database_path, current_player_account, platform_service_key))
+app.include_router(social_router(database_path, current_player_account))
 
 if os.getenv("BMC_SERVE_WEB", "1") == "1":
     @app.get("/favicon.ico", include_in_schema=False)

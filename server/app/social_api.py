@@ -5,9 +5,10 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from .social import SocialStore, social_uid
+from .social_trust import social_service_key
 
 
-def social_router(path, current_player_account, platform_service_key):
+def social_router(path, current_player_account):
     store = SocialStore(path)
     router = APIRouter()
 
@@ -80,7 +81,7 @@ def social_router(path, current_player_account, platform_service_key):
     async def unblock(peer: str, request: Request, uid=Depends(actor)):
         return await mutate(request, uid, peer, 'unblock')
 
-    @router.put('/api/internal/game/social/presence', dependencies=[Depends(platform_service_key)], include_in_schema=False)
+    @router.put('/api/internal/game/social/presence', dependencies=[Depends(social_service_key)], include_in_schema=False)
     async def presence(request: Request):
         if len(await request.body()) > 256 * 1024:
             raise HTTPException(413, 'Presence snapshot too large')
@@ -93,7 +94,7 @@ def social_router(path, current_player_account, platform_service_key):
             failure(error)
         return {'version': 1, 'ok': True, 'expiresInSeconds': store.PRESENCE_TTL}
 
-    @router.get('/api/internal/game/social/eligibility/{acting_uid}/{target_uid}', dependencies=[Depends(platform_service_key)], include_in_schema=False)
+    @router.get('/api/internal/game/social/eligibility/{acting_uid}/{target_uid}', dependencies=[Depends(social_service_key)], include_in_schema=False)
     def eligibility(acting_uid: str, target_uid: str, source: str = 'online'):
         try:
             return {'version': 1, **store.eligibility(acting_uid, target_uid, source)}
