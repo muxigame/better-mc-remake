@@ -1,0 +1,52 @@
+{
+  "atUTC": "2026-10-02T17:53:04.729266+00:00",
+  "sourceBaseSHA": "392199ed5cb87902360644c30b54a71186d24095",
+  "upstreamMinigamesSHA": "1244709673f90d659966510019ba8c33521bdb75",
+  "candidatePatchSHA256": "8c3fed23210ca763eeb3d28fe8ed6db1d96e4160118ff61e294c0fcf974fc3c3",
+  "productStatementsAdded": 2,
+  "actualMountedMainHTTP": {
+    "success": true,
+    "tests": 11,
+    "actualMainAppRoutes": true,
+    "actualLoopbackHTTP": true,
+    "httpRequests": 86,
+    "responseStatuses": {
+      "200": 58,
+      "401": 4,
+      "403": 6,
+      "409": 14,
+      "413": 1,
+      "500": 1,
+      "503": 2
+    },
+    "syntheticDatabaseRemoved": true,
+    "ownHTTPServerExited": true,
+    "featureDefaultOffVerified": true,
+    "productionMutation": false,
+    "scope": "Actual shared backend routing and real service guard; synthetic local balances/custody descriptors. No new native horse delivery or Minecraft identity test."
+  },
+  "regressions": {
+    "horseCommerceStore": 8,
+    "candidateRouter": 1,
+    "flightBattleHTTP": 12,
+    "horseResultsHTTP": 15,
+    "platformAPIAndRoles": 4,
+    "allPassed": true
+  },
+  "sourceSHA256": {
+    "server/app/main.py": "d9689bfe8fc4930aaf491033ab95afb4d39d697252e2d1c3ac1cffd6ec8cee0e",
+    "server/tests/test_horse_trade_mounted_http.py": "631a3ab9dae36f0f30ea527b8932ee3960e1d5b686b769cdc768ac1dec2a874e",
+    "server/app/player_platform.py": "f5ecb57638ca06877aa193c6139edb4500309ad2ac9274d6db7df244e0ce8836",
+    "server/app/horse_trading.py": "3c25fa253ac441c26cfefc26d7b189a0996f074162a3872ecda1d71d782c5c45",
+    "server/app/horse_trade_catalog_v1.json": "b855a632ee71dca4cbcb674fdb39da8f41c1ae431f4ae0dbd41dca383f345f0d"
+  },
+  "featureDefaultOff": true,
+  "existingPlatformServiceGuardReused": true,
+  "protectedFlightSettlementAndCommerceLogicUnchanged": true,
+  "productionMutation": false,
+  "minecraftStarted": false,
+  "pushed": false,
+  "tagged": false,
+  "deployed": false,
+  "scope": "Shared main.app router mount acceptance with synthetic local balances/custody. Existing upstream native/APP evidence remains owned by commerce owner; no new native acceptance claimed."
+}

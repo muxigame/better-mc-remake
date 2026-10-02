@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .player_platform import PlatformStore
+from .horse_trading import horse_trading_router
 from .social_api import social_router
 from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
 from .skins import MAX_BYTES as SKIN_MAX_BYTES, SkinError, SkinStore
@@ -646,6 +647,9 @@ def platform_service_key(request: Request):
     supplied = request.headers.get("x-muxi-server-key", "")
     if not hmac.compare_digest(key.encode(), supplied.encode()):
         raise HTTPException(401, "Invalid game service credential")
+
+
+app.include_router(horse_trading_router(database_path, platform_service_key))
 
 
 @app.post("/api/internal/game/task-claims", dependencies=[Depends(platform_service_key)], include_in_schema=False)
