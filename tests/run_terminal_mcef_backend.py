@@ -45,6 +45,9 @@ def package(name, path):
 
 def run(args):
     checks = []
+    shared_games = getattr(args, 'shared_games', False)
+    if shared_games and not args.native:
+        raise ValueError('Shared games requires actual native mode')
 
     def check(value, name):
         if not value:
@@ -61,6 +64,14 @@ def run(args):
         social_key = 'synthetic-dedicated-social-key-32-long'
         web_key = 'synthetic-confidential-web-key-32-long'
         os.environ.update({'MUXI_DATABASE_PATH': str(tmp / 'auth.db'), 'MUXI_SIGNING_KEY_PATH': str(tmp / 'oidc.pem'), 'MUXI_ISSUER': auth_url, 'MUXI_TERMINAL_SSO_ENABLED': '1', 'MUXI_TERMINAL_SSO_SERVER_KEY': terminal_key, 'MUXI_MC_PROFILE_KEY': profile_key, 'MUXI_BMC_WEB_CLIENT_SECRET': web_key, 'BMC_DATABASE_PATH': str(tmp / 'website.db'), 'BMC_AUTH_ISSUER': auth_url, 'BMC_AUTH_CLIENT_SECRET': web_key, 'BMC_PUBLIC_URL': 'https://mc.muxigame.com', 'BMC_SERVE_WEB': '1', 'BMC_TERMINAL_SSO_ENABLED': '1'})
+        if shared_games:
+            import secrets
+            game_key = secrets.token_urlsafe(48)
+            social_key = secrets.token_urlsafe(48)
+            os.environ.update(BMC_GAME_PLATFORM_ENABLED='1', BMC_GAME_SERVICE_KEY=game_key,
+                BMC_GAME_SOCIAL_ENABLED='1', BMC_GAME_SOCIAL_KEY=social_key,
+                MUXI_GAME_ADMISSION_ENABLED='1', MUXI_GAME_PLATFORM_URL=site_url,
+                MUXI_GAME_PLATFORM_KEY=game_key, BMC_MINIGAME_REWARDS_JSON='{}')
         package('dedicated_auth', ROOT.parent / 'muxi-auth/app')
         package('dedicated_site', ROOT / 'server/app')
         from dedicated_auth import main as auth
@@ -154,6 +165,19 @@ def run(args):
                 check(response.status_code == 200 and response.json()['uid'] == account.uid, 'Launcher bootstrap binds its account UID')
                 credentials.append(response.json()['credential'])
 
+            if shared_games:
+                # Same Auth accounts and Web database for A/B. Register through
+                # authenticated application APIs, never seed platform/social rows.
+                for n in range(2):
+                    headers={'Authorization':'Bearer '+access[n]}
+                    profile=browser.get('/api/v1/player/profile',headers=headers)
+                    check(profile.status_code==200 and str(profile.json()['player']['uid'])==str(accounts[n].uid), 'Shared profile matches actual Auth UID')
+                    check(browser.get('/api/v1/player/social',headers=headers).status_code==200, 'Shared social actor registered through authenticated API')
+                response=browser.put('/api/v1/player/social/requests/'+str(accounts[1].uid),json={},headers={'Authorization':'Bearer '+access[0],'Idempotency-Key':str(uuid.uuid4())})
+                check(response.status_code==200, 'A sends B friend request through actual API')
+                response=browser.post('/api/v1/player/social/requests/'+str(accounts[0].uid)+'/accept',json={},headers={'Authorization':'Bearer '+access[1],'Idempotency-Key':str(uuid.uuid4())})
+                check(response.status_code==200, 'B accepts A friend request through actual API')
+
             def proof(n):
                 verifier = 'v' * 43
                 request_id = str(uuid.uuid4())
@@ -219,15 +243,17 @@ def run(args):
                         request=json.loads(self.rfile.read(size))
                         with lock:
                             action=request['action']
+                            launcher_n=request.get('accountIndex',state['selected']) if shared_games else state['selected']
+                            if type(launcher_n) is not int or launcher_n not in (0,1):raise ValueError('Invalid isolated account selector')
                             if action.startswith('launcher-') and not launcher_allowed:
                                 self.send_response(403);self.end_headers();return
                             if launcher_allowed and action not in ('launcher-state','launcher-session','launcher-rotated'):
                                 self.send_response(403);self.end_headers();return
-                            if action=='launcher-state':result={'uid':accounts[state['selected']].uid,'version':state['version'],'revoked':state['revoked']}
+                            if action=='launcher-state':result={'uid':accounts[launcher_n].uid,'version':state['version'],'revoked':state['revoked']}
                             elif action=='launcher-session':
-                                n=state['selected'];result={'uid':accounts[n].uid,'version':state['version'],'revoked':state['revoked'],'access_token':access[n],'refresh_token':refresh_tokens[n]}
+                                n=launcher_n;result={'uid':accounts[n].uid,'version':state['version'],'revoked':state['revoked'],'access_token':access[n],'refresh_token':refresh_tokens[n]}
                             elif action=='launcher-rotated':
-                                n=state['selected']
+                                n=launcher_n
                                 if str(request.get('uid'))==str(accounts[n].uid):access[n]=request['access_token'];refresh_tokens[n]=request['refresh_token'];state['refreshes']+=1
                                 result={'updated':True}
                             elif action=='ticket':
@@ -284,8 +310,23 @@ def run(args):
                         data=json.dumps({'error':type(error).__name__}).encode();self.send_response(500);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
             control=ThreadingHTTPServer(('127.0.0.1',0),Control)
             args.ready.write_text(json.dumps({'url':'http://127.0.0.1:'+str(control.server_port),'capability':control_secret,'uid':accounts[0].uid,'backend':'actual131loopbackTLS','minecraft_listeners':'actual-dedicated-server' if args.native else 'fixtures','native_mode':args.native,'launcher_capability':launcher_secret,'auth_url':auth_url,'site_url':site_url,'truststore':str(tmp/'trust.p12'),'site_port':int(site_url.rsplit(':',1)[1]),'spki':base64.b64encode(hashlib.sha256(key.public_key().public_bytes(serialization.Encoding.DER,serialization.PublicFormat.SubjectPublicKeyInfo)).digest()).decode()}),encoding='utf-8')
+            if shared_games:
+                private=json.loads(args.ready.read_text(encoding='utf-8'))
+                private.update(shared_games=True,uids=[account.uid for account in accounts],
+                    profile_key=profile_key,terminal_key=terminal_key,social_key=social_key,game_key=game_key,ca_file=str(tmp/'cert.pem'))
+                args.ready.write_text(json.dumps(private),encoding='utf-8')
+                args.ready.with_name('shared-backend-public.json').write_text(json.dumps({
+                    'ready':True,'sharedGames':True,'authURL':auth_url,'siteURL':site_url,
+                    'caFile':str(tmp/'cert.pem'),
+                    'controllerURL':private['url'],'uids':private['uids'],'checks':checks,
+                    'socialEndpoint':site_url+'/api/internal/game/social/',
+                    'platformEndpoint':site_url+'/api/internal/game/',
+                    'joinMintEndpoint':auth_url+'/api/launcher/minecraft/join',
+                    'joinConsumeEndpoint':auth_url+'/api/internal/minecraft/join/',
+                    'minecraftStarted':False,'joinGrantsMinted':False,'fakePresence':False,
+                    'productionMutation':False}),encoding='utf-8')
             print('131 actual Auth/Core/website TLS backend ready; no credentials printed',flush=True)
-            timer=threading.Timer(600,control.shutdown);timer.daemon=True;timer.start()
+            timer=threading.Timer(getattr(args,'lifetime_seconds',600),control.shutdown);timer.daemon=True;timer.start()
             try:control.serve_forever()
             finally:timer.cancel();control.server_close();args.ready.unlink(missing_ok=True)
             if native:status=command('close');native.wait(timeout=6)
@@ -308,4 +349,6 @@ if __name__=='__main__':
     parser.add_argument('--report',type=Path,required=True)
     parser.add_argument('--ready',type=Path,required=True)
     parser.add_argument('--native',action='store_true')
+    parser.add_argument('--shared-games',action='store_true')
+    parser.add_argument('--lifetime-seconds',type=int,choices=(600,1800,3600),default=600)
     run(parser.parse_args())
