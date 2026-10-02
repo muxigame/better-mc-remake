@@ -35,6 +35,8 @@ internal sealed class RpcHost : IDisposable
     private bool _shutdown;
     private string? _accountToken;
     private string? _accountRefreshToken;
+    private readonly object _terminalCredentialLock = new();
+    private readonly HashSet<string> _terminalCredentials = new(StringComparer.Ordinal);
     private JsonObject? _account;
     private JsonObject? _player;
     private string? _activeUpdateSource;
@@ -581,8 +583,20 @@ internal sealed class RpcHost : IDisposable
                 var startedAt = DateTimeOffset.Now;
                 _lastJava = ctx.Java;
                 var fullscreenBefore = GameOptions.SnapshotFullscreen(_paths);
-                var result = await launcher.LaunchAsync(
-                    ctx.Version!, ctx.Java!, _manifest, session, proxy?.LocalAddress, ct).ConfigureAwait(false);
+                LaunchResult result;
+                try
+                {
+                    session = session with
+                    {
+                        TerminalCredential = await MintTerminalCredentialAsync(ct).ConfigureAwait(false)
+                    };
+                    result = await launcher.LaunchAsync(
+                        ctx.Version!, ctx.Java!, _manifest, session, proxy?.LocalAddress, ct).ConfigureAwait(false);
+                }
+                finally
+                {
+                    await RevokeTerminalCredentialAsync(session.TerminalCredential).ConfigureAwait(false);
+                }
 
                 // 玩家在游戏里切过全屏（F11 或视频设置）就记下来，下次按他最后的选择启动
                 if (GameOptions.FullscreenChangedInGame(_paths, fullscreenBefore) is { } fullscreenNow
@@ -998,6 +1012,7 @@ internal sealed class RpcHost : IDisposable
                 throw new InvalidOperationException(json?["error_description"]?.GetValue<string>() ?? $"登录失败（HTTP {(int)response.StatusCode}）");
             }
 
+            await RevokeTerminalCredentialsAsync().ConfigureAwait(false);
             _accountToken = json?["access_token"]?.GetValue<string>();
             _accountRefreshToken = json?["refresh_token"]?.GetValue<string>();
             if (string.IsNullOrEmpty(_accountToken))
@@ -1095,6 +1110,32 @@ internal sealed class RpcHost : IDisposable
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
         using var response = await _accountHttp.SendAsync(request, ct).ConfigureAwait(false);
         return response.StatusCode;
+    }
+
+    private async Task<string?> MintTerminalCredentialAsync(CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(_accountToken)) return null;
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, AccountApi("/api/launcher/minecraft/terminal-bootstrap"));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accountToken);
+            using var response = await _accountHttp.SendAsync(request, timeout.Token).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) return null;
+            var text = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
+            var json = JsonNode.Parse(text)?.AsObject();
+            var credential = json?["credential"]?.GetValue<string>();
+            if (json?["uid"]?.GetValue<long>() != AuthenticatedUid() || !TerminalCredentialEnvironment.Valid(credential)) return null;
+            lock (_terminalCredentialLock) _terminalCredentials.Add(credential!);
+            return credential;
+        }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            // Never put response bodies or credentials into launcher output/crash reports.
+            Log.Info("Terminal automatic login unavailable; normal account login remains available.");
+            return null;
+        }
     }
 
     private long AuthenticatedUid()
@@ -1241,6 +1282,7 @@ internal sealed class RpcHost : IDisposable
 
     private async Task<JsonNode> AccountLogoutAsync()
     {
+        await RevokeTerminalCredentialsAsync().ConfigureAwait(false);
         var revoke = _accountRefreshToken ?? _accountToken;
         if (!string.IsNullOrEmpty(revoke))
         {
@@ -1366,11 +1408,33 @@ internal sealed class RpcHost : IDisposable
 
     private void DropAccountSession()
     {
+        _ = RevokeTerminalCredentialsAsync();
         _accountToken = null;
         _accountRefreshToken = null;
         _account = null;
         _player = null;
         AccountStore.Clear(_paths.AccountFile);
+    }
+
+    private async Task RevokeTerminalCredentialsAsync()
+    {
+        string[] credentials;
+        lock (_terminalCredentialLock) credentials = _terminalCredentials.ToArray();
+        foreach (var credential in credentials) await RevokeTerminalCredentialAsync(credential).ConfigureAwait(false);
+    }
+
+    private async Task RevokeTerminalCredentialAsync(string? credential)
+    {
+        if (!TerminalCredentialEnvironment.Valid(credential)) return;
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(4));
+            using var request = new HttpRequestMessage(HttpMethod.Post, AccountApi("/api/launcher/minecraft/terminal-bootstrap/revoke"));
+            request.Headers.Authorization = new AuthenticationHeaderValue("MuxiTerminal", credential);
+            using var response = await _accountHttp.SendAsync(request, timeout.Token).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode) lock (_terminalCredentialLock) _terminalCredentials.Remove(credential!);
+        }
+        catch { /* Auth is unreachable: proofs cannot be minted; the credential also has a hard expiry. */ }
     }
 
     /// <summary>

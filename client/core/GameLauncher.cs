@@ -106,6 +106,7 @@ public sealed class GameLauncher
             StandardErrorEncoding = Encoding.UTF8,
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
+        TerminalCredentialEnvironment.Apply(psi, session.TerminalCredential);
 
         LogCommandLine(java, args, classpath);
         ApplyGpuPreference(java.Path);
