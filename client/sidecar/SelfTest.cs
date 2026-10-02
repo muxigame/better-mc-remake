@@ -50,6 +50,16 @@ internal static class SelfTest
         try { GameSession.OfflineUid(9999); } catch (ArgumentOutOfRangeException) { rejectedUid = true; }
         Check("无效 UID 不得回退到用户名", rejectedUid);
         AccountSessionRoundTrip();
+        var terminalSecret = new string('s', 43);
+        var terminalProcess = new System.Diagnostics.ProcessStartInfo();
+        terminalProcess.Environment[TerminalCredentialEnvironment.Variable] = "inherited-invalid-value";
+        TerminalCredentialEnvironment.Apply(terminalProcess, null);
+        Check("Terminal removes inherited credentials", !terminalProcess.Environment.ContainsKey(TerminalCredentialEnvironment.Variable));
+        TerminalCredentialEnvironment.Apply(terminalProcess, terminalSecret);
+        Check("Terminal restricted credential is process-local", terminalProcess.Environment[TerminalCredentialEnvironment.Variable] == terminalSecret && terminalProcess.ArgumentList.Count == 0);
+        Check("Terminal credential is redacted", !(GameSession.OfflineUid(10000) with { TerminalCredential = terminalSecret }).ToString().Contains(terminalSecret));
+        Check("Terminal rejects malformed credentials", !TerminalCredentialEnvironment.Valid("invalid"));
+        Check("Terminal rejects a trailing newline", !TerminalCredentialEnvironment.Valid(terminalSecret + "\n"));
         MirrorRewrite();
         GpuSelection();
         ClientUpdatePolicy();

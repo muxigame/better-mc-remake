@@ -376,6 +376,27 @@ class OidcClient:
         )
         return WebsiteAccount.from_userinfo(self._json_request(request))
 
+    def exchange_terminal_ticket(self, payload: dict) -> WebsiteAccount:
+        if not self.client_secret or self.client_id != "better-mc-web":
+            raise RuntimeError("Platform authentication unavailable")
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, req, fp, code, msg, headers, newurl):
+                return None
+        credential = base64.b64encode(f"{self.client_id}:{self.client_secret}".encode()).decode()
+        body = {**payload, "target": "https://mc.muxigame.com/account.html"}
+        request = urllib.request.Request(self.issuer+"/api/internal/terminal/exchange",
+            data=json.dumps(body).encode(), method="POST",
+            headers={"Authorization":"Basic "+credential,"Content-Type":"application/json","Accept":"application/json"})
+        try:
+            with urllib.request.build_opener(NoRedirect()).open(request, timeout=4) as response:
+                result = json.load(response)
+        except (urllib.error.URLError, TimeoutError, ValueError):
+            raise RuntimeError("Terminal authentication unavailable") from None
+        if (not isinstance(result, dict) or not isinstance(result.get("user"), dict)
+                or result.get("audience") != self.client_id or result.get("target") != body["target"]):
+            raise ValueError("Invalid terminal audience")
+        return WebsiteAccount.from_userinfo(result.get("user", {}))
+
     def list_users(self, limit: int = 200) -> list[dict]:
         credential = base64.b64encode(f"{self.client_id}:{self.client_secret}".encode("utf-8")).decode("ascii")
         request = urllib.request.Request(
