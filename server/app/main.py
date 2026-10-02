@@ -426,6 +426,46 @@ def auth_callback(request: Request, code: str = "", state: str = "", error: str 
     return response
 
 
+@app.get("/api/v1/auth/terminal", include_in_schema=False)
+def terminal_login_page(request: Request):
+    if os.getenv("BMC_TERMINAL_SSO_ENABLED", "0") != "1":
+        return RedirectResponse("/account.html", status_code=303)
+    return protected_page("terminal-login.html")
+
+
+@app.post("/api/v1/auth/terminal/exchange", include_in_schema=False)
+async def terminal_login_exchange(request: Request):
+    if os.getenv("BMC_TERMINAL_SSO_ENABLED", "0") != "1":
+        raise HTTPException(status_code=404, detail="Terminal login unavailable")
+    public_url = os.getenv("BMC_PUBLIC_URL", "").rstrip("/")
+    if not public_url or request.headers.get("origin") != public_url or request.headers.get("x-muxi-terminal-action") != "1":
+        raise HTTPException(status_code=403, detail="Invalid terminal request origin")
+    if request.headers.get("content-type", "").split(";", 1)[0] != "application/json":
+        raise HTTPException(status_code=403, detail="Invalid terminal request type")
+    raw = bytearray()
+    async for chunk in request.stream():
+        raw.extend(chunk)
+        if len(raw) > 1024:
+            raise HTTPException(status_code=413, detail="Terminal request too large")
+    try:
+        payload = json.loads(raw)
+        if not isinstance(payload, dict) or set(payload) != {"ticket", "verifier", "requestId"}:
+            raise ValueError()
+        if any(not isinstance(payload[k], str) or not re.fullmatch(r"[A-Za-z0-9_-]{43}",payload[k]) for k in ("ticket","verifier")):
+            raise ValueError()
+        if not isinstance(payload["requestId"],str) or not re.fullmatch(r"[0-9a-f-]{36}",payload["requestId"]):
+            raise ValueError()
+        account = await run_in_threadpool(oidc_client.exchange_terminal_ticket,payload)
+    except (ValueError, RuntimeError):
+        raise HTTPException(status_code=401, detail="Terminal login expired; use normal platform login") from None
+    token = web_auth_store.create_session(account)
+    web_auth_store.logout(request.cookies.get("bmc_session"))
+    response = RedirectResponse("/account.html", status_code=303, headers={"Cache-Control":"private, no-store"})
+    response.set_cookie("bmc_session",token,max_age=14*86400,httponly=True,
+                        secure=public_url.lower().startswith("https://"),samesite="lax",path="/")
+    return response
+
+
 @app.get("/api/v1/auth/me")
 def me(account=Depends(current_account)) -> dict:
     return {"user": account.public()}
