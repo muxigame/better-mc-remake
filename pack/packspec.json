@@ -132,7 +132,9 @@
     "launcher/**",
     "runtime/**",
     "**/*.part",
-    "mods/darkwindowbar-*.jar"
+    "mods/darkwindowbar-*.jar",
+    "mods/immersive_aircraft-1.5.2+1.21.1-neoforge.jar",
+    "mods/warfare_wings-1.1.4-1.21.1-neoforge.jar"
   ],
   "prune": [
     "mods"
@@ -333,5 +335,45 @@
       "url": "https://cdn.modrinth.com/data/EmdnQtis/versions/kVVMxHOA/simplenicknames-1.21.1-neoforge-0.8.0.jar",
       "sha1": "fd762aac2257fb7af50a483cfba004741f38ab44"
     }
+  },
+  "developmentDependencies": {
+    "profile": "131-flight",
+    "enabled": true,
+    "files": [
+      {
+        "file": "immersive_aircraft-1.5.2+1.21.1-neoforge.jar",
+        "project": "immersive-aircraft",
+        "fileId": 8914644,
+        "source": "https://www.curseforge.com/minecraft/mc-mods/immersive-aircraft/files/8914644",
+        "sha256": "ef5b68c04171d1eadb3bb70e600eb766534ef7588a5b4737f9d55a4f38550ae9",
+        "sha1": "6f7dded9292e8bd32feb24082aad2987c72af908",
+        "bytes": 2469769,
+        "author": "Luke100000 (Conczin)",
+        "distribution": "official-reference-only; no OSS mirror",
+        "minecraft": "1.21.1",
+        "loader": "NeoForge",
+        "side": "BOTH"
+      },
+      {
+        "file": "warfare_wings-1.1.4-1.21.1-neoforge.jar",
+        "project": "warfare-wings",
+        "fileId": 7778805,
+        "source": "https://www.curseforge.com/minecraft/mc-mods/warfare-wings/files/7778805",
+        "sha256": "c56d05cc254b6dbce4c375be0be6a727c788663e295b458172bbdad8f97f8276",
+        "sha1": "fdc36cee4776ddef3f8f0f60c624196a1e518c9e",
+        "bytes": 29565939,
+        "author": "VellEagle",
+        "distribution": "official-reference-only; no OSS mirror",
+        "minecraft": "1.21.1",
+        "loader": "NeoForge",
+        "side": "BOTH"
+      }
+    ],
+    "required": {
+      "warfare_wings": {
+        "immersive_aircraft": "[1.2.2,)"
+      }
+    },
+    "releaseStatus": "development-only; official reference delivery pending"
   }
 }

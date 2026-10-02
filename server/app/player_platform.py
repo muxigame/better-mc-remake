@@ -129,16 +129,18 @@ class PlatformStore:
             raise ValueError('Invalid result fields')
         self.validate_uid(event['uid'])
         game, session = event['game'], event['session']
-        if game not in ('zombie-challenge', 'outbreak', 'horse_racing') or not isinstance(session, str):
+        if game not in ('zombie-challenge', 'outbreak', 'flight', 'horse_racing') or not isinstance(session, str):
             raise ValueError('Unknown game or invalid session')
         parsed = UUID(session)
         if str(parsed) != session or parsed.version != 4:
             raise ValueError('Canonical UUID4 session required')
         if type(event['win']) is not bool:
             raise ValueError('Invalid win')
-        for key, maximum in (('score', 10**12), ('difficulty', {'zombie-challenge': 4, 'outbreak': 3, 'horse_racing': 5}[game]), ('seconds', 10**9)):
+        for key, maximum in (('score', 10**12), ('difficulty', {'zombie-challenge': 4, 'outbreak': 3, 'flight': 0, 'horse_racing': 5}[game]), ('seconds', 10**9)):
             if type(event[key]) is not int or not 0 <= event[key] <= maximum:
                 raise ValueError('Invalid result ' + key)
+        if game == 'flight' and (event['win'] or event['score'] != 0):
+            raise ValueError('Flight training has no win or reward score')
         if game == 'horse_racing' and (not 1 <= event['difficulty'] <= 5 or not 1 <= event['score'] <= 10 or event['win'] != (event['score'] == 10)):
             raise ValueError('Horse score must be 1..10, winner 10, difficulty 1..5')
         policy = {} if rewards is None else rewards
