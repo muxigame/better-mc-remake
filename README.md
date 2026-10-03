@@ -182,3 +182,10 @@ config/pasterdream/structure_toggle_config.json5      每个结构的开关（34
 梦境维度内的地貌装饰物（气球 11 套、风蚀岩、暗影锁链、大气泡、石柱、风沼树等）是维度观感的组成部分而非可探索结构，因此只做 ×1.2 的轻微调整，例如气球 160→192 格、暗影锁链 160→192 格、石柱 80→96 格。其中 `wind_infested_stone_0/1` 原值 2/1，×1.2 取整后不变。
 
 改完实测：删世界重新生成，`Done (19.623s)`，Cristel Lib 正常加载 `cristellib:runtime_pack`，6 个维度齐全。原始值始终保留在 `structure_placement_config.json5.bak`。
+
+## Production release order
+
+1. Fast-forward the fully tested source to 008 before maintenance; build and self-test client artifacts on 131, retaining the signed installer and signature.
+2. Publish the launcher with client\publish.ps1, then the complete pack and manifest with pack\publish.ps1.
+3. After both publishers succeed, announce maintenance; run and confirm save-all flush, stop normally, and take the cold backup. If already stopped, continue the upgrade without delay.
+4. Synchronize server/client files and pass pack\verify-server-client-sync.ps1; start only with mc5server\start.bat mc, then confirm the Done log, port 25565 and Minecraft status response.
