@@ -30,11 +30,12 @@
     }
   ],
   "localMods": [
-    "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task\\dev-sync-20261002\\better-mc-remake\\pack\\source\\flight-development\\mods",
-    "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\_client_test\\game\\mods",
-    "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\bmc5server\\mods"
+    "pack/source/flight-development/mods",
+    "../_client_test/game/mods",
+    "../bmc5server/mods"
   ],
   "wwMetadataLicense": "GPL-3.0-only",
   "wwProjectPageLicense": "All Rights Reserved; modpacks with credit allowed; no rerelease",
-  "unchangedOfficialJars": true
+  "unchangedOfficialJars": true,
+  "localModsBase": "repository-root"
 }
