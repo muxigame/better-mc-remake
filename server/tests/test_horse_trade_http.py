@@ -1,6 +1,5 @@
 from pathlib import Path
 import json,sys,tempfile,unittest,uuid,os,hmac
-sys.path.insert(0,r'C:\Users\ranzh\workspace\dev\muxigame\.ops-venv\Lib\site-packages')
 from fastapi import FastAPI,HTTPException,Request
 from fastapi.testclient import TestClient
 import test_horse_trading as unit

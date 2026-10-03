@@ -2,7 +2,7 @@ from pathlib import Path
 import importlib.util, types, sys, sqlite3, tempfile, unittest, uuid
 from concurrent.futures import ThreadPoolExecutor
 
-SHARED=Path(r'C:\Users\ranzh\Documents\Codex\2026-10-02\task\dev-sync-20261002\better-mc-remake\server\app')
+SHARED=Path(__file__).resolve().parents[1]/'app'
 OWN=Path(__file__).parents[1]/'app'
 pkg=types.ModuleType('horse_trade_test');pkg.__path__=[str(OWN),str(SHARED)];sys.modules[pkg.__name__]=pkg
 def load(name,path):
