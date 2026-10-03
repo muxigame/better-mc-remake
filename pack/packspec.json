@@ -328,6 +328,14 @@
         "InventoryGuiEnabled": false
       },
       "createIfMissing": true
+    },
+    {
+      "path": "config/packanalytics-common.toml",
+      "format": "Toml",
+      "enforce": {
+        "Metrics Endpoint URL": ""
+      },
+      "createIfMissing": false
     }
   ],
   "externalDownloads": {
