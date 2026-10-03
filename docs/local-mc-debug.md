@@ -136,3 +136,18 @@ directory. The shader fixture explicitly preserves its historical and current
 server `sable=-scalablelux` setting; do not infer overrides for other packs.
 The Python 3.12 regression run passes 6 ownership + 13 profile tests without
 skips. Tests mock Java/resource/process operations; native acceptance is separate.
+
+## Explicit PasterDream UI profile
+
+`--client-pasterdream-ui true|false` writes only `[HUD] "enable mod ui"` in the
+new private clients' PasterDream-Client.toml and records `clientSettings.pasterdreamUi`
+in the owner marker. Omit it to retain mod defaults. No arbitrary config import,
+server config change, resource-reload interception or production update is involved.
+
+PasterDream 0.9.6 synchronizes its embedded UI pack at the first client login;
+a changed selection causes a complete native resource reload. A fresh profile
+using default true is not equivalent to an older profile configured false.
+Keep this value identical for first-login, short-route and cross-dimension
+comparisons. A false profile changes UI visuals and must not be reported as a
+transparent product optimization. Native performance validation of this explicit
+runner option is pending; preparation tests only validate config/role/receipt handling.

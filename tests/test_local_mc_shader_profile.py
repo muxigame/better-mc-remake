@@ -99,6 +99,24 @@ class ShaderProfileTest(unittest.TestCase):
                 self.assertIn(setting + '\n', options)
         for role in ['server', 'host', 'guest']:
             self.assertFalse((self.lab / role / 'config/iris.properties').exists())
+            self.assertFalse((self.lab / role / 'config/PasterDream-Client.toml').exists())
+
+    def check_pasterdream_ui(self, enabled):
+        calls, output = self.invoke('--client-pasterdream-ui', 'true' if enabled else 'false')
+        self.assertEqual(calls, 1, output)
+        self.assertIs(self.marker()['clientSettings']['pasterdreamUi'], enabled)
+        for role in ['host', 'guest']:
+            config = tomllib.loads((self.lab / role / 'config/PasterDream-Client.toml').read_text(encoding='utf-8'))
+            self.assertEqual(config, {'HUD': {'enable mod ui': enabled}})
+        self.assertFalse((self.lab / 'server/config/PasterDream-Client.toml').exists())
+
+    @unittest.skipUnless(tomllib is not None, 'TOML validation requires Python 3.11+')
+    def test_explicit_pasterdream_ui_disabled_is_recorded_and_client_only(self):
+        self.check_pasterdream_ui(False)
+
+    @unittest.skipUnless(tomllib is not None, 'TOML validation requires Python 3.11+')
+    def test_explicit_pasterdream_ui_enabled_is_recorded_and_client_only(self):
+        self.check_pasterdream_ui(True)
 
     def test_shader_and_explicit_settings_are_client_only(self):
         packs = self.packs()

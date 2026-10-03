@@ -211,6 +211,8 @@ def run(args):
               "inputArtifacts": [{"file": jar.name, "sha256": rt.sha256(jar), "scope": scope} for scope, jars in [("both",mods),("client",client_mods),("server",server_mods)] for jar in jars]}
     marker["dependencyOverrides"] = list(args.dependency_override)
     marker["clientSettings"]={"renderDistance":args.client_render_distance,"simulationDistance":args.client_simulation_distance,"maxFps":args.client_max_fps,"shaderPack":args.shader_pack,"graphicsMode":args.client_graphics_mode}
+    if args.client_pasterdream_ui is not None:
+        marker["clientSettings"]["pasterdreamUi"] = args.client_pasterdream_ui == "true"
     marker["runtime"]={"serverRuntime":str(server),"clientGame":str(game),"javaHome":str(jdk),"javaVersion":(java_version.stderr+java_version.stdout).strip(),"version":args.version,"neoforge":args.neoforge}
     marker_save(root, marker)
     metadata = rt.client_metadata(game, args.version)
@@ -242,6 +244,8 @@ def run(args):
         rt.write_json(lab / "config/muxi-game-core.json", fixture_config)
         (lab / "config/fml.toml").write_text(loader_config, encoding="utf-8")
         (lab / "options.txt").write_text(f"lang:zh_cn\nmaxFps:{args.client_max_fps}\nenableVsync:false\nonboardAccessibility:false\nsoundCategory_master:0.0\nfullscreen:false\npauseOnLostFocus:false\nrenderDistance:{args.client_render_distance}\nsimulationDistance:{args.client_simulation_distance}\ngraphicsMode:{args.client_graphics_mode}\n")
+        if args.client_pasterdream_ui is not None:
+            (lab / "config/PasterDream-Client.toml").write_text('[HUD]\n"enable mod ui" = ' + args.client_pasterdream_ui + "\n", encoding="utf-8")
         if args.shader_pack is not None:
             install_shader_selection(lab,args.shader_pack)
         shutil.copytree(natives, lab / "natives")
@@ -326,6 +330,7 @@ def main(argv=None):
     launch.add_argument("--client-mod", type=Path, action="append", default=[])
     launch.add_argument("--server-mod", type=Path, action="append", default=[])
     launch.add_argument("--shader-pack")
+    launch.add_argument("--client-pasterdream-ui", choices=("true", "false"), help="Explicit private-profile PasterDream HUD selection; omitted keeps mod defaults")
     launch.add_argument("--dependency-override", action="append", default=[])
     launch.add_argument("--client-render-distance",type=int,default=3)
     launch.add_argument("--client-simulation-distance",type=int,default=3)
