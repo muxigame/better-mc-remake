@@ -72,6 +72,8 @@ def run(args):
                 BMC_GAME_SOCIAL_ENABLED='1', BMC_GAME_SOCIAL_KEY=social_key,
                 MUXI_GAME_ADMISSION_ENABLED='1', MUXI_GAME_PLATFORM_URL=site_url,
                 MUXI_GAME_PLATFORM_KEY=game_key, BMC_MINIGAME_REWARDS_JSON='{}')
+        if args.native:
+            os.environ.update(BMC_GAME_SOCIAL_ENABLED='1', BMC_GAME_SOCIAL_KEY=social_key)
         package('dedicated_auth', ROOT.parent / 'muxi-auth/app')
         package('dedicated_site', ROOT / 'server/app')
         from dedicated_auth import main as auth
@@ -98,14 +100,14 @@ def run(args):
         request_log=[]
         auth_log=[]
         async def tracked_auth(scope,receive,send):
-            delayed=scope.get("path","").endswith("terminal-ticket") and state.get("delay_ticket_once",False)
+            delayed=scope.get("path","").endswith("terminal-context/claim") and state.get("delay_ticket_once",False)
             if delayed:
                 state["delay_ticket_once"]=False;state["pending_tickets"]+=1
                 await asyncio.sleep(1.5)
             captured=bytearray()
             async def tracked_receive():
                 message=await receive()
-                if scope.get('path','').endswith(('terminal-ticket','terminal-disconnect')) and message['type']=='http.request':captured.extend(message.get('body',b''))
+                if scope.get('path','').endswith(('terminal-context/create','terminal-context/claim','terminal-context/disconnect')) and message['type']=='http.request':captured.extend(message.get('body',b''))
                 return message
             async def tracked_send(message):
                 if scope['type']=='http' and message['type']=='http.response.start':
@@ -134,7 +136,7 @@ def run(args):
                                 canonical_redirect=True
                             headers.append((name,value))
                         message={**message,'headers':headers}
-                    request_log.append({'method':scope['method'],'path':scope['path'],'status':message['status'],'cef_cookie':any(k.lower()==b'cookie' for k,v in scope.get('headers',[])),'canonical_auth_redirect':canonical_redirect})
+                    request_log.append({'method':scope['method'],'path':scope['path'],'status':message['status'],'cef_cookie':any(k.lower()==b'cookie' for k,v in scope.get('headers',[])),'canonical_auth_redirect':canonical_redirect,'original_account_bearer':any(k.lower()==b'authorization' and v.startswith(b'Bearer ') for k,v in scope.get('headers',[]))})
                 await send(message)
             await site.app(scope,receive,tracked_send)
         try:
@@ -161,11 +163,17 @@ def run(args):
                 accounts.append(account)
                 token = auth.store.issue_access_token(account.id, auth.settings.bmc_launcher_client_id, 'openid profile', 3600)
                 access.append(token)
-                response = api.post('/api/launcher/minecraft/terminal-bootstrap', headers={'Authorization': 'Bearer ' + token})
-                check(response.status_code == 200 and response.json()['uid'] == account.uid, 'Launcher bootstrap binds its account UID')
-                credentials.append(response.json()['credential'])
+                if args.native:
+                    response = api.get('/oauth/userinfo', headers={'Authorization': 'Bearer ' + token})
+                    check(response.status_code == 200 and response.json()['muxi_uid'] == account.uid, 'Original access verifies the launcher UID without extra credentials')
+                else:
+                    from dataclasses import replace
+                    auth.settings = replace(auth.settings, terminal_legacy_enabled=True)
+                    response = api.post('/api/launcher/minecraft/terminal-bootstrap', headers={'Authorization': 'Bearer ' + token})
+                    check(response.status_code == 200 and response.json()['uid'] == account.uid, 'Historical bootstrap fixture verifies UID')
+                    credentials.append(response.json()['credential'])
 
-            if shared_games:
+            if args.native:
                 # Same Auth accounts and Web database for A/B. Register through
                 # authenticated application APIs, never seed platform/social rows.
                 for n in range(2):

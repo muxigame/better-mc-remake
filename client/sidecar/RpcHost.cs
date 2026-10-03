@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.Http.Headers;
@@ -592,7 +592,7 @@ internal sealed class RpcHost : IDisposable
                 {
                     session = session with
                     {
-                        TerminalCredential = await MintTerminalCredentialAsync(ct).ConfigureAwait(false),
+                        TerminalCredential = null, // Original account token is read only through the same-user native broker.
                         TerminalBrokerPipe = credentialBroker.PipeName,
                         TerminalBrokerSecret = credentialBroker.Secret
                     };
@@ -1147,19 +1147,19 @@ internal sealed class RpcHost : IDisposable
                 {
         if (Interlocked.Read(ref _terminalAccountGeneration) != credentialGeneration
             || _account is null || AuthenticatedUid().ToString(System.Globalization.CultureInfo.InvariantCulture) != credentialUid) return null;
-        var value = await MintTerminalCredentialAsync(token).ConfigureAwait(false);
+        var value = await GetTerminalAccessTokenAsync(token).ConfigureAwait(false);
         if (token.IsCancellationRequested || Interlocked.Read(ref _terminalAccountGeneration) != credentialGeneration
             || _account is null || AuthenticatedUid().ToString(System.Globalization.CultureInfo.InvariantCulture) != credentialUid)
         {
             await RevokeTerminalCredentialAsync(value).ConfigureAwait(false);
             return null;
         }
-        if (TerminalCredentialEnvironment.Valid(value))
+        if (TerminalCredentialEnvironment.ValidAccessToken(value))
         {
             string? superseded;
             lock (gameCredentials) { superseded = gameCredentials.LastOrDefault(); gameCredentials.Add(value!); }
             // A heartbeat and a new opening can overlap after pipe delivery. Let the
-            // already-issued native proof complete; account change/logout revoke all immediately.
+            // current native request complete; account change/logout invalidates the broker generation immediately.
             if (superseded is not null && superseded != value) _ = RetireGameCredentialAsync(superseded, gameCredentials);
         }
         return value;
@@ -1176,7 +1176,7 @@ internal sealed class RpcHost : IDisposable
         if (revoked) lock (gameCredentials) gameCredentials.Remove(credential);
     }
 
-    private async Task<string?> MintTerminalCredentialAsync(CancellationToken ct)
+    private async Task<string?> GetTerminalAccessTokenAsync(CancellationToken ct)
     {
         long accountGeneration, expectedUid; string? sourceToken;
         lock (_accountSessionLock)
@@ -1190,7 +1190,7 @@ internal sealed class RpcHost : IDisposable
         {
             for (var attempt = 0; attempt < 2; attempt++)
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, AccountApi("/api/launcher/minecraft/terminal-bootstrap"));
+                using var request = new HttpRequestMessage(HttpMethod.Get, AccountApi("/oauth/userinfo"));
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", sourceToken);
                 using var response = await _accountHttp.SendAsync(request, timeout.Token).ConfigureAwait(false);
                 if (attempt == 0 && response.StatusCode == HttpStatusCode.Unauthorized)
@@ -1205,11 +1205,12 @@ internal sealed class RpcHost : IDisposable
                 }
                 if (!response.IsSuccessStatusCode) return null;
                 var json = JsonNode.Parse(await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false))?.AsObject();
-                var credential = json?["credential"]?.GetValue<string>();
+                var credential = sourceToken;
                 lock (_accountSessionLock)
                 {
                     if (timeout.IsCancellationRequested || _terminalAccountGeneration != accountGeneration || _account is null
-                        || AuthenticatedUid() != expectedUid || json?["uid"]?.GetValue<long>() != expectedUid || !TerminalCredentialEnvironment.Valid(credential)) return null;
+                        || AuthenticatedUid() != expectedUid || _accountToken != sourceToken
+                        || json?["muxi_uid"]?.GetValue<long>() != expectedUid || !TerminalCredentialEnvironment.ValidAccessToken(credential)) return null;
                     lock (_terminalCredentialLock) _terminalCredentials.Add(credential!);
                 }
                 return credential;
@@ -1520,25 +1521,17 @@ internal sealed class RpcHost : IDisposable
         if (revokeTerminal) _ = RevokeTerminalCredentialsAsync();
     }
 
-    private async Task RevokeTerminalCredentialsAsync()
+    private Task RevokeTerminalCredentialsAsync()
     {
-        string[] credentials;
-        lock (_terminalCredentialLock) credentials = _terminalCredentials.ToArray();
-        foreach (var credential in credentials) await RevokeTerminalCredentialAsync(credential).ConfigureAwait(false);
+        lock (_terminalCredentialLock) _terminalCredentials.Clear();
+        return Task.CompletedTask;
     }
 
-    private async Task RevokeTerminalCredentialAsync(string? credential)
+    private Task RevokeTerminalCredentialAsync(string? credential)
     {
-        if (!TerminalCredentialEnvironment.Valid(credential)) return;
-        try
-        {
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(4));
-            using var request = new HttpRequestMessage(HttpMethod.Post, AccountApi("/api/launcher/minecraft/terminal-bootstrap/revoke"));
-            request.Headers.Authorization = new AuthenticationHeaderValue("MuxiTerminal", credential);
-            using var response = await _accountHttp.SendAsync(request, timeout.Token).ConfigureAwait(false);
-            if (response.IsSuccessStatusCode) lock (_terminalCredentialLock) _terminalCredentials.Remove(credential!);
-        }
-        catch { /* Auth is unreachable: proofs cannot be minted; the credential also has a hard expiry. */ }
+        // Retire a broker reference only. Closing a game never revokes its shared account token.
+        if (credential is not null) lock (_terminalCredentialLock) _terminalCredentials.Remove(credential);
+        return Task.CompletedTask;
     }
 
     /// <summary>

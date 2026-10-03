@@ -4,7 +4,7 @@ using System.Text;
 
 namespace BatterMC.Core;
 
-/// <summary>One game's native-only renewal channel. No account token leaves the launcher.</summary>
+/// <summary>One game's native-only renewal channel. The original account access token is passed only through the same-user native pipe.</summary>
 public sealed class TerminalCredentialBroker : IAsyncDisposable
 {
     private readonly Func<CancellationToken, Task<string?>> _mint;
@@ -39,7 +39,7 @@ public sealed class TerminalCredentialBroker : IAsyncDisposable
                 var valid = request[43] == 10 && CryptographicOperations.FixedTimeEquals(request.AsSpan(0, 43), expected);
                 Array.Clear(request); Array.Clear(expected);
                 var credential = valid ? await _mint(timeout.Token).WaitAsync(timeout.Token).ConfigureAwait(false) : null;
-                var response = Encoding.ASCII.GetBytes((TerminalCredentialEnvironment.Valid(credential) ? credential : "") + "\n");
+                var response = Encoding.ASCII.GetBytes((TerminalCredentialEnvironment.ValidAccessToken(credential) ? credential : "") + "\n");
                 try { await pipe.WriteAsync(response, timeout.Token).ConfigureAwait(false); await pipe.FlushAsync(timeout.Token).ConfigureAwait(false); }
                 finally { Array.Clear(response); }
             }

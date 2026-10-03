@@ -115,6 +115,10 @@ public final class SSOFixture {
     }
     private static void observe(CefRequest request){
         requests++;String url=request.getURL();
+        if(Boolean.getBoolean("muxi.sso.realNative") && url.startsWith(ACCOUNT+"?terminal_view=")){
+            posts++; // Count actual account GET openings, never an exchange POST.
+            if(!"GET".equals(request.getMethod()))throw new AssertionError("Native account view must use GET");
+        }
         if(POST.equals(url)){
             posts++;postedMethod=request.getMethod();postedOrigin=request.getHeaderByName("Origin");postedAction=request.getHeaderByName("X-Muxi-Terminal-Action");
             var elements=new Vector<CefPostDataElement>();if(request.getPostData()!=null)request.getPostData().getElements(elements);

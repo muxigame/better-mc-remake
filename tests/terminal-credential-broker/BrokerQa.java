@@ -7,7 +7,7 @@ public final class BrokerQa {
             var first=TerminalCredentialBrokerClient.fetch(System.getenv("QA_PIPE"),System.getenv("QA_CAPABILITY"));
             var second=TerminalCredentialBrokerClient.fetch(System.getenv("QA_PIPE"),System.getenv("QA_CAPABILITY"));
             String a=first.get(9,TimeUnit.SECONDS),b=second.get(9,TimeUnit.SECONDS);
-            if(!a.matches("[A-Za-z0-9_-]{43}") || !b.matches("[A-Za-z0-9_-]{43}") || a.equals(b))throw new AssertionError("Concurrent native credentials invalid; values redacted");
+            if(!a.matches("[A-Za-z0-9_-]{54}") || !b.matches("[A-Za-z0-9_-]{54}") || a.equals(b))throw new AssertionError("Concurrent native credentials invalid; values redacted");
             System.out.println("concurrent renewal verified; values redacted");return;
         }
         String actual=TerminalCredentialBrokerClient.fetch(System.getenv("QA_PIPE"),System.getenv("QA_CAPABILITY")).get(9,TimeUnit.SECONDS);

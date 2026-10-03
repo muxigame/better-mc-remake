@@ -17,11 +17,11 @@ public abstract class NativeClientTransportMixin {
  @Redirect(method="*",at=@At(value="INVOKE",target="Lnet/muxigame/core/client/TerminalCredentialBrokerClient;fetch(Ljava/lang/String;Ljava/lang/String;)Ljava/util/concurrent/CompletableFuture;"))
  private static java.util.concurrent.CompletableFuture<String> qaFetch(String pipe,String secret){
   var future=net.muxigame.core.client.TerminalCredentialBrokerClient.fetch(pipe,secret);
-  future.whenComplete((credential,error)->net.muxigame.terminal.smoke.NativeProofDiagnostics.record("pipe","responseShape="+(credential!=null&&credential.matches("[A-Za-z0-9_-]{43}"))+" errorTypes="+net.muxigame.terminal.smoke.NativeProofDiagnostics.errors(error)));
+  future.whenComplete((credential,error)->net.muxigame.terminal.smoke.NativeProofDiagnostics.record("pipe","responseShape="+(credential!=null&&credential.matches("[A-Za-z0-9_-]{54}"))+" errorTypes="+net.muxigame.terminal.smoke.NativeProofDiagnostics.errors(error)));
   return future;
  }
- @Inject(method="sendProof",at=@At("HEAD"))
- private static void qaProofStart(org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci){net.muxigame.terminal.smoke.NativeProofDiagnostics.record("proof-build","entered=true");}
+ @Inject(method="bind",at=@At("HEAD"))
+ private static void qaProofStart(org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci){net.muxigame.terminal.smoke.NativeProofDiagnostics.record("binding-build","entered=true");}
  @Inject(method="finish",at=@At("HEAD"))
  private static void qaFinish(String value,org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci){net.muxigame.terminal.smoke.NativeProofDiagnostics.record("native-result","nonEmpty="+(value!=null&&!value.isEmpty()));}
  @Redirect(method="*",at=@At(value="INVOKE",target="Ljava/net/http/HttpClient;sendAsync(Ljava/net/http/HttpRequest;Ljava/net/http/HttpResponse$BodyHandler;)Ljava/util/concurrent/CompletableFuture;"))

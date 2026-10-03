@@ -15,18 +15,18 @@ public final class JavaProofProbe {
     String pipe=System.getenv("MUXI_TERMINAL_CREDENTIAL_PIPE"),secret=System.getenv("MUXI_TERMINAL_CREDENTIAL_BROKER");
     try(var channel=new java.io.RandomAccessFile("\\\\.\\pipe\\"+pipe,"rw")){
      channel.write((secret+"\n").getBytes(StandardCharsets.US_ASCII));Thread.sleep(250);
-     StringBuilder line=new StringBuilder();for(int i=0;i<44;i++){int v=channel.read();if(v==10||v<0)break;line.append((char)v);}credential=line.toString();
+     StringBuilder line=new StringBuilder();for(int i=0;i<55;i++){int v=channel.read();if(v==10||v<0)break;line.append((char)v);}credential=line.toString();
     }
    }
-   if(!credential.matches("[A-Za-z0-9_-]{43}"))throw new IllegalStateException("empty-native-pipe-response");
+   if(!credential.matches("[A-Za-z0-9_-]{54}"))throw new IllegalStateException("empty-native-pipe-response");
    phase="endpoint";
-   URI endpoint=NativeIssuerEndpoint.rewrite(URI.create("https://account.muxigame.com/api/launcher/minecraft/terminal-proof"));
+   URI endpoint=NativeIssuerEndpoint.rewrite(URI.create("https://account.muxigame.com/oauth/userinfo"));
    phase="https";
    var client=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).followRedirects(HttpClient.Redirect.NEVER).build();
-   var request=HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(3)).header("Authorization","MuxiTerminal "+credential).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString("{\"challenge\":\""+"A".repeat(43)+"\",\"requestId\":\""+UUID.randomUUID()+"\"}",StandardCharsets.UTF_8)).build();
+   var request=HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(3)).header("Authorization","Bearer "+credential).GET().build();
    var response=client.sendAsync(request,HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)).get();
-   boolean shape=response.statusCode()==200 && response.body().matches(".*\"proof\"\\s*:\\s*\"[A-Za-z0-9_-]{43}\".*");
-   System.out.println("{\"phase\":\"https\",\"status\":"+response.statusCode()+",\"validProofShape\":"+shape+",\"minecraftStarted\":false}");
+   boolean shape=response.statusCode()==200 && response.body().contains("\"muxi_uid\"");
+   System.out.println("{\"phase\":\"https\",\"status\":"+response.statusCode()+",\"validAccountShape\":"+shape+",\"minecraftStarted\":false}");
    if(!shape)System.exit(2);
   }catch(Throwable error){
    StringBuilder chain=new StringBuilder();for(Throwable e=error;e!=null;e=e.getCause()){if(chain.length()>0)chain.append(',');chain.append('\"').append(e.getClass().getName()).append('\"');}

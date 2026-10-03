@@ -9,11 +9,11 @@ var fixture = Path.Combine(Directory.GetCurrentDirectory(), "BrokerQa.java");
 await Run(Path.Combine(javaHome,"bin","javac.exe"), ["-d",classes,coreClient,fixture]);
 int calls=0;
 bool revoked=false;
-var broker = new TerminalCredentialBroker(token => Task.FromResult<string?>(revoked ? null : new string((char)('a'+Interlocked.Increment(ref calls)),43)));
+var broker = new TerminalCredentialBroker(token => Task.FromResult<string?>(revoked ? null : new string((char)('a'+Interlocked.Increment(ref calls)),54)));
 try
 {
-    await Verify(broker.PipeName,broker.Secret,new string('b',43));
-    await Verify(broker.PipeName,broker.Secret,new string('c',43));
+    await Verify(broker.PipeName,broker.Secret,new string('b',54));
+    await Verify(broker.PipeName,broker.Secret,new string('c',54));
     await Verify(broker.PipeName,new string('w',43),"");
     if(calls!=2)throw new Exception("Unauthorized capability reached credential factory");
     await Run(Path.Combine(javaHome,"bin","java.exe"),["-cp",classes,"BrokerQa"],new Dictionary<string,string>{{"QA_PIPE",broker.PipeName},{"QA_CAPABILITY",broker.Secret},{"QA_EXPECTED",""},{"QA_MODE","parallel"}});
@@ -21,6 +21,7 @@ try
     revoked=true;
     await Verify(broker.PipeName,broker.Secret,"");
     await Verify("invalid-remote-pipe",broker.Secret,"");
+    if(!TerminalCredentialEnvironment.ValidAccessToken(new string('a',54)) || TerminalCredentialEnvironment.ValidAccessToken(new string('a',43)))throw new Exception("Original account access was confused with old terminal credentials");
     var process=new ProcessStartInfo();
     process.Environment[TerminalCredentialEnvironment.PipeVariable]="inherited-pipe";
     process.Environment[TerminalCredentialEnvironment.BrokerVariable]="inherited-capability";
@@ -31,7 +32,7 @@ try
 }
 finally { await broker.DisposeAsync(); }
 await Verify(broker.PipeName,broker.Secret,"");
-Console.WriteLine("PASS: actual C# to Java named-pipe renewal, fresh credentials, wrong capability, revocation, disposal, native environment and redaction (9 cases)");
+Console.WriteLine("PASS: actual C# to Java named-pipe renewal, original account access transport, wrong capability, revocation, disposal, native environment and redaction (9 cases)");
 
 async Task Verify(string pipe,string capability,string expected)
 {

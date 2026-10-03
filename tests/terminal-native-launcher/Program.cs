@@ -27,12 +27,12 @@ await SelectCurrent();
 var boundUid=selectedUid;
 var credentials=new List<string>();
 await using var broker=(TerminalCredentialBroker)Method("CreateTerminalCredentialBroker").Invoke(host,[boundUid.ToString(System.Globalization.CultureInfo.InvariantCulture),credentials])!;
-var initial=(string?)await (Task<string?>)Method("MintTerminalCredentialAsync").Invoke(host,[CancellationToken.None])!;
+var initial=(string?)await (Task<string?>)Method("GetTerminalAccessTokenAsync").Invoke(host,[CancellationToken.None])!;
 if(args.Contains("--probe-only")){
     int passed=0;
     async Task<JsonObject> PublicControl(string action){using var r=new HttpRequestMessage(HttpMethod.Post,controlUrl){Content=new StringContent(new JsonObject{["action"]=action}.ToJsonString(),Encoding.UTF8,"application/json")};r.Headers.Add("X-Muxi-QA-Control",Environment.GetEnvironmentVariable("MUXI_GAME_QA_CONTROL"));using var response=await controller.SendAsync(r);response.EnsureSuccessStatusCode();return JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();}
     async Task<string> Fetch(TerminalCredentialBroker source){using var pipe=new System.IO.Pipes.NamedPipeClientStream(".",source.PipeName,System.IO.Pipes.PipeDirection.InOut,System.IO.Pipes.PipeOptions.Asynchronous);await pipe.ConnectAsync(5000);await pipe.WriteAsync(Encoding.ASCII.GetBytes(source.Secret+"\n"));await pipe.FlushAsync();using var reader=new StreamReader(pipe,Encoding.ASCII);return await reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(6))??"";}
-    async Task VerifyProof(string credential){using var r=new HttpRequestMessage(HttpMethod.Post,"https://account.muxigame.com/api/launcher/minecraft/terminal-proof"){Content=new StringContent(new JsonObject{["challenge"]=new string('A',43),["requestId"]=Guid.NewGuid().ToString()}.ToJsonString(),Encoding.UTF8,"application/json")};r.Headers.Authorization=new("MuxiTerminal",credential);using var actual=new HttpClient(transport,false);using var response=await actual.SendAsync(r);if(response.StatusCode!=HttpStatusCode.OK)throw new InvalidOperationException("Actual issuer rejected pipe credential");}
+    async Task VerifyProof(string credential){using var r=new HttpRequestMessage(HttpMethod.Get,"https://account.muxigame.com/oauth/userinfo");r.Headers.Authorization=new("Bearer",credential);using var actual=new HttpClient(transport,false);using var response=await actual.SendAsync(r);if(response.StatusCode!=HttpStatusCode.OK)throw new InvalidOperationException("Actual issuer rejected pipe credential");}
     void Check(bool value,string message){if(!value)throw new InvalidOperationException(message);passed++;}
     async Task VerifyJavaProof(TerminalCredentialBroker source,bool slowReader=false){
         var p=new ProcessStartInfo(config["java"]!.GetValue<string>()){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};
@@ -52,16 +52,16 @@ if(args.Contains("--probe-only")){
         Check(response.StatusCode==HttpStatusCode.SeeOther && response.Headers.Location is { } location && location.Scheme=="https" && location.Host=="account.muxigame.com" && location.AbsolutePath=="/oauth/authorize","actual website front-channel redirect keeps canonical issuer origin");
     }
     bool gameDenied=false;try{await PublicControl("launcher-session");}catch(HttpRequestException denied){gameDenied=denied.StatusCode==HttpStatusCode.Forbidden;}Check(gameDenied,"game capability cannot retrieve launcher tokens");
-    Check(TerminalCredentialEnvironment.Valid(initial),"initial actual bootstrap");
-    var first=await Fetch(broker);Check(TerminalCredentialEnvironment.Valid(first),"actual factory serves named pipe");await VerifyProof(first);passed++;
-    var concurrent=await Fetch(broker);await VerifyProof(first);await VerifyProof(concurrent);Check(first!=concurrent,"overlapping heartbeat/opening proof credentials remain valid and fresh");
+    Check(TerminalCredentialEnvironment.ValidAccessToken(initial),"initial unchanged account access");
+    var first=await Fetch(broker);Check(TerminalCredentialEnvironment.ValidAccessToken(first),"actual factory serves named pipe");await VerifyProof(first);passed++;
+    var concurrent=await Fetch(broker);await VerifyProof(first);await VerifyProof(concurrent);Check(first==concurrent && first==initial,"overlapping native reads return exactly the same account access token");
     await VerifyJavaProof(broker);await VerifyJavaProof(broker,true);
-    await PublicControl("expire-access");var renewed=await Fetch(broker);Check(TerminalCredentialEnvironment.Valid(renewed),"actual 401 refresh pipe retry");await VerifyProof(renewed);passed++;
+    await PublicControl("expire-access");var renewed=await Fetch(broker);Check(TerminalCredentialEnvironment.ValidAccessToken(renewed),"actual 401 refresh pipe retry");await VerifyProof(renewed);passed++;
     await VerifyJavaProof(broker);
     var stored=AccountStore.Load(privatePaths.AccountFile);Check(rotations==1 && stored?.AccessToken==(string?)Field("_accountToken").GetValue(host),"actual refresh persisted by DPAPI");
     await PublicControl("switch-account");await SelectCurrent();Check(selectedUid!=boundUid && await Fetch(broker)=="","actual A broker denied after B selected");
     var nextCredentials=new List<string>();await using var nextBroker=(TerminalCredentialBroker)Method("CreateTerminalCredentialBroker").Invoke(host,[selectedUid.ToString(System.Globalization.CultureInfo.InvariantCulture),nextCredentials])!;
-    var next=await Fetch(nextBroker);Check(TerminalCredentialEnvironment.Valid(next),"actual B broker succeeds");await VerifyProof(next);passed++;await VerifyJavaProof(nextBroker);
+    var next=await Fetch(nextBroker);Check(TerminalCredentialEnvironment.ValidAccessToken(next),"actual B broker succeeds");await VerifyProof(next);passed++;await VerifyJavaProof(nextBroker);
     await (Task<JsonNode>)Method("AccountLogoutAsync").Invoke(host,[])!;Check(await Fetch(nextBroker)=="" && !File.Exists(privatePaths.AccountFile),"actual logout drops broker and DPAPI");
     await (Task)Method("RevokeTerminalCredentialsAsync").Invoke(host,[])!;
     await File.WriteAllTextAsync(config["report"]!.GetValue<string>(),new JsonObject{["success"]=true,["assertions"]=passed,["actualRpcHost"]=true,["actualIssuerHTTPS"]=true,["actualNamedPipe"]=true,["actualDPAPI"]=true,["minecraftStarted"]=false,["productionMutation"]=false}.ToJsonString());
@@ -76,7 +76,7 @@ processInfo.Environment.Remove("MUXI_LAUNCHER_QA_CONTROL");
 processInfo.Environment.Remove("MUXI_SSO_QA_CONTROL");
 if(Environment.GetEnvironmentVariable("MUXI_GAME_QA_CONTROL") is {} gameControl)processInfo.Environment["MUXI_SSO_QA_CONTROL"]=gameControl;
 processInfo.Environment.Remove("MUXI_GAME_QA_CONTROL");
-TerminalCredentialEnvironment.Apply(processInfo,initial,broker.PipeName,broker.Secret);
+TerminalCredentialEnvironment.Apply(processInfo,null,broker.PipeName,broker.Secret);
 if(await Console.In.ReadLineAsync()!="GO")throw new InvalidOperationException("Owned process job was not assigned");
 using var game=Process.Start(processInfo)??throw new InvalidOperationException("Native game did not start");
 Console.WriteLine($"QA_REAL_LAUNCHER_STARTED pid={Environment.ProcessId} gamePid={game.Id} boundUid={boundUid}");

@@ -16,17 +16,22 @@ try
 {
     Select(51001,"synthetic-expired","synthetic-refresh");
     var value=await Mint();
-    Check(value==new string('b',43),"401 refresh/retry returns only a restricted bootstrap");
+    Check(value==new string('r',54),"401 refresh/retry returns the exact refreshed account access token");
     Check(handler.Refreshes==1 && handler.Bootstraps==2,"one native refresh followed by one retry");
-    Check(Get<string>("_accountToken")=="synthetic-renewed" && Get<string>("_accountRefreshToken")=="synthetic-rotated","actual launcher rotates native account tokens");
+    Check(Get<string>("_accountToken")==new string('r',54) && Get<string>("_accountRefreshToken")=="synthetic-rotated","actual launcher rotates native account tokens");
     var session=AccountStore.Load(paths.AccountFile)!;
-    Check(session.AccessToken=="synthetic-renewed" && session.RefreshToken=="synthetic-rotated","native DPAPI store persists the rotated pair");
+    Check(session.AccessToken==new string('r',54) && session.RefreshToken=="synthetic-rotated","native DPAPI store persists the rotated pair");
     Check(!handler.BootstrapHeaders.Any(x=>x.Contains("refresh") || x.Contains("rotated")),"refresh authority never reaches bootstrap headers");
 
-    Select(51001,"synthetic-live","synthetic-refresh");handler.WrongUid=true;
+    Select(51001,new string('l',54),"synthetic-refresh");
+    Check(await Mint()==new string('l',54),"live account access is returned unchanged");
+    var before=handler.Bootstraps;
+    await (Task)Method("RevokeTerminalCredentialAsync").Invoke(host,[new string('l',54)])!;
+    Check(handler.Bootstraps==before && Get<string>("_accountToken")==new string('l',54),"game close does not revoke the shared account session");
+    Select(51001,new string('l',54),"synthetic-refresh");handler.WrongUid=true;
     Check(await Mint()==null,"issuer UID mismatch rejected");handler.WrongUid=false;
     Select(51001,"synthetic-expired","synthetic-revoked");handler.DenyRefresh=true;
-    Check(await Mint()==null,"revoked native account cannot mint a bootstrap");handler.DenyRefresh=false;
+    Check(await Mint()==null,"revoked native account cannot authorize the native broker");handler.DenyRefresh=false;
 
     Select(51001,"synthetic-expired","synthetic-refresh");handler.HoldRefresh=true;
     var refresh=Refresh();await handler.RefreshArrived.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -34,18 +39,18 @@ try
     Check(!await refresh,"late refresh fails after account switch");
     Check(Get<string>("_accountToken")=="synthetic-account-b" && Get<string>("_accountRefreshToken")=="synthetic-refresh-b","late account A cannot replace selected B");handler.HoldRefresh=false;
 
-    Select(51001,"synthetic-live","synthetic-refresh");handler.HoldBootstrap=true;
+    Select(51001,new string('l',54),"synthetic-refresh");handler.HoldBootstrap=true;
     var mint=Mint();await handler.BootstrapArrived.Task.WaitAsync(TimeSpan.FromSeconds(5));
     Select(51002,"synthetic-account-b","synthetic-refresh-b");handler.ReleaseBootstrap.TrySetResult();
     Check(await mint==null,"in-flight mint cannot cross a selected UID/generation");handler.HoldBootstrap=false;
 
-    Select(51001,"synthetic-live","synthetic-refresh");handler.HoldProfile=true;
+    Select(51001,new string('l',54),"synthetic-refresh");handler.HoldProfile=true;
     var profile=(Task)Method("LoadPlayerProfileAsync").Invoke(host,[])!;await handler.ProfileArrived.Task.WaitAsync(TimeSpan.FromSeconds(5));
     Select(51002,"synthetic-account-b","synthetic-refresh-b");Field("_player").SetValue(host,new JsonObject{["uid"]=51002L});handler.ReleaseProfile.TrySetResult();
     bool rejected=false;try{await profile;}catch(InvalidOperationException){rejected=true;}
     Check(rejected && Get<JsonObject>("_player")?["uid"]?.GetValue<long>()==51002,"late A profile cannot overwrite B");
 
-    Select(51001,"synthetic-live","synthetic-refresh");
+    Select(51001,new string('l',54),"synthetic-refresh");
     var generation=Get<long>("_terminalAccountGeneration");
     Method("DropAccountSession").Invoke(host,[false]);
     Check(Get<long>("_terminalAccountGeneration")>generation && await Mint()==null,"logout immediately cancels native authority");
@@ -71,7 +76,7 @@ void Select(long uid,string access,string refresh)
         Field("_account").SetValue(host,new JsonObject{["muxi_uid"]=uid});Field("_lastRefresh").SetValue(host,default(DateTimeOffset));
     }
 }
-Task<string?> Mint()=>(Task<string?>)Method("MintTerminalCredentialAsync").Invoke(host,[CancellationToken.None])!;
+Task<string?> Mint()=>(Task<string?>)Method("GetTerminalAccessTokenAsync").Invoke(host,[CancellationToken.None])!;
 Task<bool> Refresh()=>(Task<bool>)Method("RefreshAccountAsync").Invoke(host,[])!;
 void Check(bool value,string name){if(!value)throw new Exception(name);passed++;}
 
@@ -91,14 +96,14 @@ sealed class SyntheticIssuer:HttpMessageHandler
   if(r.RequestUri!.AbsolutePath=="/oauth/token")
   {
    Refreshes++;if(HoldRefresh){RefreshArrived.TrySetResult();await ReleaseRefresh.Task.WaitAsync(ct);}
-   return Json(DenyRefresh?HttpStatusCode.Unauthorized:HttpStatusCode.OK,"{\"access_token\":\"synthetic-renewed\",\"refresh_token\":\"synthetic-rotated\"}");
+   return Json(DenyRefresh?HttpStatusCode.Unauthorized:HttpStatusCode.OK,new JsonObject{["access_token"]=new string('r',54),["refresh_token"]="synthetic-rotated"}.ToJsonString());
   }
-  if(r.RequestUri.AbsolutePath=="/api/launcher/minecraft/terminal-bootstrap")
+  if(r.RequestUri.AbsolutePath=="/oauth/userinfo")
   {
    Bootstraps++;var bearer=r.Headers.Authorization?.Parameter??"";BootstrapHeaders.Add(bearer);
    if(HoldBootstrap){BootstrapArrived.TrySetResult();await ReleaseBootstrap.Task.WaitAsync(ct);}
    if(bearer=="synthetic-expired")return Json(HttpStatusCode.Unauthorized,"{}");
-   return Json(HttpStatusCode.OK,new JsonObject{["uid"]=WrongUid?51002:51001,["credential"]=new string('b',43)}.ToJsonString());
+   return Json(HttpStatusCode.OK,new JsonObject{["muxi_uid"]=WrongUid?51002:51001}.ToJsonString());
   }
   throw new Exception("Unapproved synthetic endpoint");
  }

@@ -79,6 +79,8 @@ def main() -> None:
     global BACKEND
     native_mode="--native" in sys.argv
     workspace=Path(sys.argv[1])
+    global ROOT
+    ROOT=Path(os.environ.get('MUXI_QA_TERMINAL_ROOT',str(ROOT)))
     game=workspace/'_client_test/game'
     fixture=ThreadingHTTPServer(('127.0.0.1',0),Fixture)
     threading.Thread(target=fixture.serve_forever,daemon=True).start()
@@ -87,6 +89,7 @@ def main() -> None:
     meta=json.loads((game/f'versions/{version}/{version}.json').read_text(encoding='utf-8'))
     release=json.loads((ROOT/'build/release.json').read_text(encoding='utf-8'))
     terminal=ROOT/'build/libs'/release['artifact']
+    terminal=Path(os.environ.get('MUXI_QA_TERMINAL_JAR',str(terminal)))
     if not terminal.is_file(): raise SystemExit('Build muxi-terminal first')
     core_release={'artifact':'muxi-game-core-1.12.0-sso-review.jar'}
     core=Path(sys.argv[2]) if len(sys.argv)>2 else ROOT.parent.parent/'task-4/artifacts'/core_release['artifact']
@@ -120,6 +123,7 @@ def main() -> None:
     shutil.copy2(terminal,lab/'mods'/terminal.name)
     shutil.copy2(core,lab/'mods'/core.name)
     framework=OWNED.parent/'muxi-minigames/build/libs'/('muxi-minigames-'+json.loads((OWNED.parent/'muxi-minigames/mod.json').read_text(encoding='utf-8'))['version']+'.jar')
+    framework=Path(os.environ.get('MUXI_QA_FRAMEWORK_JAR',str(framework)))
     shutil.copy2(framework,lab/'mods'/framework.name)
     for pattern in ['balm-neoforge*.jar','waystones-neoforge*.jar','xaerominimap-neoforge*.jar','xaeroworldmap-neoforge*.jar']:
         jars=list((workspace/'bmc5server/mods').glob(pattern))
@@ -168,7 +172,7 @@ def main() -> None:
         z.writestr('META-INF/terminal-smoke-dependency.txt','muxi_game_core required by the fixture\n')
         z.writestr('muxi_terminal_smoke.mixins.json',json.dumps({
             'required':True,'minVersion':'0.8','package':'net.muxigame.terminal.smoke.mixin',
-            'compatibilityLevel':'JAVA_21','client':['AccountClientFixtureMixin','NativeClientTransportMixin'] if native_mode else ['AccountClientFixtureMixin','PassportRequestFixtureMixin','PassportIdentityFixtureMixin','PassportCallbackFixtureMixin'],'injectors':{'defaultRequire':1}
+            'compatibilityLevel':'JAVA_21','client':['AccountClientFixtureMixin','NativeClientTransportMixin','NativeFriendsTransportMixin'] if native_mode else ['AccountClientFixtureMixin','PassportRequestFixtureMixin','PassportIdentityFixtureMixin','PassportCallbackFixtureMixin'],'injectors':{'defaultRequire':1}
         }))
         z.writestr('terminal_mcef_environment.mixins.json',json.dumps({'required':True,'minVersion':'0.8','package':'net.muxigame.terminal.qa.mixin','compatibilityLevel':'JAVA_21','client':['OfflineMcefMixin','HardwareWmiTimeoutQAMixin','DirectTlsCefMixin'],'injectors':{'defaultRequire':1}}))
         for p in classes.rglob('*.class'):
@@ -205,7 +209,7 @@ def main() -> None:
           '-javaagent:'+str(agent),
           '-Dmuxi.container.fixtureUrl='+fixture_url,'-Dmuxi.sso.liveBackend=true','-Dmuxi.sso.qaUid='+str(BACKEND['uid']),'-Dmuxi.sso.directTls=true','-Dmuxi.sso.sitePort='+str(BACKEND['site_port']),'-Dmuxi.sso.spki='+BACKEND['spki'],
           *expand(meta['arguments']['jvm']),meta['mainClass'],*expand(meta['arguments']['game'])]
-    if native_mode:args[:0]=['-Dmuxi.sso.realNative=true','-Dmuxi.sso.nativeAuthURL='+BACKEND['auth_url'],'-Dmuxi.sso.nativeServerPort='+str(native_server['port']),'-Djavax.net.ssl.trustStore='+BACKEND['truststore'],'-Djavax.net.ssl.trustStorePassword=isolated-synthetic']
+    if native_mode:args[:0]=['-Dmuxi.sso.realNative=true','-Dmuxi.sso.nativeAuthURL='+BACKEND['auth_url'],'-Dmuxi.sso.nativeSiteURL='+BACKEND['site_url'],'-Dmuxi.sso.nativeServerPort='+str(native_server['port']),'-Djavax.net.ssl.trustStore='+BACKEND['truststore'],'-Djavax.net.ssl.trustStorePassword=isolated-synthetic']
     argfile=lab/'launch.args'; argfile.write_text('\n'.join('"'+a.replace('\\','/').replace('"','\\"')+'"' for a in args),encoding='utf-8')
     print(json.dumps({'lab':str(lab),'actual_mcef_renderer':True,'auth_ticket_identity_fixture':not native_mode,'production_mutation':False}),flush=True)
     if '--prepare-only' in sys.argv:

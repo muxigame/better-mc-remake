@@ -17,6 +17,6 @@ public abstract class NativeServerTraceMixin {
  }
  @Inject(method="admit",at=@At("RETURN")) private static void admitted(ServerPlayer player,CallbackInfo ci){record("actual-login-event",player,false);}
  @Inject(method="request",at=@At("HEAD")) private static void request(ServerPlayer player,TerminalPassportNetwork.Request packet,CallbackInfo ci){record("actual-game-request-packet",player,false);}
- @Inject(method="reply",at=@At("HEAD")) private static void reply(ServerPlayer player,String requestId,String ticket,CallbackInfo ci){record("actual-game-result-packet",player,ticket.matches("[A-Za-z0-9_-]{43}"));}
+ @Inject(method="reply",at=@At("HEAD")) private static void reply(ServerPlayer player,String requestId,String gameSession,long uid,int status,CallbackInfo ci){record("actual-game-result-packet",player,status==2 && uid>=10000 && gameSession.matches("[0-9a-f-]{36}"));}
  @Inject(method="disconnect",at=@At("RETURN")) private static void disconnected(ServerPlayer player,CallbackInfo ci){record("actual-logout-revoked",player,false);}
 }
