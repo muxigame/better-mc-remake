@@ -1,0 +1,98 @@
+{
+  "recordedUtc": "2026-10-03T06:48:26.307334+00:00",
+  "owner": "131 accounts/friends/SSO",
+  "state": "Published and runtime verified; genuine production-user GUI acceptance needs a normal logged-in launcher directory",
+  "production": {
+    "authVersion": "0.2.10",
+    "webBackendVersion": "0.1.20",
+    "launcherVersion": "1.2.7",
+    "packVersion": "1.4.29",
+    "minimumLauncherVersion": "1.2.7",
+    "gamePid": 69664,
+    "worldReady": true,
+    "originalGameEntry": "start.bat mc",
+    "normalSaveAndStopCompleted": true,
+    "forcedGameJvmKillUsed": false,
+    "ownedEmptyControllerRecoveryCompleted": true,
+    "oneSharedSSOSocialServiceKey": true,
+    "loginGateEnabled": false,
+    "opSyncEnabled": false,
+    "legacyTerminalCredentialRouteStatus": 410,
+    "sourceMatchesPublishedCommits": true,
+    "socialPresenceSuccessCount": 151,
+    "socialPresenceUnauthorizedCount": 0,
+    "publicAndRunningArtifactHashesMatch": true
+  },
+  "protocol": {
+    "accountAuthority": "Existing account issuer",
+    "nativeAccountCredential": "Unchanged original launcher account access bearer",
+    "newTerminalBootstrapProofTicketIssued": false,
+    "nativeCEFAccountCookiesAcceptedOrStored": false,
+    "accountCredentialOnMinecraftWire": false,
+    "minecraftWireFields": "public request UUID, game-session UUID, UID and status only",
+    "normalOAuthRefreshFamilyRetained": true
+  },
+  "acceptedSourceCommits": {
+    "muxi-auth": "53498c601984de569c334e6f1328b6c2efcac768",
+    "better-mc-remake": "a409be3d3ec0c480b29ce421e522a83ea258d3ff",
+    "muxi-game-core": "2967cada167a275c7225400869afe4f6e3c3a67c",
+    "muxi-terminal": "9191c6d645704d43769fa5eb9b396d2a80f98002",
+    "muxi-minigames": "a9c475b8a18b3d8dcc40f055060e10fda5b85dc6"
+  },
+  "launcherBuiltSourceCommit": "a409be3d3ec0c480b29ce421e522a83ea258d3ff",
+  "publicationGuardCommit": "bbdf9ec",
+  "localAcceptance": {
+    "path": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task\\dev-sync-20261002\\better-mc-remake\\build\\sso-mcef-20261003-135126-571643-5b442a3f\\suite-result.json",
+    "sha256": "5102bc01c3b5e193ea4d45599f9fafb7b7481a5bf84b39b35609462f1f150e25",
+    "success": true,
+    "actualCEFHTTPS": true,
+    "freshMinecraftProcesses": 3,
+    "rounds": [
+      {
+        "phase": "switch-account",
+        "success": true,
+        "exitCode": 0
+      },
+      {
+        "phase": "preserve",
+        "success": true,
+        "exitCode": 0
+      },
+      {
+        "phase": "revoke",
+        "success": true,
+        "exitCode": 0
+      }
+    ]
+  },
+  "checks": {
+    "authTests": 141,
+    "webBackendTests": 182,
+    "launcherLifecycleAssertions": 15,
+    "nativeBrokerCases": 9,
+    "nativeJavaLauncherTLSAssertions": 17,
+    "coreJavaSelfTests": 6995,
+    "coreListenerLifecycleAssertions": 47,
+    "friendsPolicyAssertions": 58,
+    "taczMirrorRegressionTests": 5,
+    "unchangedTaczResourceEntries": 107
+  },
+  "evidenceFiles": [
+    "production-direct-access-public-verification.json",
+    "production-direct-access-008-runtime-verification.json",
+    "production-auth-v2-source-runtime-verification.json",
+    "production-direct-social-presence-verification.json",
+    "direct-exact-publication-acceptance.json",
+    "production-auth-v2-backup-receipt.json"
+  ],
+  "authDeploymentWorkflow": "https://github.com/muxigame/muxi-auth/actions/runs/37102685097",
+  "remainingBlocker": {
+    "realUserProductionClientAcceptance": false,
+    "normalLauncherOrAccountFileFound": false,
+    "needed": "Path of the user’s normal, already logged-in launcher, or completion of a normal launcher login",
+    "syntheticProductionAccountOrTokenInjected": false
+  },
+  "otherOwnerDirtyAndStagedChangesPreserved": true,
+  "productionMiniSplitMigrationShipped": false,
+  "secretValuesPrinted": false
+}
