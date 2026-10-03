@@ -40,6 +40,21 @@ function Assert-SameFile([string]$RelativePath) {
     }
 }
 
+function Assert-SameTaczPack([string]$RelativePath) {
+    $clientPath=Join-Path $clientRoot $RelativePath
+    $serverPath=Join-Path $ServerRoot $RelativePath
+    $spec=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'packspec.json') -Raw -Encoding UTF8|ConvertFrom-Json
+    $version=[string]$spec.minecraft.version
+    if($version -notmatch '^\d+\.\d+(?:\.\d+)?$'){throw 'Invalid Minecraft version for TaCZ runtime mirror'}
+    $converted=Join-Path (Split-Path $serverPath -Parent) ([IO.Path]::GetFileNameWithoutExtension($serverPath)+'+'+$version+'.zip')
+    $candidates=@(@($serverPath,$converted)|Where-Object {Test-Path -LiteralPath $_ -PathType Leaf})
+    if($candidates.Count -ne 1){throw 'Expected one active original or converted TaCZ pack on the server'}
+    if(-not(Test-Path -LiteralPath $clientPath -PathType Leaf)){throw 'Client TaCZ resource pack missing'}
+    $python=if($env:BMC_PYTHON){$env:BMC_PYTHON}else{(Get-Command python -ErrorAction Stop).Source}
+    & $python (Join-Path $PSScriptRoot 'verify-tacz-runtime-mirror.py') --server $candidates[0] --client $clientPath
+    if($LASTEXITCODE -ne 0){throw 'TaCZ server/client resource contents differ'}
+}
+
 # KubeJS startup item modifications are local item-component mutations.
 # If only the server runs them, the client tooltip can disagree with actual combat values.
 Assert-SameFile 'kubejs\startup_scripts\iaf_weapon_balance.js'
@@ -93,5 +108,5 @@ foreach ($module in @('muxi-minigames', 'muxi-horse-racing', 'muxi-flight', 'mux
     if ($serverFiles.Count -ne 1 -or $clientFiles.Count -ne 1) { throw "Expected exactly one $module JAR on each candidate side." }
     if ($serverFiles[0].Name -ne $clientFiles[0].Name -or (Get-Sha256 $serverFiles[0].FullName) -ne (Get-Sha256 $clientFiles[0].FullName)) { throw "$module candidate artifact mismatch." }
 }
-Assert-SameFile 'tacz/muxi-phoenix-six-netnew-20261001.zip'
+Assert-SameTaczPack 'tacz/muxi-phoenix-six-netnew-20261001.zip'
 Write-Host 'Client/server-sensitive Ice and Fire files, six modules and the repaired six-gun pack checked.' -ForegroundColor Green
