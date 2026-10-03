@@ -318,6 +318,17 @@
       "createIfMissing": false
     },
     {
+      "path": "config/PasterDream-Client.toml",
+      "format": "Toml",
+      "enforce": {
+        "HUD/enable mod ui": false
+      },
+      "seedKeys": {
+        "HUD/enable mod ui": false
+      },
+      "createIfMissing": true
+    },
+    {
       "path": "config/butchercraft-common.toml",
       "format": "Toml",
       "enforce": {
