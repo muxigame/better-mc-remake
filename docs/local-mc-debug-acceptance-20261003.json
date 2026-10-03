@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-03",
+  "environment": "131 / Windows / MC 1.21.1 / NeoForge 21.1.250 / Java 21",
+  "entrypoint": "scripts/local_mc_debug.py",
+  "runbook": "docs/local-mc-debug.md",
+  "nativeSources": "tests/local-mc-debug/",
+  "runs": [
+    {
+      "evidenceRoot": "build/local-mc-debug/shared-tool-smoke-20261003-a",
+      "runId": "dfc482c8f46a4f6c88a968fe91326994",
+      "mode": "smoke",
+      "realNetworkClients": 2,
+      "nativeCallbackReceipts": 9,
+      "hiddenAndUnfocusedClients": 2,
+      "normalExit": true,
+      "exitCodes": {
+        "server": 0,
+        "host": 0,
+        "guest": 0
+      },
+      "normalStopBlocked": [],
+      "qaAgentSha256": "e1ab7207e8a5a40be59616ee6db83260241abcba68fb8b134a78633415859192"
+    },
+    {
+      "evidenceRoot": "build/local-mc-debug/shared-tool-smoke-20261003-b",
+      "runId": "5270b7b586ce4393a491162b5709a3e8",
+      "mode": "hold",
+      "realNetworkClients": 2,
+      "nativeCallbackReceipts": 9,
+      "hiddenAndUnfocusedClients": 2,
+      "normalExit": true,
+      "exitCodes": {
+        "server": 0,
+        "host": 0,
+        "guest": 0
+      },
+      "normalStopBlocked": [],
+      "qaAgentSha256": "4df804aff4f672a7afd9b6e07848fcf09372dc0fa1968cf4f5cf138e9002b09c"
+    }
+  ],
+  "finalRun": {
+    "publicCommandCli": "passed (UTF-8 BOM observe input)",
+    "publicStatusCli": "passed",
+    "publicStopCli": "passed; actual three exit codes 0 collected by original runner",
+    "nativeInventoryCheck": "server-assisted diamond fixture 3 -> native Q 2 -> native Ctrl+Q 0; dropped total 3",
+    "clientRenderers": {
+      "host": "NVIDIA GeForce RTX 4090/PCIe/SSE2",
+      "guest": "NVIDIA GeForce RTX 4090/PCIe/SSE2"
+    },
+    "preflightAvailableMemoryMiB": 87575,
+    "preflightExistingMinecraftProcesses": 6,
+    "preflightGpuTelemetry": [
+      {
+        "index": "0",
+        "name": "NVIDIA GeForce RTX 4090",
+        "totalMiB": 49140,
+        "freeMiB": 47040,
+        "usedMiB": 1579,
+        "utilizationPercent": 0
+      },
+      {
+        "index": "1",
+        "name": "NVIDIA GeForce RTX 4090",
+        "totalMiB": 49140,
+        "freeMiB": 46019,
+        "usedMiB": 2600,
+        "utilizationPercent": 38
+      }
+    ],
+    "fixedJavaCountLimit": false
+  },
+  "safetyUnitTests": {
+    "command": "python -B tests/test_local_mc_debug.py",
+    "passed": 6
+  },
+  "manualUpdate": {
+    "scope": "Only insert new section 6.5; every previous byte retained",
+    "source": "docs/operations-local-mc-debug-section.md",
+    "beforeSha256": "e2e318b97e8747c17d198d870c0cb528321bb220f1683b6d0f76750c71a22220",
+    "afterSha256": "228a6af86a85a77bf60906d58d843e2dc61156a669a09d5986405f554a5cc898",
+    "newSectionApplied": true,
+    "parallelOwnerChangesOverwritten": false
+  },
+  "scopeLimits": {
+    "serverAssistedInventoryFixture": true,
+    "physicalOSInputAcceptance": false,
+    "visualAcceptance": false,
+    "SSOAcceptance": false,
+    "completeGameAcceptance": false,
+    "optionalGameActionAndSnapshotExercisedInGenericSmoke": false
+  },
+  "production008Mutation": false,
+  "forceKillUsed": false,
+  "newBranchOrWorktree": false,
+  "sourceSha256": {
+    "docs/local-mc-debug.md": "2e238ddf42ac4bce7e0636bacc1dfea05e62d9c5f42a1ec073daeba6fa040e5a",
+    "docs/operations-local-mc-debug-section.md": "82b8aef7bef640badfd7b8f9c96030069f2004787ec09877b87c11e225a33401",
+    "scripts/local_mc_debug.py": "152432e04ebc547649035ce9fcd37febdcbda4b4fb85350d81aba9cf33b5c095",
+    "scripts/local_mc_runtime.py": "efab634fa48d8a23b1f8531c164fb9c890cf8cdf03b095b41838c38a29431369",
+    "tests/test_local_mc_debug.py": "3aab1c5816f671e73b2ff565d09d48bf4ec4e7fd5fafd8fb3fb2bf7a10a91dc5",
+    "tests/local-mc-debug/DebugFiles.java": "84649935afadee9ae819c3d063a178727b5e168bcdbd36aa55e40cb9e54285ac",
+    "tests/local-mc-debug/HardwareWmiTimeoutQAMixin.java": "480dfa9c9d4c97e7e0b76277e3753b3a113d64f1d593940715bf3957ecdaa54a",
+    "tests/local-mc-debug/HiddenWindowMixin.java": "a70df6d42084bc8838740ad4bcdce0b4b54141b8a961997d928f212cadebb872",
+    "tests/local-mc-debug/LocalDebugClient.java": "c59ae1a8ad3492f62a88851cf0071b8d9cbed03285d1333ed03517e5f4e4c4f2",
+    "tests/local-mc-debug/LocalDebugServer.java": "31eed0bd0b1e766319cdb2b348fd14cb6e774eb0c80acf5e73b26618864859c1",
+    "tests/local-mc-debug/NormalStopRequestQAMixin.java": "3d1c0eb065dc31e19f20f552ee0268424c75b2ff099061e3172f43b5db5074c0"
+  }
+}
