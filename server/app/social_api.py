@@ -32,8 +32,8 @@ def social_router(path, current_player_account):
     async def mutate(request, uid, peer, action):
         if request.headers.get('content-type', '').split(';')[0].strip().lower() != 'application/json':
             raise HTTPException(403, 'JSON request required')
-        # Cookie authentication wins in current_player_account, so cookie presence must
-        # always require origin even if an attacker also supplies a bearer header.
+        # Keep the same-origin boundary whenever browser cookies accompany a mutation,
+        # including requests that explicitly select an account with a bearer token.
         if request.cookies.get('bmc_session'):
             expected = os.getenv('BMC_PUBLIC_URL', str(request.base_url).rstrip('/')).rstrip('/')
             if request.headers.get('origin') != expected:

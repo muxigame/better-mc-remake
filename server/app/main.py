@@ -114,32 +114,35 @@ async def security_headers(request: Request, call_next):
     if (request.url.path.startswith(("/api/v1/auth", "/api/v1/admin", "/api/v1/player", "/api/internal/game/social"))
             or request.url.path in {"/account", "/account.html", "/admin.html"}):
         response.headers["Cache-Control"] = "private, no-store"
-        response.headers["Vary"] = "Cookie"
+        response.headers["Vary"] = "Cookie, Authorization"
         response.headers["Referrer-Policy"] = "no-referrer"
     return response
 
 
+def authenticated_account(request: Request):
+    # An explicitly supplied account token selects the actor for every API/page.
+    # Never fall back to a previous browser account if that token has expired.
+    authorization = request.headers.get("authorization")
+    if authorization is not None:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token.strip():
+            raise HTTPException(status_code=401, detail="Invalid account authorization")
+        try:
+            return oidc_client.userinfo(token.strip())
+        except (RuntimeError, ValueError):
+            raise HTTPException(status_code=401, detail="Account session expired") from None
+    return web_auth_store.session(request.cookies.get("bmc_session"))
+
+
 def current_account(request: Request):
-    account = web_auth_store.session(request.cookies.get("bmc_session"))
+    account = authenticated_account(request)
     if account is None:
-        raise HTTPException(status_code=401, detail="请先登录")
+        raise HTTPException(status_code=401, detail="Login required")
     return account
 
 
 def current_player_account(request: Request):
-    account = web_auth_store.session(request.cookies.get("bmc_session"))
-    if account is not None:
-        return account
-
-    authorization = request.headers.get("authorization", "")
-    if authorization.lower().startswith("bearer "):
-        token = authorization[7:].strip()
-        if token:
-            try:
-                return oidc_client.userinfo(token)
-            except (RuntimeError, ValueError) as error:
-                raise HTTPException(status_code=401, detail="muxi 账户 会话无效") from error
-    raise HTTPException(status_code=401, detail="请先登录")
+    return current_account(request)
 
 
 def admin_account(account=Depends(current_account)):
@@ -344,7 +347,7 @@ def manifest() -> JSONResponse:
 @app.get("/account.html", include_in_schema=False)
 @app.get("/account", include_in_schema=False)
 def account_page(request: Request):
-    account = web_auth_store.session(request.cookies.get("bmc_session"))
+    account = authenticated_account(request)
     if account is None:
         return begin_login(request, "/account.html")
     return protected_page("account.html")
@@ -363,7 +366,7 @@ def protected_page(filename: str):
 
 @app.get("/admin.html", include_in_schema=False)
 def admin_page(request: Request):
-    account = web_auth_store.session(request.cookies.get("bmc_session"))
+    account = authenticated_account(request)
     if account is None:
         return begin_login(request, "/admin.html")
     if account.role != "admin":
@@ -389,7 +392,7 @@ def begin_login(request: Request, return_to: str) -> RedirectResponse:
 @app.get("/api/v1/auth/entry")
 def account_entry(request: Request, return_to: str = "/account.html") -> RedirectResponse:
     destination = safe_return_to(return_to)
-    if web_auth_store.session(request.cookies.get("bmc_session")) is not None:
+    if authenticated_account(request) is not None:
         return RedirectResponse(destination, status_code=303)
     return begin_login(request, destination)
 

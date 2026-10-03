@@ -55,7 +55,8 @@ class SocialAPITests(unittest.TestCase):
             self.assertEqual(200,response.status_code)
             self.assertEqual('10000',self.client.get('/api/v1/player/social',headers={'authorization':'Bearer synthetic-only'}).json()['selfUid'])
         self.client.cookies.set('bmc_session',self.cookies[0])
-        self.assertEqual(403,self.write('PUT',path,headers={'authorization':'Bearer fake','origin':''}).status_code)
+        with patch.object(main.oidc_client,'userinfo',return_value=self.accounts[0]):
+            self.assertEqual(403,self.write('PUT',path,headers={'authorization':'Bearer synthetic-only','origin':''}).status_code)
 
     def test_receipt_pair_shared_views_accept_remove_block(self):
         key=str(uuid.uuid4()); path='/api/v1/player/social/requests/10001'
