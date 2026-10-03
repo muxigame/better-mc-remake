@@ -128,6 +128,36 @@ def scenario(root, path, timeout):
             "visualAcceptance": False, "SSOAcceptance": False, "assertions": sum(len(x.get("expect", {})) for x in data["steps"])}
 
 
+def validate_shader_pack_name(name):
+    if not name or name in (".", "..") or name != name.strip() or any(c in name for c in "\\/:=\r\n\0"):
+        raise ValueError("Shader pack must be a plain copied filename/directory name")
+
+
+def install_shader_selection(lab,name):
+    validate_shader_pack_name(name)
+    packs=(lab/"shaderpacks").resolve(strict=True)
+    selected=(packs/name).resolve(strict=True)
+    if selected.parent != packs: raise ValueError("Shader pack escapes copied shaderpacks directory")
+    (lab/"config/iris.properties").write_text("enableShaders=true\nallowUnknownShaders=false\ndisableUpdateMessage=true\nmaxShadowRenderDistance=16\nshaderPack="+name+"\n",encoding="utf-8")
+
+
+def fml_config(overrides):
+    if len(overrides) > 32: raise ValueError("Too many dependency overrides")
+    grouped = {}
+    for entry in overrides:
+        if not re.fullmatch(r"[a-z][a-z0-9_]*=[+-][a-z][a-z0-9_]*", entry):
+            raise ValueError("Dependency override must be modid=+dependency or modid=-dependency")
+        target, dependency = entry.split("=", 1)
+        grouped.setdefault(target, [])
+        if dependency not in grouped[target]: grouped[target].append(dependency)
+    text = 'earlyWindowControl = false\nearlyWindowProvider = ""\nversionCheck = false\n'
+    if grouped:
+        text += "[dependencyOverrides]\n"
+        for target, dependencies in grouped.items():
+            text += target + " = " + json.dumps(dependencies) + "\n"
+    return text
+
+
 def run(args):
     if args.clients < 1: raise ValueError("At least one client required; no fixed <4 Java/process limit")
     if not 1<=args.port<=65535:raise ValueError("Port outside 1..65535")
@@ -139,7 +169,15 @@ def run(args):
     java_version = subprocess.run([str(jdk / "bin" / exe), "-version"], capture_output=True, text=True, check=True)
     if not re.search(r'version "21[.\"]', java_version.stderr + java_version.stdout): raise ValueError("This MC 1.21.1 QA runner requires Java 21")
     if not args.accept_eula: raise ValueError("Pass --accept-eula for this new private MC server")
+    loader_config = fml_config(args.dependency_override)
     mods = [path.resolve(strict=True) for path in args.mod]
+    client_mods = [path.resolve(strict=True) for path in args.client_mod]
+    server_mods = [path.resolve(strict=True) for path in args.server_mod]
+    if not 2 <= args.client_render_distance <= 32 or not 2 <= args.client_simulation_distance <= 32 or not 1 <= args.client_max_fps <= 260:
+        raise ValueError("Client render/simulation/FPS settings outside allowed ranges")
+    if args.client_graphics_mode not in (0, 1, 2): raise ValueError("Graphics mode outside 0..2")
+    if args.shader_pack is not None:
+        validate_shader_pack_name(args.shader_pack)
     data = [path.resolve(strict=True) for path in args.data_dir]
     rt.port_free(args.port)
     capacity = rt.resources()
@@ -156,7 +194,7 @@ def run(args):
                      "gpuBudgetSource": "operator" if args.gpu_budget_mb is not None else "nvidia-smi measured free" if gpu_budget is not None else "unmeasured; operator must assess GPU workload",
                      "gpuReservationIsEstimate": True, "fixedJavaCountLimit": False})
     emit("capacity", **capacity)
-    sources = [server, game, jdk, *mods, *data]
+    sources = [server, game, jdk, *mods, *client_mods, *server_mods, *data]
     if args.world: sources.append(args.world)
     project, root = rt.new_lab(args.project_root, args.instance_root, sources)
     coordinator = root / "coordinator"; coordinator.mkdir()
@@ -170,7 +208,9 @@ def run(args):
               "createdAt": time.time(), "roles": ["server", *names], "clientNames": names, "hidden": not args.visible,
               "serverPort": args.port, "productionMutation": False, "offlineLoopback": True,
               "processes": {}, "resources": capacity, "mode": args.mode,
-              "inputArtifacts": [{"file": jar.name, "sha256": rt.sha256(jar)} for jar in mods]}
+              "inputArtifacts": [{"file": jar.name, "sha256": rt.sha256(jar), "scope": scope} for scope, jars in [("both",mods),("client",client_mods),("server",server_mods)] for jar in jars]}
+    marker["dependencyOverrides"] = list(args.dependency_override)
+    marker["clientSettings"]={"renderDistance":args.client_render_distance,"simulationDistance":args.client_simulation_distance,"maxFps":args.client_max_fps,"shaderPack":args.shader_pack,"graphicsMode":args.client_graphics_mode}
     marker["runtime"]={"serverRuntime":str(server),"clientGame":str(game),"javaHome":str(jdk),"javaVersion":(java_version.stderr+java_version.stdout).strip(),"version":args.version,"neoforge":args.neoforge}
     marker_save(root, marker)
     metadata = rt.client_metadata(game, args.version)
@@ -183,7 +223,8 @@ def run(args):
     if not unix_temp.exists(): unix_temp.mkdir(parents=True)
     if len(str(unix_temp)) > 95:
         emit("unix_temp_warning", message="Use a short existing --unix-temp path if WEPoll/AF_UNIX fails; no machine-wide service restart")
-    server_home = root / "server"; server_home.mkdir(); rt.copy_inputs(server_home, [*mods, agent], data)
+    server_home = root / "server"; server_home.mkdir(); rt.copy_inputs(server_home, [*mods, *server_mods, agent], data)
+    (server_home / "config/fml.toml").write_text(loader_config, encoding="utf-8")
     if args.world: shutil.copytree(args.world.resolve(strict=True), server_home / "qa-world")
     (server_home / "eula.txt").write_text("eula=true\n")
     props = f"server-ip=127.0.0.1\nserver-port={args.port}\nonline-mode=false\nenforce-secure-profile=false\nlevel-name=qa-world\ngamemode=survival\ndifficulty=normal\nview-distance=3\nsimulation-distance=3\nmax-tick-time=120000\nspawn-protection=0\nallow-flight=true\nspawn-monsters=false\nspawn-animals=false\n"
@@ -197,10 +238,12 @@ def run(args):
     rt.argfile(server_args, [*prefix, "-Dqa.local.role=server", *rt.server_arguments(server, args.neoforge, args.server_memory_mb, unix_temp)])
     clients = {}
     for role, name in names.items():
-        lab = root / role; lab.mkdir(); rt.copy_inputs(lab, [*mods, agent], data)
+        lab = root / role; lab.mkdir(); rt.copy_inputs(lab, [*mods, *client_mods, agent], data)
         rt.write_json(lab / "config/muxi-game-core.json", fixture_config)
-        (lab / "config/fml.toml").write_text('earlyWindowControl = false\nearlyWindowProvider = ""\nversionCheck = false\n')
-        (lab / "options.txt").write_text("lang:zh_cn\nmaxFps:30\nenableVsync:false\nonboardAccessibility:false\nsoundCategory_master:0.0\nfullscreen:false\npauseOnLostFocus:false\nrenderDistance:3\nsimulationDistance:3\ngraphicsMode:0\n")
+        (lab / "config/fml.toml").write_text(loader_config, encoding="utf-8")
+        (lab / "options.txt").write_text(f"lang:zh_cn\nmaxFps:{args.client_max_fps}\nenableVsync:false\nonboardAccessibility:false\nsoundCategory_master:0.0\nfullscreen:false\npauseOnLostFocus:false\nrenderDistance:{args.client_render_distance}\nsimulationDistance:{args.client_simulation_distance}\ngraphicsMode:{args.client_graphics_mode}\n")
+        if args.shader_pack is not None:
+            install_shader_selection(lab,args.shader_pack)
         shutil.copytree(natives, lab / "natives")
         launch = [*prefix, f"-Dqa.local.role={role}", f"-Dqa.local.port={args.port}", "-Dqa.local.hidden=" + str(not args.visible).lower(),
                   *rt.client_arguments(game, args.version, metadata, libraries, lab, name, args.client_memory_mb, lab / "natives", unix_temp)]
@@ -280,6 +323,14 @@ def main(argv=None):
     launch.add_argument("--port", type=int, required=True); launch.add_argument("--clients", type=int, default=2)
     launch.add_argument("--client-name", action="append", default=[])
     launch.add_argument("--mod", type=Path, action="append", default=[]); launch.add_argument("--data-dir", type=Path, action="append", default=[])
+    launch.add_argument("--client-mod", type=Path, action="append", default=[])
+    launch.add_argument("--server-mod", type=Path, action="append", default=[])
+    launch.add_argument("--shader-pack")
+    launch.add_argument("--dependency-override", action="append", default=[])
+    launch.add_argument("--client-render-distance",type=int,default=3)
+    launch.add_argument("--client-simulation-distance",type=int,default=3)
+    launch.add_argument("--client-max-fps",type=int,default=30)
+    launch.add_argument("--client-graphics-mode",type=int,default=0)
     launch.add_argument("--world", type=Path); launch.add_argument("--natives-dir", type=Path); launch.add_argument("--unix-temp", type=Path)
     launch.add_argument("--accept-eula", action="store_true"); launch.add_argument("--visible", action="store_true")
     launch.add_argument("--mode", choices=("smoke", "hold", "scenario"), default="smoke"); launch.add_argument("--scenario", type=Path)

@@ -259,8 +259,8 @@ def copy_inputs(lab, mods, data):
     (lab / "mods").mkdir(); (lab / "config").mkdir()
     names = set()
     for jar in mods:
-        if jar.name in names: raise ValueError("Duplicate mod jar filename: " + jar.name)
-        names.add(jar.name); shutil.copy2(jar, lab / "mods" / jar.name)
+        if jar.name.casefold() in names: raise ValueError("Duplicate mod jar filename: " + jar.name)
+        names.add(jar.name.casefold()); shutil.copy2(jar, lab / "mods" / jar.name)
     for folder in data:
         if folder.name in ("mods", "config", "saves", "world", "libraries", "versions", "logs", "assets", "natives"):
             raise ValueError("Use explicit world/natives parameters; data-dir cannot be " + folder.name)

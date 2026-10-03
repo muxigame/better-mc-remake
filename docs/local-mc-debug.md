@@ -101,3 +101,38 @@ python -B .\scripts\local_mc_debug.py stop --instance-root $Lab --wait-seconds 1
 5. **回执/进度暂时读不到**：JSON 使用临时文件替换，读取对 Windows sharing lock/尚未完整替换容错；重试状态和回执，不强杀自有或其它 owner 的 MC。持续失败时保留错误和日志，修复后用新实例目录重跑。
 
 不部署008，不改生产/user存档，不创建凭据，不建立新branch/worktree。所有会话先读本文并声明实例目录、端口、候选 SHA、焦点需求和实际资源预算；共享文件冲突由父级协调，广播摘要以本仓工具 commit 为准。
+
+
+## Explicit shader client profile
+
+`--mod` remains shared by both roles. Repeat `--client-mod` and `--server-mod`
+for role-specific jars. The owner marker records each artifact hash and scope;
+case-insensitive filename collisions within a role are rejected on Windows.
+No process launch or normal-stop ownership rules change.
+
+Copy a shaderpacks folder with `--data-dir`, then select its direct child with
+`--shader-pack "Better MC - Low"`. This writes only the private client's Iris
+selection (enabled, shadow distance 16); it does not import arbitrary config.
+Missing packs, path separators, traversal and property-line injection are
+rejected. The server does not receive this generated Iris configuration.
+
+Explicit client settings: `--client-render-distance` and
+`--client-simulation-distance` (2..32, defaults 3), `--client-max-fps` (1..260,
+default 30), `--client-graphics-mode` (0..2, default 0). The marker records these
+values. Server view/simulation remain 3; disclose this when comparing timings.
+
+Run `python -B tests/test_local_mc_debug.py` and
+`python -B tests/test_local_mc_shader_profile.py`. These verify ownership,
+real CLI parsing and file preparation with mocked process launch. Their PASS
+is not native shader or gameplay acceptance.
+
+
+For a pack with an existing, audited loader dependency override, repeat
+`--dependency-override modid=-dependency` (remove constraint) or
+`modid=+dependency` (order after). Only these structured mod IDs are accepted,
+at most 32 entries. Both private roles receive the generated FML setting and
+the owner marker records the exact overrides. This does not import a config
+directory. The shader fixture explicitly preserves its historical and current
+server `sable=-scalablelux` setting; do not infer overrides for other packs.
+The Python 3.12 regression run passes 6 ownership + 13 profile tests without
+skips. Tests mock Java/resource/process operations; native acceptance is separate.
