@@ -13,7 +13,7 @@ from windows_owned_job import OwnedProcessJob
 def prepare_server(lab,workspace,classes,backend,runtime):
     root=lab/'dedicated-native-server';(root/'mods').mkdir(parents=True,exist_ok=True);(root/'config').mkdir(exist_ok=True)
     for jar in (lab/'mods').glob('*.jar'):
-        if jar.name.startswith(('muxi-game-core-','muxi-minigames-','muxi-terminal-0.','balm-','waystones-')):os.link(jar,root/'mods'/jar.name)
+        if jar.name.startswith(('muxi-game-core-','muxi-minigames-','muxi-horse-racing-','muxi-flight-','muxi-terminal-0.','balm-','waystones-')):os.link(jar,root/'mods'/jar.name)
     shutil.copy2(workspace/'bmc5server/eula.txt',root/'eula.txt')
     with socket.socket() as listener:listener.bind(('127.0.0.1',0));port=listener.getsockname()[1]
     (root/'server.properties').write_text('server-ip=127.0.0.1\nserver-port='+str(port)+'\nonline-mode=false\nenforce-secure-profile=false\nmax-players=4\nview-distance=2\nsimulation-distance=2\nspawn-protection=0\nlevel-name=private-native-qa\nlevel-seed=13120261002\nlevel-type=minecraft:flat\ngamemode=creative\ndifficulty=peaceful\nspawn-monsters=false\nspawn-animals=false\nallow-flight=true\nenable-rcon=false\nenable-query=false\nmotd=131 isolated actual native SSO QA\n',encoding='utf-8')

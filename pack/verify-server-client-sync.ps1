@@ -87,7 +87,7 @@ if ($packSpec.exclude -contains 'mods/muxi-outbreak-*.jar') {
 } elseif ($serverOutbreak[0].Name -ne $clientOutbreak[0].Name -or (Get-Sha256 $serverOutbreak[0].FullName) -ne (Get-Sha256 $clientOutbreak[0].FullName)) {
     throw 'muxi-outbreak client/server artifact mismatch.'
 }
-foreach ($module in @('muxi-minigames', 'muxi-zombie-challenge', 'muxi-champion-companions')) {
+foreach ($module in @('muxi-minigames', 'muxi-horse-racing', 'muxi-flight', 'muxi-zombie-challenge', 'muxi-champion-companions')) {
     $serverFiles = @(Get-ChildItem -LiteralPath (Join-Path $ServerRoot 'mods') -File -Filter "$module-*.jar")
     $clientFiles = @(Get-ChildItem -LiteralPath (Join-Path $clientRoot 'mods') -File -Filter "$module-*.jar")
     if ($serverFiles.Count -ne 1 -or $clientFiles.Count -ne 1) { throw "Expected exactly one $module JAR on each candidate side." }
