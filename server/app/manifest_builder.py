@@ -272,6 +272,9 @@ def build_manifest(
     apply_default_distribution_policies(files, spec, log)
     reconcile_overlay_policies(files, spec, log)
 
+    from .public_terrain import validate_public_terrain
+    validate_public_terrain(root, files, spec)
+
     pack = copy_dict(spec["pack"])
     pack["released"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     manifest = compact({
@@ -282,6 +285,7 @@ def build_manifest(
         "servers": copy_dict(spec.get("servers", [])),
         "launcher": copy_dict(spec.get("launcher")),
         "files": files,
+        "publicTerrainCaches": copy_dict(spec.get("publicTerrainCaches", [])),
         "prune": copy_dict(spec.get("prune", [])),
         "overlays": copy_dict(spec.get("overlays", [])),
         "notice": spec.get("notice"),

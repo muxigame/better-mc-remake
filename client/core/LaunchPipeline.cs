@@ -55,6 +55,7 @@ public sealed class LaunchPipeline
         if (_downloader.Mirror is not null) Log.Info($"Minecraft 本体镜像：{_downloader.Mirror.Base}");
         else Log.Info("未下发镜像地址，Minecraft 本体直连 Mojang / NeoForge");
         _ctx.Manifest = manifest;
+        PublicTerrainCache.ValidateDistribution(manifest);
 
         // 2. 在任何游戏下载/写入之前检查客户端支持策略，不能仅依赖 UI 禁用按钮。
         if (manifest.Launcher is not null &&
@@ -106,6 +107,15 @@ public sealed class LaunchPipeline
             {
                 Report("整合包已是最新", $"版本 {manifest.Pack.Version}");
             }
+        }
+
+        // Public archives were downloaded by SyncEngine; verify actual installed dependencies
+        // even when SkipVerify is selected. Never place player databases under Managed/Prune.
+        foreach (var cache in manifest.PublicTerrainCaches)
+        {
+            ct.ThrowIfCancellationRequested();
+            var result = PublicTerrainCache.Install(paths, cache);
+            Log.Info($"Public terrain: {result}");
         }
 
         // 4. 版本 JSON
