@@ -29,7 +29,7 @@ def valid_maid_catalog():
         tier = p.get('tier')
         if type(tier) is not int or tier not in prices or p.get('purchase') != prices[tier]:return False
         if p.get('entityKind') != 'MAID' or p.get('texture') != 'skin':return False
-        if not re.fullmatch(r'赛马娘/umamusume_[a-z_]+_approved', p.get('modelId', '')):return False
+        if not re.fullmatch(r'10_umamusume/umamusume_[a-z_]+_approved', p.get('modelId', '')):return False
         if p.get('championTier') != f'champions:tier_{tier}':return False
         affixes = p.get('affixes', [])
         if len(affixes) != tier or len({a.get('id') for a in affixes}) != tier:return False
