@@ -143,22 +143,24 @@ class PlatformStore:
             raise ValueError('Invalid result fields')
         self.validate_uid(event['uid'])
         game, session = event['game'], event['session']
-        if game not in ('zombie-challenge', 'outbreak', 'flight', 'horse_racing') or not isinstance(session, str):
+        if game not in ('zombie-challenge', 'outbreak', 'flight', 'horse_racing', 'tower_defense') or not isinstance(session, str):
             raise ValueError('Unknown game or invalid session')
         parsed = UUID(session)
         if str(parsed) != session or parsed.version != 4:
             raise ValueError('Canonical UUID4 session required')
         if type(event['win']) is not bool:
             raise ValueError('Invalid win')
-        for key, maximum in (('score', 10**12), ('difficulty', {'zombie-challenge': 4, 'outbreak': 3, 'flight': 5, 'horse_racing': 5}[game]), ('seconds', 10**9)):
+        for key, maximum in (('score', 10**12), ('difficulty', {'zombie-challenge': 4, 'outbreak': 3, 'flight': 5, 'horse_racing': 5, 'tower_defense': 3}[game]), ('seconds', 10**9)):
             if type(event[key]) is not int or not 0 <= event[key] <= maximum:
                 raise ValueError('Invalid result ' + key)
         if game == 'flight' and event['score'] > 10000:
             raise ValueError('Flight contribution requires bounded server score')
         if game == 'horse_racing' and (not 1 <= event['difficulty'] <= 5 or not 1 <= event['score'] <= 10 or event['win'] != (event['score'] == 10)):
             raise ValueError('Horse score must be 1..10, winner 10, difficulty 1..5')
+        if game == 'tower_defense' and (not 1 <= event['difficulty'] <= 3 or event['score'] > 330):
+            raise ValueError('Tower defense requires difficulty 1..3 and score 0..330')
         policy = {} if rewards is None else rewards
-        if not isinstance(policy, dict) or any(name not in ('zombie-challenge', 'outbreak') for name in policy):
+        if not isinstance(policy, dict) or any(name not in ('zombie-challenge', 'outbreak', 'tower_defense') for name in policy):
             raise ValueError('Invalid reward policy')
         for name, amounts in policy.items():
             if not isinstance(amounts, dict) or any(str(level) not in [str(n) for n in range(5 if name == 'zombie-challenge' else 4)] or type(amount) is not int or not 0 <= amount <= 10000 for level, amount in amounts.items()):
