@@ -1,0 +1,271 @@
+{
+  "version": "umamusume-shop-v1",
+  "modelIdsFinalized": true,
+  "catalog": [
+    {
+      "sku": "uma_oguri_cap",
+      "entityKind": "MAID",
+      "name": "小栗帽",
+      "modelId": "赛马娘/umamusume_oguri_cap_approved",
+      "texture": "skin",
+      "tier": 4,
+      "purchase": 1200,
+      "championTier": "champions:tier_4",
+      "affixes": [
+        {
+          "id": "champions:hasty",
+          "strength": 1
+        },
+        {
+          "id": "champions:lively",
+          "strength": 1
+        },
+        {
+          "id": "champions:dampening",
+          "strength": 1
+        },
+        {
+          "id": "champions:shielding",
+          "strength": 1
+        }
+      ],
+      "traits": [
+        "急速",
+        "活力",
+        "抑制",
+        "保护"
+      ],
+      "popularityReference": {
+        "date": "2021-07-06",
+        "votes": 184,
+        "rank": 3,
+        "currentRanking": false
+      },
+      "modelFilesSha256": {
+        "ysm.json": "6364aa0618074d6f4a31ccb1bcf84af8052261ef8573e84cafaea9eec0bcc889",
+        "models/main.json": "81e0f49f821470895b0ca12ed309396be2fe5eea046c921f231fc8e344b3e9b9",
+        "models/arm.json": "f4eaae6bcf04c7c1636b58acf7dcc7a64659ada892cc6a5bb85810f36679e98d",
+        "textures/skin.png": "d5122cc910aca324cf3080b1f55ac973a52fffa247e2706cbfc8ff946c608768",
+        "animations/main.animation.json": "3dd62a5201964cbfd4149acf3973bec8061eb0689ff262155d9a5d009cc747da"
+      },
+      "modelRelease": "umamusume-six-approved-20261007"
+    },
+    {
+      "sku": "uma_silence_suzuka",
+      "entityKind": "MAID",
+      "name": "铃鹿",
+      "modelId": "赛马娘/umamusume_silence_suzuka_approved",
+      "texture": "skin",
+      "tier": 2,
+      "purchase": 250,
+      "championTier": "champions:tier_2",
+      "affixes": [
+        {
+          "id": "champions:hasty",
+          "strength": 1
+        },
+        {
+          "id": "champions:dampening",
+          "strength": 1
+        }
+      ],
+      "traits": [
+        "急速",
+        "抑制"
+      ],
+      "popularityReference": {
+        "date": "2021-07-06",
+        "votes": 161,
+        "rank": 6,
+        "currentRanking": false
+      },
+      "modelFilesSha256": {
+        "ysm.json": "29cb740ebcb0823a8b32f1a1b37d98b6fe243085156f7066e2284cb249e7d370",
+        "models/main.json": "5a458cfcc318ff9b93d4f8994ba4f57e12cb61ad17da2e7f15b94e5c0d58a316",
+        "models/arm.json": "75d04a2d277dcdb0f98fdd998118624d8bf56532b743c1ca3b1df4a4fdad30a1",
+        "textures/skin.png": "cd175651da32e479120db1f07c1bb1d285f05de16bebc5438d4273e4ff1b1417",
+        "animations/main.animation.json": "26dd894bed5bc34d6b92e5edbf9f8863888450457385bdd0fce3fafaf4df6ec0"
+      },
+      "modelRelease": "umamusume-six-approved-20261007"
+    },
+    {
+      "sku": "uma_special_week",
+      "entityKind": "MAID",
+      "name": "特别周",
+      "modelId": "赛马娘/umamusume_special_week_approved",
+      "texture": "skin",
+      "tier": 1,
+      "purchase": 120,
+      "championTier": "champions:tier_1",
+      "affixes": [
+        {
+          "id": "champions:lively",
+          "strength": 1
+        }
+      ],
+      "traits": [
+        "活力"
+      ],
+      "popularityReference": {
+        "date": "2021-07-06",
+        "votes": 41,
+        "rank": 23,
+        "currentRanking": false
+      },
+      "modelFilesSha256": {
+        "ysm.json": "2ae52781cb1197ae1ff106d13fcc1c411741681715907ce1baf42ddd98a4b1ed",
+        "models/main.json": "a039e444cceb7b4ed73c57741f9e606c6b69b904ad776cb7a0f4a5294cb8adeb",
+        "models/arm.json": "448c917816df2f73355b1cc65068905d2f2ffe5e65d82379b847f3101bbbef03",
+        "textures/skin.png": "b158ef3ea661f7efbd27aaba91d31affc6dd02b4e609d3d46c097ec93bbff35e",
+        "animations/main.animation.json": "a816d0554430977488d14ef83c96dffe6ca4aba33a452e986f8d3c7d8705cc04"
+      },
+      "modelRelease": "umamusume-six-approved-20261007"
+    },
+    {
+      "sku": "uma_gold_ship",
+      "entityKind": "MAID",
+      "name": "黄金船",
+      "modelId": "赛马娘/umamusume_gold_ship_approved",
+      "texture": "skin",
+      "tier": 3,
+      "purchase": 600,
+      "championTier": "champions:tier_3",
+      "affixes": [
+        {
+          "id": "champions:hasty",
+          "strength": 1
+        },
+        {
+          "id": "champions:lively",
+          "strength": 1
+        },
+        {
+          "id": "champions:knocking",
+          "strength": 1
+        }
+      ],
+      "traits": [
+        "急速",
+        "活力",
+        "爆震"
+      ],
+      "popularityReference": {
+        "date": "2021-07-06",
+        "votes": 164,
+        "rank": 5,
+        "currentRanking": false
+      },
+      "modelFilesSha256": {
+        "ysm.json": "1116d9d72cadab42e3361b7cd40cbb5855002a641dc1aa760ab191c37c4568ff",
+        "models/main.json": "1aaa448f0177940d849e2aa28247abfcbeb9ba31f6b92bf61f7064142088ce23",
+        "models/arm.json": "4cbf65f84539809ba89e5d263a77efef5c437f02ff81702c3147dae4d66c3779",
+        "textures/skin.png": "f90bb6c0aa1895ec3454b22a48f956e1a902f43b30ea5c4e033a4f2628f3138e",
+        "animations/main.animation.json": "3dd62a5201964cbfd4149acf3973bec8061eb0689ff262155d9a5d009cc747da"
+      },
+      "modelRelease": "umamusume-six-approved-20261007"
+    },
+    {
+      "sku": "uma_tokai_teio",
+      "entityKind": "MAID",
+      "name": "东海帝王",
+      "modelId": "赛马娘/umamusume_tokai_teio_approved",
+      "texture": "skin",
+      "tier": 5,
+      "purchase": 2400,
+      "championTier": "champions:tier_5",
+      "affixes": [
+        {
+          "id": "champions:hasty",
+          "strength": 1
+        },
+        {
+          "id": "champions:lively",
+          "strength": 1
+        },
+        {
+          "id": "champions:dampening",
+          "strength": 1
+        },
+        {
+          "id": "champions:adaptable",
+          "strength": 1
+        },
+        {
+          "id": "champions:shielding",
+          "strength": 1
+        }
+      ],
+      "traits": [
+        "急速",
+        "活力",
+        "抑制",
+        "适应",
+        "保护"
+      ],
+      "popularityReference": {
+        "date": "2021-07-06",
+        "votes": 320,
+        "rank": 2,
+        "currentRanking": false
+      },
+      "modelFilesSha256": {
+        "ysm.json": "eacd6bbfbe6650622f61053c74c0b2f07e84176cf2ef106da7ef192a1b29f23b",
+        "models/main.json": "d944f9f15d434212ace65b72f5f48a575bafed2fa4f50c1d355970dee7b769c3",
+        "models/arm.json": "09aa22d2341c45858038b4c1dc2f2090212d6908cd9cbeff81d71d6c8bad470d",
+        "textures/skin.png": "b63399ef4b5a7cc8e77b7b0a6b7f0e4e377c319aec05d8a2fd9ce2e925283e3f",
+        "animations/main.animation.json": "3dd62a5201964cbfd4149acf3973bec8061eb0689ff262155d9a5d009cc747da"
+      },
+      "modelRelease": "umamusume-six-approved-20261007"
+    },
+    {
+      "sku": "uma_mejiro_mcqueen",
+      "entityKind": "MAID",
+      "name": "目白麦昆",
+      "modelId": "赛马娘/umamusume_mejiro_mcqueen_approved",
+      "texture": "skin",
+      "tier": 4,
+      "purchase": 1200,
+      "championTier": "champions:tier_4",
+      "affixes": [
+        {
+          "id": "champions:lively",
+          "strength": 1
+        },
+        {
+          "id": "champions:dampening",
+          "strength": 1
+        },
+        {
+          "id": "champions:adaptable",
+          "strength": 1
+        },
+        {
+          "id": "champions:shielding",
+          "strength": 1
+        }
+      ],
+      "traits": [
+        "活力",
+        "抑制",
+        "适应",
+        "保护"
+      ],
+      "popularityReference": {
+        "date": "2021-07-06",
+        "votes": 180,
+        "rank": 4,
+        "currentRanking": false
+      },
+      "modelFilesSha256": {
+        "ysm.json": "000d4c2fc0aaf9a89a3b1cea9fa63ca8926c5af76eda5f4c61b4a2f7fecaa523",
+        "models/main.json": "57b86935ffac5fe7346ec172936eafdabfc839a584aa569463865496a627ed5e",
+        "models/arm.json": "60c46a0b1d7888f1965c33e75d687df3207d335424388080d912984f725ea689",
+        "textures/skin.png": "ac42e7601a2c79b6157f284f9fc5bf3b5d68c9fe3f339428a4697103b1c09ddd",
+        "animations/main.animation.json": "3dd62a5201964cbfd4149acf3973bec8061eb0689ff262155d9a5d009cc747da"
+      },
+      "modelRelease": "umamusume-six-approved-20261007"
+    }
+  ],
+  "releaseManifestSha256": "ea6a1296615013b8427b5e50fff5ba0388abbdfd377df99aec0646cc046c1bd2",
+  "runtimeArchiveSha256": "e6826555c988121f4ee797f84bf0eacf53706133dddcd587236ed414f629c4d2"
+}

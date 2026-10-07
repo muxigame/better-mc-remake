@@ -16,8 +16,37 @@ from .game_identity import offline_uuid
 
 POLICY = json.loads(Path(__file__).with_name('horse_trade_catalog_v1.json').read_text(encoding='utf-8'))
 CATALOG = {v['sku']: v for v in POLICY['catalog']}
+MAID_POLICY = json.loads(Path(__file__).with_name('umamusume_catalog_v1.json').read_text(encoding='utf-8'))
+MAID_CATALOG = {v['sku']: v for v in MAID_POLICY['catalog']}
+SAFE_COMPANION_AFFIXES = {'hasty', 'lively', 'dampening', 'adaptable', 'reflective', 'shielding', 'knocking', 'paralyzing', 'wounding'}
+def valid_maid_catalog():
+    products = MAID_POLICY['catalog']
+    if len(products) != 6 or len(MAID_CATALOG) != 6 or set(CATALOG) & set(MAID_CATALOG):return False
+    if MAID_POLICY.get('modelIdsFinalized') is not True:return False
+    if len({p.get('modelId') for p in products}) != 6:return False
+    prices = {1:120, 2:250, 3:600, 4:1200, 5:2400}
+    for p in products:
+        tier = p.get('tier')
+        if type(tier) is not int or tier not in prices or p.get('purchase') != prices[tier]:return False
+        if p.get('entityKind') != 'MAID' or p.get('texture') != 'skin':return False
+        if not re.fullmatch(r'赛马娘/umamusume_[a-z_]+_approved', p.get('modelId', '')):return False
+        if p.get('championTier') != f'champions:tier_{tier}':return False
+        affixes = p.get('affixes', [])
+        if len(affixes) != tier or len({a.get('id') for a in affixes}) != tier:return False
+        if any(a.get('strength') != 1 or a.get('id') not in {'champions:'+v for v in SAFE_COMPANION_AFFIXES} for a in affixes):return False
+        hashes = p.get('modelFilesSha256', {})
+        if set(hashes) != {'ysm.json','models/main.json','models/arm.json','textures/skin.png','animations/main.animation.json'}:return False
+        if any(not re.fullmatch('[0-9a-f]{64}', sha) for sha in hashes.values()):return False
+    return True
+if not valid_maid_catalog():
+    raise RuntimeError('Invalid Umamusume catalog')
 if len(CATALOG) != 5 or CATALOG['equinox']['rent'] <= POLICY['maxRacePlayerReward']:
     raise RuntimeError('Invalid horse commerce policy')
+
+
+def companion_registration_verified():
+    # Release owner must verify the registered YSM IDs, not merely the display category.
+    return os.getenv('BMC_UMAMUSUME_REGISTRATION_VERIFIED') == '1'
 
 
 def canonical(value):
@@ -209,13 +238,18 @@ class HorseTradeStore:
             if action == 'quote':
                 kind = data.get('kind')
                 if kind == 'BUY':
-                    fields(data,('kind','sku'));template = CATALOG.get(data['sku'])
+                    fields(data,('kind','sku'));template = CATALOG.get(data['sku']) or MAID_CATALOG.get(data['sku'])
+                    if template and template.get('entityKind') == 'MAID' and not companion_registration_verified():
+                        raise PermissionError('Approved YSM registration IDs have not been verified')
                     if not template:raise ValueError('Unknown catalog SKU')
-                    result = self._quote(db,uid,realm,kind,{**template,'saddled':True,'armored':False,'policy':POLICY['version']},template['purchase'])
+                    body = {**template, 'policy': MAID_POLICY['version']} if template.get('entityKind') == 'MAID' else {**template,'saddled':True,'armored':False,'policy':POLICY['version']}
+                    result = self._quote(db,uid,realm,kind,body,template['purchase'])
                 elif kind == 'RENT':
                     fields(data,('kind','asset','race'));uuid_text(data['race']);asset = self._asset(db,realm,data['asset'])
                     if asset['state'] != 'POOL':raise ValueError('Horse is already reserved or rented')
-                    body = json.loads(asset['body']);body.update(asset=asset['asset'],race=data['race'])
+                    body = json.loads(asset['body'])
+                    if body.get('entityKind', 'HORSE') != 'HORSE':raise ValueError('Companion redemption does not permit rentals')
+                    body.update(asset=asset['asset'],race=data['race'])
                     result = self._quote(db,uid,realm,kind,body,body['rent'])
                 elif kind == 'SELL':
                     fields(data,('kind','source'));body = self.source(data['source'],uid)
@@ -224,6 +258,8 @@ class HorseTradeStore:
                     existing = db.execute('SELECT * FROM horse_trade_assets WHERE asset=?',(body['asset'],)).fetchone()
                     if existing and (existing['realm'] != realm or existing['owner_uid'] != uid or existing['state'] != 'OWNED'):
                         raise PermissionError('Only owned horses can be sold; rental resale forbidden')
+                    if existing and json.loads(existing['body']).get('entityKind', 'HORSE') != 'HORSE':
+                        raise ValueError('Companion redemption does not permit horse resale')
                     result = self._quote(db,uid,realm,kind,body,body['purchase']*POLICY['buybackPercent']//100)
                 else:raise ValueError('Unknown quote action')
             elif action in ('buy','rent','sale_prepare'):
@@ -237,6 +273,7 @@ class HorseTradeStore:
                 else:
                     body=json.loads(quote['body']);amount=quote['amount']
                     if action == 'buy':
+                        if body.get('entityKind') == 'MAID' and not companion_registration_verified():raise PermissionError('Approved YSM registration IDs have not been verified')
                         if db.execute("SELECT count(*) FROM horse_trade_assets WHERE realm=? AND owner_uid=? AND state IN ('OWNED','GRANT_PENDING','ESCROW_PENDING')",(realm,uid)).fetchone()[0]>=64:raise ValueError('Owned stable is full')
                         asset_id=str(uuid5(NAMESPACE_URL,'muxi-horse-purchase:'+op));body['asset']=asset_id
                         delta=-amount;self._points(db,uid,delta)
@@ -324,7 +361,7 @@ class HorseTradeStore:
             pool.extend({**dict(row),'body':json.loads(row['body'])} for row in db.execute("SELECT * FROM horse_trade_assets WHERE realm=? AND origin!='HOUSE' AND state IN ('POOL','RENTED') ORDER BY updated_at DESC LIMIT 20",(realm,)))
             rentals=[dict(row) for row in db.execute("SELECT * FROM horse_trade_rentals WHERE realm=? AND uid=? AND state!='ENDED' ORDER BY created_at DESC LIMIT 16",(realm,uid))]
             sales=[dict(row) for row in db.execute("SELECT * FROM horse_trade_sales WHERE realm=? AND uid=? AND state='PREPARED' ORDER BY created_at DESC LIMIT 16",(realm,uid))]
-        return {'enabled':bool(self.enabled()),'balance':balance,'policy':POLICY,'catalog':list(CATALOG.values()),'owned':owned,'pool':pool,'rentals':rentals,'sales':sales}
+        return {'enabled':bool(self.enabled()),'balance':balance,'policy':POLICY,'catalog':list(CATALOG.values()),'maidCatalog':list(MAID_CATALOG.values()),'maidCatalogReady':companion_registration_verified(),'owned':owned,'pool':pool,'rentals':rentals,'sales':sales}
 
 
 def horse_trading_router(database_path, service_key):
