@@ -3,6 +3,8 @@ namespace BatterMC.Protocol;
 /// <summary>Approved public terrain, installed before Minecraft starts. Cache files are never Managed.</summary>
 public sealed class PublicTerrainCacheSpec
 {
+    public bool BindOnConnect { get; set; }
+    public string ServerIdentity { get; set; } = "";
     public string PackagePath { get; set; } = "";
     public string PackageSha256 { get; set; } = "";
     public string GeneratorPath { get; set; } = "";

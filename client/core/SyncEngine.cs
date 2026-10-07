@@ -79,6 +79,9 @@ public sealed class SyncEngine
                 manifest.Launcher = control.Launcher;
                 manifest.Announcement = control.Announcement;
                 AtomicFile.WriteAllText(_paths.ManifestCacheFile, json);
+                manifest.OfficialFlightSourceVerified = PublicTerrainCache.IsOfficialControlSource(url);
+                AtomicFile.WriteAllText(_paths.ManifestCacheFile + ".flight-origin", manifest.OfficialFlightSourceVerified
+                    ? Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(json))) : "unverified");
                 LastManifestUrl = control.ManifestUrl;
                 LastFilesBaseUrl = control.FilesBaseUrl.TrimEnd('/');
                 _state.LastFilesBaseUrl = LastFilesBaseUrl;
@@ -106,6 +109,9 @@ public sealed class SyncEngine
             var cached = PackManifest.FromJson(File.ReadAllText(_paths.ManifestCacheFile));
             if (cached is not null)
             {
+                var origin = _paths.ManifestCacheFile + ".flight-origin";
+                cached.OfficialFlightSourceVerified = File.Exists(origin) && File.ReadAllText(origin) ==
+                    Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(_paths.ManifestCacheFile)));
                 LastManifestUrl = "cache";
                 LastFilesBaseUrl = _state.LastFilesBaseUrl;
                 LastMirrorBaseUrl = _state.LastMirrorBaseUrl;

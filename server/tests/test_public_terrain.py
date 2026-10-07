@@ -26,4 +26,22 @@ class PublicTerrainTests(unittest.TestCase):
             spec['prune']=[];spec['include'][1]['policy']='Optional'
             with self.assertRaises(ValueError):build_manifest(spec,root/'spec.json',None,log=lambda _:None)
 
+    def test_neutral_first_connection_artifacts(self):
+        flight=Path(__file__).resolve().parents[3]/'muxi-flight'
+        with tempfile.TemporaryDirectory(prefix='flight-neutral-test-') as raw:
+            root=Path(raw)
+            sources={'public.zip':flight/'build/first-connection-cache-20261007/public-half-slot0-0.1.2-iwo-half.2.zip','flight.jar':flight/'build/libs/muxi-flight-0.1.2-iwo-half.2.jar','dh.jar':flight/'build/dh-isolated-20261004/DistantHorizons-3.3.3-1.21.1-fabric-neoforge.jar'}
+            for name,source in sources.items():shutil.copyfile(source,root/name)
+            c={'bindOnConnect':True,'serverIdentity':'https://mc.muxigame.com/default','packagePath':'public.zip','generatorPath':'flight.jar','dhPath':'dh.jar','dimension':'muxi_minigames:flight_iwo_half','metresPerBlock':2,'roomSpacing':49152,'roomSlot':0,'demSha256':'62a0f366475ed22641b05826ee3f5167f6015a42ec2ee3abeaf347a9620b1682'}
+            for pathkey,hashkey in [('packagePath','packageSha256'),('generatorPath','generatorSha256'),('dhPath','dhSha256')]:c[hashkey]=hashlib.sha256((root/c[pathkey]).read_bytes()).hexdigest()
+            spec={'root':str(root),'pack':{'id':'flight-test','version':'2'},'include':[{'glob':'*.jar','policy':'Managed'},{'glob':'*.zip','policy':'Managed'}],'publicTerrainCaches':[c]}
+            manifest,_=build_manifest(spec,root/'spec.json',None,log=lambda _:None)
+            self.assertEqual([c],manifest['publicTerrainCaches'])
+            for key,value in [('hashedSeed','h1qnkdsfn63tg'),('serverFolderKey','old-qa'),('serverIdentity','https://wrong.invalid/default'),('generatorSha256','0'*64)]:
+                with self.subTest(key=key):
+                    old=c.get(key);c[key]=value
+                    with self.assertRaises(ValueError):build_manifest(spec,root/'spec.json',None,log=lambda _:None)
+                    if old is None:c.pop(key)
+                    else:c[key]=old
+
 if __name__=='__main__':unittest.main()

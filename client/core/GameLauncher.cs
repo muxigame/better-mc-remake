@@ -107,6 +107,7 @@ public sealed class GameLauncher
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
         TerminalCredentialEnvironment.Apply(psi, session.TerminalCredential, session.TerminalBrokerPipe, session.TerminalBrokerSecret);
+        PublicTerrainCache.ApplyLaunchContext(psi, _paths, manifest, _settings, quickPlayEndpoint, session.TerminalBrokerPipe is not null);
 
         LogCommandLine(java, args, classpath);
         ApplyGpuPreference(java.Path);

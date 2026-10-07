@@ -42,9 +42,16 @@ public static class PublicTerrainCache
         if (spec.Dimension != "muxi_minigames:flight_iwo_half" || spec.MetresPerBlock != 2
             || spec.RoomSpacing != 49152 || spec.RoomSlot != 0)
             throw new InvalidDataException("Unsupported public terrain identity/room");
-        Component(spec.ServerFolderKey);
-        if (!Regex.IsMatch(spec.HashedSeed, "^[A-Za-z0-9_-]{1,80}$"))
-            throw new InvalidDataException("Invalid seed key");
+        if (spec.BindOnConnect)
+        {
+            if(spec.ServerIdentity!="https://mc.muxigame.com/default") throw new InvalidDataException("Existing official service identity required");
+            if (spec.HashedSeed.Length!=0 || spec.ServerFolderKey.Length!=0) throw new InvalidDataException("Connection binding cannot carry fixed QA/target keys");
+        }
+        else
+        {
+            Component(spec.ServerFolderKey);
+            if (!Regex.IsMatch(spec.HashedSeed, "^[A-Za-z0-9_-]{1,80}$")) throw new InvalidDataException("Invalid seed key");
+        }
         var package = SafeGameFile(paths, spec.PackagePath);
         var generator = SafeGameFile(paths, spec.GeneratorPath);
         var dh = SafeGameFile(paths, spec.DhPath);
@@ -69,6 +76,27 @@ public static class PublicTerrainCache
         using var manifestStream = manifestEntry.Open();
         using var document = JsonDocument.Parse(manifestStream);
         var m = document.RootElement;
+        if (spec.BindOnConnect)
+        {
+            if(m.GetProperty("format").GetInt32()!=2 || !m.GetProperty("terrainSeedIndependent").GetBoolean()
+                || m.TryGetProperty("hashedSeed",out _) || !m.GetProperty("terrainOnly").GetBoolean()
+                || m.GetProperty("dimension").GetString()!=spec.Dimension || m.GetProperty("metresPerBlock").GetInt32()!=2
+                || m.GetProperty("roomSpacing").GetInt32()!=49152 || m.GetProperty("supportedSlots").GetArrayLength()!=1 || m.GetProperty("supportedSlots")[0].GetInt32()!=0
+                || m.GetProperty("generatorSha256").GetString()!=spec.GeneratorSha256 || m.GetProperty("demSha256").GetString()!=spec.DemSha256
+                || m.GetProperty("dhSha256").GetString()!=spec.DhSha256 || m.GetProperty("databaseBytes").GetInt64()!=database.Length)
+                throw new InvalidDataException("Neutral terrain package identity mismatch");
+            using(var input=database.Open()) CheckDigest(Convert.ToHexStringLower(SHA256.HashData(input)),m.GetProperty("databaseSha256").GetString()!);
+            var policyPath=SafeGameFile(paths,"config/muxi-flight-public-cache.json");Directory.CreateDirectory(Path.GetDirectoryName(policyPath)!);
+            var temporary=policyPath+"."+Guid.NewGuid().ToString("N")+".tmp";
+            try
+            {
+                var context=new ManifestJsonContext(new JsonSerializerOptions(PackManifest.JsonOptions));
+                File.WriteAllText(temporary,JsonSerializer.Serialize(spec,context.PublicTerrainCacheSpec));
+                File.Move(temporary,policyPath,true); // Launcher-owned public policy, never a player database.
+            }
+            finally { if(File.Exists(temporary))File.Delete(temporary); }
+            return "public terrain staged for authenticated official connection";
+        }
         if (m.GetProperty("format").GetInt32() != 1 || !m.GetProperty("terrainOnly").GetBoolean()
             || m.GetProperty("coordinateFrame").GetString() != "absolute-world-blocks"
             || m.GetProperty("dimension").GetString() != spec.Dimension
@@ -128,6 +156,26 @@ public static class PublicTerrainCache
             return "public terrain installed";
         }
         finally { if (File.Exists(staged)) File.Delete(staged); }
+    }
+
+    public static bool IsOfficialControlSource(string url)
+        => Uri.TryCreate(url,UriKind.Absolute,out var uri) && uri.Scheme=="https" && uri.IdnHost.Equals("mc.muxigame.com",StringComparison.OrdinalIgnoreCase)
+            && uri.Port==443 && uri.UserInfo.Length==0 && uri.AbsolutePath.TrimEnd('/')=="/api/v1/manifest" && uri.Query.Length==0 && uri.Fragment.Length==0;
+
+    public static void ApplyLaunchContext(System.Diagnostics.ProcessStartInfo process,LauncherPaths paths,
+        PackManifest manifest,LauncherSettings settings,string? proxyEndpoint,bool existingAuthenticatedBroker)
+    {
+        foreach(var key in new[]{"MUXI_FLIGHT_CACHE_SERVICE","MUXI_FLIGHT_CACHE_ENDPOINT","MUXI_FLIGHT_CACHE_POLICY_SHA256"}) process.Environment.Remove(key);
+        if(!existingAuthenticatedBroker || !manifest.OfficialFlightSourceVerified || manifest.Servers.Count!=1
+            || !manifest.PublicTerrainCaches.Any(c=>c.BindOnConnect) || proxyEndpoint is null
+            || !Regex.IsMatch(proxyEndpoint,"^127\\.0\\.0\\.1:[0-9]{1,5}$")) return;
+        var configured=settings.UpdateBaseUrl.TrimEnd('/')+"/api/v1/manifest";
+        if(!IsOfficialControlSource(configured)) return;
+        var policy=SafeGameFile(paths,"config/muxi-flight-public-cache.json");
+        using var stream=File.OpenRead(policy);
+        process.Environment["MUXI_FLIGHT_CACHE_SERVICE"]="https://mc.muxigame.com/default";
+        process.Environment["MUXI_FLIGHT_CACHE_ENDPOINT"]=proxyEndpoint;
+        process.Environment["MUXI_FLIGHT_CACHE_POLICY_SHA256"]=Convert.ToHexStringLower(SHA256.HashData(stream));
     }
 
     private static bool Exists(string path) => File.Exists(path) || Directory.Exists(path);

@@ -77,6 +77,30 @@ class Program
         s.PackageSha256=Hash(paths.ResolveGameFile("public.zip"));Reject(()=>PublicTerrainCache.Install(paths,s),"extra/traversal archive member rejected");
         Assert(!Directory.GetFiles(paths.GameDir,".public-terrain-*.tmp",SearchOption.AllDirectories).Any(),"no staging residue");
         Assert(!File.Exists(destination),"all rejected imports left destination absent");
+        File.Copy(args[5],paths.ResolveGameFile("neutral.zip"));
+        File.Copy(args[6],paths.ResolveGameFile("flight2.jar"));
+        s.PackagePath="neutral.zip";s.PackageSha256=Hash(args[5]);s.GeneratorPath="flight2.jar";s.GeneratorSha256=Hash(args[6]);
+        s.BindOnConnect=true;s.ServerIdentity="https://mc.muxigame.com/default";s.HashedSeed="";s.ServerFolderKey="";
+        var before=Directory.GetFiles(paths.GameDir,"DistantHorizons.sqlite",SearchOption.AllDirectories).Length;
+        Assert(PublicTerrainCache.Install(paths,s).Contains("staged"),"neutral package stages first-connection policy");
+        Assert(Directory.GetFiles(paths.GameDir,"DistantHorizons.sqlite",SearchOption.AllDirectories).Length==before,"staging does not guess or create target world database");
+        s.HashedSeed="h1qnkdsfn63tg";Reject(()=>PublicTerrainCache.Install(paths,s),"dynamic binding rejects fixed QA seed");s.HashedSeed="";
+        s.ServerIdentity="https://wrong.invalid/default";Reject(()=>PublicTerrainCache.Install(paths,s),"dynamic binding rejects arbitrary service");s.ServerIdentity="https://mc.muxigame.com/default";
+        Assert(PublicTerrainCache.IsOfficialControlSource("https://mc.muxigame.com/api/v1/manifest"),"official HTTPS control source accepted");
+        foreach(var url in new[]{"http://mc.muxigame.com/api/v1/manifest","https://mc.muxigame.com.evil.invalid/api/v1/manifest","https://mc.muxigame.com/api/v1/manifest?other=1"}) Assert(!PublicTerrainCache.IsOfficialControlSource(url),"untrusted control source rejected");
+        manifest.Servers.Add(new ServerEntry());manifest.OfficialFlightSourceVerified=true;
+        var settings=new LauncherSettings { UpdateBaseUrl="https://mc.muxigame.com" };
+        var process=new System.Diagnostics.ProcessStartInfo();
+        PublicTerrainCache.ApplyLaunchContext(process,paths,manifest,settings,"127.0.0.1:23456",true);
+        Assert(process.Environment["MUXI_FLIGHT_CACHE_ENDPOINT"]=="127.0.0.1:23456","existing authenticated route binds exact endpoint");
+        Assert(process.Environment["MUXI_FLIGHT_CACHE_POLICY_SHA256"]==Hash(paths.ResolveGameFile("config/muxi-flight-public-cache.json")),"launch policy digest bound");
+        PublicTerrainCache.ApplyLaunchContext(process,paths,manifest,settings,"127.0.0.1:23456",false);
+        Assert(!process.Environment.ContainsKey("MUXI_FLIGHT_CACHE_SERVICE"),"missing existing broker removes inherited context");
+        manifest.OfficialFlightSourceVerified=false;
+        PublicTerrainCache.ApplyLaunchContext(process,paths,manifest,settings,"127.0.0.1:23456",true);
+        Assert(!process.Environment.ContainsKey("MUXI_FLIGHT_CACHE_SERVICE"),"unverified manifest cannot grant binding context");
+        manifest.OfficialFlightSourceVerified=true;
+        Assert(!PackManifest.FromJson(manifest.ToJson())!.OfficialFlightSourceVerified,"remote manifest cannot serialize trusted provenance");
         Console.WriteLine("PASSED " + checks + " checks");
     }
 }

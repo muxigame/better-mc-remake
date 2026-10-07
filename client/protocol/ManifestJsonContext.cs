@@ -7,6 +7,7 @@ namespace BatterMC.Protocol;
 /// 因为找不到类型而炸掉（反射版编译时就会报 IL2026）。
 /// </summary>
 [JsonSerializable(typeof(PackManifest))]
+[JsonSerializable(typeof(PublicTerrainCacheSpec))]
 [JsonSerializable(typeof(LauncherRelease))]
 [JsonSerializable(typeof(Announcement))]
 [JsonSerializable(typeof(ManifestControl))]

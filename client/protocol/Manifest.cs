@@ -264,6 +264,7 @@ public sealed class PackManifest
     public Announcement? Announcement { get; set; }
     public List<ManagedFile> Files { get; set; } = new();
     public List<PublicTerrainCacheSpec> PublicTerrainCaches { get; set; } = new();
+    [JsonIgnore] public bool OfficialFlightSourceVerified { get; set; }
 
     /// <summary>
     /// 需要清理的目录（相对路径，不带尾斜杠）。这些目录下不在 Files 里的文件会被删除，

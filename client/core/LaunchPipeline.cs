@@ -114,6 +114,11 @@ public sealed class LaunchPipeline
         foreach (var cache in manifest.PublicTerrainCaches)
         {
             ct.ThrowIfCancellationRequested();
+            if (cache.BindOnConnect && !manifest.OfficialFlightSourceVerified)
+            {
+                Log.Warn("Flight cache staging disabled: manifest has no verified official control-plane origin");
+                continue;
+            }
             var result = PublicTerrainCache.Install(paths, cache);
             Log.Info($"Public terrain: {result}");
         }
