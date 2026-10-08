@@ -1,5 +1,5 @@
 {
-  "minSupportedVersion": null,
+  "minSupportedVersion": "1.2.8",
   "blockedVersions": [],
-  "reason": ""
+  "reason": "1.4.32 公开地形缓存需要 1.2.8 的官方来源与连接身份校验，请先更新启动器。"
 }
