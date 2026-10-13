@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hmac
+import inspect
 import json
 import os
 import re
@@ -21,6 +22,7 @@ from .horse_trading import horse_trading_router
 from .social_api import social_router
 from .ysm_assets import YsmAssetStore
 from .ysm_assets_api import ysm_assets_router
+from .ysm_game_api import ysm_game_router
 from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
 from .skins import MAX_BYTES as SKIN_MAX_BYTES, SkinError, SkinStore
 from .crash_reports import MAX_BUNDLE_BYTES, CrashReportError, CrashReportStore
@@ -117,7 +119,7 @@ async def security_headers(request: Request, call_next):
     )
     if request.url.scheme == "https" or os.getenv("BMC_PUBLIC_URL", "").lower().startswith("https://"):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    if (request.url.path.startswith(("/api/v1/auth", "/api/v1/admin", "/api/v1/player", "/api/v1/ysm", "/api/internal/game/social"))
+    if (request.url.path.startswith(("/api/v1/auth", "/api/v1/admin", "/api/v1/player", "/api/v1/ysm", "/api/internal/game/social", "/api/internal/game/ysm"))
             or request.url.path in {"/account", "/account.html", "/admin.html", "/ysm-models.html"}):
         response.headers["Cache-Control"] = "private, no-store"
         response.headers["Vary"] = "Cookie, Authorization"
@@ -834,6 +836,26 @@ async def game_op_observations(request: Request):
 
 app.include_router(social_router(database_path, current_player_account))
 app.include_router(ysm_assets_router(lambda: ysm_asset_store, current_player_account))
+
+
+async def ysm_machine_authority(request, purpose):
+    hook = getattr(app.state, 'ysm_machine_authorizer', None)
+    if hook is None:
+        raise HTTPException(503, 'ysm_game_authority_not_configured')
+    result = hook(request, purpose)
+    return await result if inspect.isawaitable(result) else result
+
+
+async def ysm_connection_authority(machine, claim):
+    hook = getattr(app.state, 'ysm_connection_resolver', None)
+    if hook is None:
+        raise HTTPException(503, 'ysm_game_authority_not_configured')
+    result = hook(machine, claim)
+    return await result if inspect.isawaitable(result) else result
+
+
+app.include_router(ysm_game_router(lambda: ysm_asset_store,
+                                 ysm_machine_authority, ysm_connection_authority))
 
 if os.getenv("BMC_SERVE_WEB", "1") == "1":
     @app.get("/favicon.ico", include_in_schema=False)

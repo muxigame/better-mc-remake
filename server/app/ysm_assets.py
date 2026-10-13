@@ -497,7 +497,31 @@ class YsmAssetStore:
                 raise AssetError(409, 'validation_receipt_bytes_mismatch')
             destination = self._path(receipt.sha256, True)
             if source != destination:
-                os.replace(source, destination)
+                # Keep the pending source until explicit maintenance. A failed
+                # DB event/commit or a process crash must leave validation
+                # retries with their advertised quarantine bytes intact.
+                if destination.exists():
+                    if self._hash_file(destination) != (receipt.sha256, receipt.size):
+                        raise AssetError(409, 'storage_integrity_failure')
+                else:
+                    fd, temporary_name = tempfile.mkstemp(prefix='.validation-', dir=self.blobs)
+                    temporary = Path(temporary_name)
+                    try:
+                        with os.fdopen(fd, 'wb') as outgoing, source.open('rb') as incoming:
+                            copied, digest = 0, hashlib.sha256()
+                            while chunk := incoming.read(1024 * 1024):
+                                copied += len(chunk)
+                                if copied > receipt.size:
+                                    raise AssetError(409, 'validation_receipt_bytes_mismatch')
+                                digest.update(chunk)
+                                outgoing.write(chunk)
+                            outgoing.flush()
+                            os.fsync(outgoing.fileno())
+                        if copied != receipt.size or digest.hexdigest() != receipt.sha256:
+                            raise AssetError(409, 'validation_receipt_bytes_mismatch')
+                        os.replace(temporary, destination)
+                    finally:
+                        temporary.unlink(missing_ok=True)
             db.execute("UPDATE ysm_contents SET verification='verified',profile=?,receipt_id=?,sync_status='pending' WHERE sha256=?",
                        (receipt.profile, receipt.receipt_id, receipt.sha256))
             return self._event(db, 'content.verified', sha256=receipt.sha256, receiptId=receipt.receipt_id)
@@ -511,26 +535,144 @@ class YsmAssetStore:
             db.execute('DELETE FROM ysm_selections WHERE sha256=?', (sha,))
             return self._event(db, 'content.rejected', sha256=sha)
 
+    def _snapshot_tx(self, db, uid=None):
+        """Build a machine snapshot on an existing, pinned read transaction.
+
+        A connection-bound catalog restricts references before calculating all
+        aggregate fields. Seeing public bytes never reveals a peer's private
+        ownership of those same bytes.
+        """
+        revision = self._revision(db)
+        models = []
+        for content in db.execute("SELECT * FROM ysm_contents WHERE verification='verified' ORDER BY public_id"):
+            query = 'SELECT * FROM ysm_assets WHERE sha256=? AND deleted_at IS NULL'
+            parameters = [content['sha256']]
+            if uid is not None:
+                query += " AND (uid=? OR visibility='public')"
+                parameters.append(uid)
+            refs = db.execute(query + ' ORDER BY uid,id', parameters).fetchall()
+            if not refs:
+                continue
+            models.append({'contentId': content['public_id'], 'sha256': content['sha256'], 'size': content['size'],
+                           'storageKey': 'verified/' + content['sha256'] + '.bin',
+                           'public': any(r['visibility'] == 'public' for r in refs),
+                           'ownerUids': sorted({r['uid'] for r in refs}), 'modelIds': [r['id'] for r in refs],
+                           'references': [{'modelId': r['id'], 'ownerUid': r['uid'],
+                                           'visibility': r['visibility']} for r in refs],
+                           'validationStatus': 'verified',
+                           'validationProfile': content['profile'], 'validationReceiptId': content['receipt_id'],
+                           'syncStatus': content['sync_status']})
+        query = 'SELECT s.*,c.public_id FROM ysm_selections s JOIN ysm_contents c USING(sha256)'
+        parameters = []
+        if uid is not None:
+            query += ' WHERE s.uid=?'
+            parameters.append(uid)
+        visible_ids = {model['contentId'] for model in models}
+        visible_ids.update(model_id for model in models for model_id in model['modelIds'])
+        selections = [{'uid': r['uid'], 'modelId': r['model_id'], 'contentId': r['public_id']}
+                      for r in db.execute(query + ' ORDER BY s.uid', parameters)
+                      if r['model_id'] in visible_ids]
+        return {'revision': revision, 'models': models, 'selections': selections}
+
+    @staticmethod
+    def _exact_revision(revision, current):
+        if isinstance(revision, bool) or not isinstance(revision, int) or revision != current:
+            raise AssetError(409, 'stale_permission_revision')
+
+    @staticmethod
+    def _event_rows(db, seq, limit):
+        return [{'seq': r['seq'], 'revision': r['revision'], 'type': r['kind'], **json.loads(r['payload'])}
+                for r in db.execute('SELECT * FROM ysm_events WHERE seq>? ORDER BY seq LIMIT ?', (seq, limit))]
+
     def bridge_snapshot(self):
         """Machine-only desired permissions. Never place private blobs in a scan root."""
         with self._db() as db:
-            models = []
-            for content in db.execute("SELECT * FROM ysm_contents WHERE verification='verified' ORDER BY public_id"):
-                refs = db.execute('SELECT * FROM ysm_assets WHERE sha256=? AND deleted_at IS NULL ORDER BY uid,id', (content['sha256'],)).fetchall()
-                if not refs:
-                    continue
-                models.append({'contentId': content['public_id'], 'sha256': content['sha256'], 'size': content['size'],
-                               'storageKey': 'verified/' + content['sha256'] + '.bin',
-                               'public': any(r['visibility'] == 'public' for r in refs),
-                               'ownerUids': sorted({r['uid'] for r in refs}), 'modelIds': [r['id'] for r in refs],
-                               'references': [{'modelId': r['id'], 'ownerUid': r['uid'],
-                                               'visibility': r['visibility']} for r in refs],
-                               'validationStatus': 'verified',
-                               'validationProfile': content['profile'], 'validationReceiptId': content['receipt_id'],
-                               'syncStatus': content['sync_status']})
-            selections = [{'uid': r['uid'], 'modelId': r['model_id'], 'contentId': r['public_id']}
-                          for r in db.execute('SELECT s.*,c.public_id FROM ysm_selections s JOIN ysm_contents c USING(sha256)')]
-            return {'revision': self._revision(db), 'models': models, 'selections': selections}
+            return self._snapshot_tx(db)
+
+    def bridge_bundle(self, after_seq=0, limit=100, expected_revision=None):
+        """Snapshot and paginated outbox are read from one database generation."""
+        if (isinstance(after_seq, bool) or not isinstance(after_seq, int)
+                or not 0 <= after_seq <= 9223372036854775807):
+            raise AssetError(400, 'invalid_event_cursor')
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
+            raise AssetError(400, 'invalid_event_limit')
+        with self._db() as db:
+            current = self._revision(db)
+            if expected_revision is not None:
+                self._exact_revision(expected_revision, current)
+            maximum = db.execute('SELECT coalesce(max(seq),0) FROM ysm_events').fetchone()[0]
+            if after_seq > maximum:
+                raise AssetError(400, 'invalid_event_cursor')
+            snapshot = self._snapshot_tx(db)
+            events = self._event_rows(db, after_seq, limit + 1)
+            has_more = len(events) > limit
+            events = events[:limit]
+            return {**snapshot, 'active': False, 'selectEnabled': False, 'schemaVersion': 1,
+                    'events': events, 'nextSeq': events[-1]['seq'] if events else after_seq, 'hasMore': has_more}
+
+    def game_catalog(self, uid, revision):
+        """Catalog for a server-authorized live connection, not a user UID field."""
+        uid = trusted_uid(uid)
+        with self._db() as db:
+            self._exact_revision(revision, self._revision(db))
+            return {**self._snapshot_tx(db, uid), 'active': False, 'selectEnabled': False, 'schemaVersion': 1}
+
+    def game_blob(self, uid, model_id, revision):
+        """Authorize and copy bounded bytes while retaining the same read view.
+
+        Content IDs may name an owned private reference or a current public
+        reference; logical model IDs expose only the exact permitted reference.
+        A guessed digest is never a model identifier or an existence probe.
+        """
+        uid = trusted_uid(uid)
+        with self._db() as db:
+            self._exact_revision(revision, self._revision(db))
+            if not isinstance(model_id, str):
+                raise AssetError(404, 'model_not_found')
+            if re.fullmatch(r'm_[0-9a-f]{32}', model_id):
+                predicate = 'a.id=?'
+                rights = 'a.uid=?'
+            elif re.fullmatch(r'p_[0-9a-f]{32}', model_id):
+                predicate = 'c.public_id=?'
+                rights = "(a.uid=? OR a.visibility='public')"
+            else:
+                raise AssetError(404, 'model_not_found')
+            row = db.execute('''SELECT c.sha256,c.size FROM ysm_assets a JOIN ysm_contents c USING(sha256)
+                WHERE ''' + predicate + ''' AND a.deleted_at IS NULL AND c.verification='verified'
+                AND ''' + rights + ' ORDER BY a.created_at,a.id LIMIT 1', (model_id, uid)).fetchone()
+            if row is None:
+                raise AssetError(404, 'model_not_found')
+            size = row['size']
+            if not 0 < size <= self.max_file_bytes:
+                raise AssetError(409, 'storage_integrity_failure')
+            path = self._path(row['sha256'], True)
+            try:
+                with path.open('rb') as stream:
+                    data = stream.read(size + 1)
+            except OSError:
+                raise AssetError(409, 'storage_unavailable')
+            if len(data) != size or hashlib.sha256(data).hexdigest() != row['sha256']:
+                raise AssetError(409, 'storage_integrity_failure')
+            return data, row['sha256'], size
+
+    def stage_receipt(self, content_id, sha, revision, generation):
+        """Machine stage ACK. This method cannot activate or enable selection."""
+        if not isinstance(generation, str) or not re.fullmatch(r'[A-Za-z0-9._:-]{1,128}', generation):
+            raise AssetError(400, 'invalid_sync_receipt')
+        with self._db(True) as db:
+            self._exact_revision(revision, self._revision(db))
+            if (not isinstance(content_id, str) or not re.fullmatch(r'p_[0-9a-f]{32}', content_id)
+                    or not isinstance(sha, str) or not re.fullmatch(r'[0-9a-f]{64}', sha)):
+                raise AssetError(404, 'model_not_found')
+            row = db.execute('SELECT * FROM ysm_contents WHERE public_id=? AND sha256=?', (content_id, sha)).fetchone()
+            if row is None:
+                raise AssetError(404, 'model_not_found')
+            if row['verification'] != 'verified':
+                raise AssetError(409, 'model_not_verified')
+            if not db.execute('SELECT 1 FROM ysm_assets WHERE sha256=? AND deleted_at IS NULL', (sha,)).fetchone():
+                raise AssetError(409, 'content_has_no_active_reference')
+            db.execute("UPDATE ysm_contents SET sync_status='staged',generation=? WHERE sha256=?", (generation, sha))
+            return {'revision': revision, 'syncStatus': 'staged', 'active': False}
 
     def events_after(self, seq: int, limit: int = 500):
         if isinstance(seq, bool) or not isinstance(seq, int) or seq < 0:

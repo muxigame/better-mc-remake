@@ -34,13 +34,15 @@ Web 默认目录是数据库数据卷下独立 `ysm-user-assets/`，可用 `BMC_
 
 页面由既有 OIDC/Bearer 页面入口保护，Nginx internal location 不允许静态绕过；容器和外层 HTTP/HTTPS 上传专用代理都允许 64 MiB 流，API/page 返回 no-store。所有浏览器写请求保留同源/CSRF 边界。
 
-本候选面向普通官网浏览器。现有 Terminal ACCOUNT 同窗策略静态上允许新页面/API 的原 Bearer 注入，但 `TerminalPassportNavigation.accountDocument()` 只认 `/account.html`，`TerminalViewClient.onFileDialog()` 会取消独立新页面的文件选择，原生下载保存也被禁止。未改 Terminal owner 文件，不能据官网测试声称 MCEF 上传/下载可用；需其最小受保护页面适配或后续账号页组件方案及真实 MCEF 验收。普通 WEB 书签也没有账户 Bearer，不作为绕过途径。
+本候选面向普通官网浏览器，这是本任务主入口。额外 MCEF 新页面文件选择器不属于本任务必备激活条件。现有 Terminal ACCOUNT 同窗策略静态上允许新页面/API 的原 Bearer 注入，但 `TerminalPassportNavigation.accountDocument()` 只认 `/account.html`，`TerminalViewClient.onFileDialog()` 会取消独立新页面的文件选择，原生下载保存也被禁止。未改 Terminal owner 文件，不能据官网测试声称 MCEF 上传/下载可用；若后续扩展该入口，再由 Terminal owner 做页面适配及真实 MCEF 验收。普通 WEB 书签也没有账户 Bearer，不作为绕过途径。
 
 ## 验证与激活边界
 
 只识别后缀不是格式验证。`promote_verified` 默认关闭，必须由已登记的隔离验证器对 exact SHA256/size/profile 签收后在受信任本地 adapter 中调用，用户 HTTP 不能提升文件。实际 2.6.5 容器验证器、CPU/内存/时间限制和生产部署权限未交付；本轮测试只使用清楚标注的 synthetic opaque bytes 与测试签收。
 
 Web `mark_synced` 要求当前 exact revision/generation；暂存桥永远 `active=false`，落盘不是导入或授权成功。只有 YSM owner 完成目录隐藏、每次下载/选用 ACL、连接断开撤销、缓存失效与实际穿戴回退矩阵后，才能启用真实激活适配器。
+
+Web 与真实 Core 的版本化机器协议、当前连接核验、撤权分页及错误处理见 [接线合同](ysm-user-assets-wire.md)。默认启动 hook 未配置即 503，stage 确认固定 `active=false`，用户 Bearer/cookie 不能替代机器鉴权，没有新用户 token。
 
 安全热加载尚未证明，具体事实及 Asia/Shanghai 可配置凌晨方案见 [桥接合同](ysm-user-assets-bridge.md)。凌晨也不能绕过私有权限条件。当前 CLI 是 dry-run / 树内隔离 stage 候选，没有装任务、没有 reload、没有把文件送入原公共模型目录。
 

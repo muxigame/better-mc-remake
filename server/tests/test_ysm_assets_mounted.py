@@ -140,6 +140,17 @@ class MountedYsmAssetTests(unittest.TestCase):
         self.assertIn('proxy_pass http://battermc_api;', public.group(1))
         self.assertNotIn('alias ', public.group(1))
 
+    def test_machine_wire_default_does_not_accept_user_session_as_authority(self):
+        self.client.cookies.set('bmc_session', self.auth.create_session(self.accounts[0]))
+        with patch.object(main.oidc_client, 'userinfo', return_value=self.accounts[0]) as userinfo:
+            for path in ('snapshot', 'catalog', 'blob', 'staged'):
+                response = self.client.post('/api/internal/game/ysm/' + path, json={},
+                    headers={'authorization': 'Bearer original-user-fixture'})
+                self.assertEqual(503, response.status_code, response.text)
+                self.assertEqual('ysm_game_authority_not_configured', response.json()['detail'])
+                self.assertIn('no-store', response.headers['cache-control'])
+            userinfo.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()
