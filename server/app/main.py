@@ -19,6 +19,8 @@ from fastapi.staticfiles import StaticFiles
 from .player_platform import PlatformStore
 from .horse_trading import horse_trading_router
 from .social_api import social_router
+from .ysm_assets import YsmAssetStore
+from .ysm_assets_api import ysm_assets_router
 from .oidc import OidcClient, WebsiteAuthStore, safe_return_to
 from .skins import MAX_BYTES as SKIN_MAX_BYTES, SkinError, SkinStore
 from .crash_reports import MAX_BUNDLE_BYTES, CrashReportError, CrashReportStore
@@ -80,6 +82,10 @@ web_auth_store = WebsiteAuthStore(database_path)
 platform_store = PlatformStore(database_path)
 skin_store = SkinStore(database_path, database_path.parent / "skins")
 crash_store = CrashReportStore(database_path, database_path.parent / "crash-reports")
+ysm_asset_root = Path(os.getenv("BMC_YSM_ASSET_ROOT", str(database_path.parent / "ysm-user-assets")))
+if not ysm_asset_root.is_absolute():
+    ysm_asset_root = WORKSPACE_ROOT / ysm_asset_root
+ysm_asset_store = YsmAssetStore(ysm_asset_root)
 oidc_issuer = os.getenv("BMC_AUTH_ISSUER", "https://account.muxigame.com").rstrip("/")
 oidc_client = OidcClient(
     oidc_issuer,
@@ -111,8 +117,8 @@ async def security_headers(request: Request, call_next):
     )
     if request.url.scheme == "https" or os.getenv("BMC_PUBLIC_URL", "").lower().startswith("https://"):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    if (request.url.path.startswith(("/api/v1/auth", "/api/v1/admin", "/api/v1/player", "/api/internal/game/social"))
-            or request.url.path in {"/account", "/account.html", "/admin.html"}):
+    if (request.url.path.startswith(("/api/v1/auth", "/api/v1/admin", "/api/v1/player", "/api/v1/ysm", "/api/internal/game/social"))
+            or request.url.path in {"/account", "/account.html", "/admin.html", "/ysm-models.html"}):
         response.headers["Cache-Control"] = "private, no-store"
         response.headers["Vary"] = "Cookie, Authorization"
         response.headers["Referrer-Policy"] = "no-referrer"
@@ -351,6 +357,14 @@ def account_page(request: Request):
     if account is None:
         return begin_login(request, "/account.html")
     return protected_page("account.html")
+
+
+@app.get("/ysm-models.html", include_in_schema=False)
+def ysm_models_page(request: Request):
+    account = authenticated_account(request)
+    if account is None:
+        return begin_login(request, "/ysm-models.html")
+    return protected_page("ysm-models.html")
 
 
 def protected_page(filename: str):
@@ -819,6 +833,7 @@ async def game_op_observations(request: Request):
 
 
 app.include_router(social_router(database_path, current_player_account))
+app.include_router(ysm_assets_router(lambda: ysm_asset_store, current_player_account))
 
 if os.getenv("BMC_SERVE_WEB", "1") == "1":
     @app.get("/favicon.ico", include_in_schema=False)
