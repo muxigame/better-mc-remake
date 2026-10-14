@@ -1,0 +1,146 @@
+[
+  {
+    "original": "q\\tests\\local-mc-debug\\ChunkDelayFixture.java",
+    "sha256": "927011e8f5b75ae124b15a764288d6f6198e7c17f9a1d56675fe84f82affedcd",
+    "bytes": 2033,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\ChunkDelayFixture.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\ChunkDelayQAMixin.java",
+    "sha256": "73cb0eed5eea8bf3852885b0f863b5b5a1d604cbcaa0a636a8979fe5423e704f",
+    "bytes": 786,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\ChunkDelayQAMixin.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\DebugFiles.java",
+    "sha256": "84649935afadee9ae819c3d063a178727b5e168bcdbd36aa55e40cb9e54285ac",
+    "bytes": 1894,
+    "canonical_existing": "tests\\local-mc-debug\\DebugFiles.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\HardwareWmiTimeoutQAMixin.java",
+    "sha256": "480dfa9c9d4c97e7e0b76277e3753b3a113d64f1d593940715bf3957ecdaa54a",
+    "bytes": 974,
+    "canonical_existing": "tests\\local-mc-debug\\HardwareWmiTimeoutQAMixin.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\HiddenWindowMixin.java",
+    "sha256": "a70df6d42084bc8838740ad4bcdce0b4b54141b8a961997d928f212cadebb872",
+    "bytes": 1247,
+    "canonical_existing": "tests\\local-mc-debug\\HiddenWindowMixin.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\HorseRaceObserver.java",
+    "sha256": "cf87e4a3007bd504aa55657f89f9dd6c14b6c01e51a183d2006f7fb231180e9b",
+    "bytes": 7006,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\HorseRaceObserver.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\LocalDebugClient.java",
+    "sha256": "11430006de4add2bf45b302270cb005c6658b462273959b63c975db6f8dba881",
+    "bytes": 11923,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\LocalDebugClient.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\LocalDebugServer.java",
+    "sha256": "e7d289de2c651cc56d5ce956a3d7f0f382391babba66dfdffd55e96159f50ba3",
+    "bytes": 8795,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\LocalDebugServer.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\NormalStopRequestQAMixin.java",
+    "sha256": "3d1c0eb065dc31e19f20f552ee0268424c75b2ff099061e3172f43b5db5074c0",
+    "bytes": 1166,
+    "canonical_existing": "tests\\local-mc-debug\\NormalStopRequestQAMixin.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\TeleportProbeClient.java",
+    "sha256": "ffc0fe0090da57798c97d8bdce23ca72b6a30e6e81438149442268cd5b959353",
+    "bytes": 7744,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\TeleportProbeClient.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\TeleportProbeServer.java",
+    "sha256": "675d20b186e21faaf58e29e9c6187ab720d985880b058ca91ac154cea8efbd25",
+    "bytes": 6921,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\TeleportProbeServer.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\shop\\UmamusumeShopClientQA.java",
+    "sha256": "d1ca9eb62da77a89d170e2bef6f81684ae02958c76c6678b24d2d988c450aec1",
+    "bytes": 4760,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\shop\\UmamusumeShopClientQA.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\shop\\UmamusumeShopServerQA.java",
+    "sha256": "1d349e49af6c201027d48eb51e2085006ba68fb4c85f5c2e043f3a1f8917dc83",
+    "bytes": 1128,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\shop\\UmamusumeShopServerQA.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\shop\\mixin\\ShopBrowserProbeMixin.java",
+    "sha256": "fe39d3c8e113fd5fcef56c27c9acd0485c415300a6c6dd7f76f935021730305a",
+    "bytes": 905,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\shop\\mixin\\ShopBrowserProbeMixin.java"
+  },
+  {
+    "original": "q\\tests\\local-mc-debug\\shop\\mixin\\ShopCefProfileMixin.java",
+    "sha256": "b833cfd4208343ccca88098f40325df0ca77a727eb096173f24939bda7d26c79",
+    "bytes": 2236,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\shop\\mixin\\ShopCefProfileMixin.java"
+  },
+  {
+    "original": "runtime-tools\\tests\\local-mc-debug\\ChunkDelayFixture.java",
+    "sha256": "927011e8f5b75ae124b15a764288d6f6198e7c17f9a1d56675fe84f82affedcd",
+    "bytes": 2033,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\ChunkDelayFixture.java"
+  },
+  {
+    "original": "runtime-tools\\tests\\local-mc-debug\\ChunkDelayQAMixin.java",
+    "sha256": "73cb0eed5eea8bf3852885b0f863b5b5a1d604cbcaa0a636a8979fe5423e704f",
+    "bytes": 786,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\ChunkDelayQAMixin.java"
+  },
+  {
+    "original": "runtime-tools\\tests\\local-mc-debug\\DebugFiles.java",
+    "sha256": "84649935afadee9ae819c3d063a178727b5e168bcdbd36aa55e40cb9e54285ac",
+    "bytes": 1894,
+    "canonical_existing": "tests\\local-mc-debug\\DebugFiles.java"
+  },
+  {
+    "original": "runtime-tools\\tests\\local-mc-debug\\HardwareWmiTimeoutQAMixin.java",
+    "sha256": "480dfa9c9d4c97e7e0b76277e3753b3a113d64f1d593940715bf3957ecdaa54a",
+    "bytes": 974,
+    "canonical_existing": "tests\\local-mc-debug\\HardwareWmiTimeoutQAMixin.java"
+  },
+  {
+    "original": "runtime-tools\\tests\\local-mc-debug\\HiddenWindowMixin.java",
+    "sha256": "a70df6d42084bc8838740ad4bcdce0b4b54141b8a961997d928f212cadebb872",
+    "bytes": 1247,
+    "canonical_existing": "tests\\local-mc-debug\\HiddenWindowMixin.java"
+  },
+  {
+    "original": "runtime-tools\\tests\\local-mc-debug\\HorseRaceObserver.java",
+    "sha256": "cf87e4a3007bd504aa55657f89f9dd6c14b6c01e51a183d2006f7fb231180e9b",
+    "bytes": 7006,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\HorseRaceObserver.java"
+  },
+  {
+    "original": "runtime-tools\\tests\\local-mc-debug\\LocalDebugClient.java",
+    "sha256": "11430006de4add2bf45b302270cb005c6658b462273959b63c975db6f8dba881",
+    "bytes": 11923,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\LocalDebugClient.java"
+  },
+  {
+    "original": "runtime-tools\\tests\\local-mc-debug\\LocalDebugServer.java",
+    "sha256": "e7d289de2c651cc56d5ce956a3d7f0f382391babba66dfdffd55e96159f50ba3",
+    "bytes": 8795,
+    "canonical_existing": "tests\\historical-runtime-qa-20261011\\fixtures\\q\\LocalDebugServer.java"
+  },
+  {
+    "original": "runtime-tools\\tests\\local-mc-debug\\NormalStopRequestQAMixin.java",
+    "sha256": "3d1c0eb065dc31e19f20f552ee0268424c75b2ff099061e3172f43b5db5074c0",
+    "bytes": 1166,
+    "canonical_existing": "tests\\local-mc-debug\\NormalStopRequestQAMixin.java"
+  }
+]
