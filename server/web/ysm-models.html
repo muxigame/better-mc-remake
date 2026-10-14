@@ -27,9 +27,10 @@
     <div id="ysm-login" class="ysm-login" hidden><p>请登录账户后管理和选用模型。</p><a class="button button-primary" href="/api/v1/auth/entry?return_to=%2Fysm-models.html">登录 muxi 账户</a></div>
     <div id="ysm-private-content" hidden>
       <section class="ysm-section" aria-labelledby="upload-heading">
-        <div class="pc-section-title"><span class="pc-index">01</span><div><h2 id="upload-heading">上传模型</h2><p>可一次选择多个 .ysm 文件。默认仅自己可见，验证通过后才能下载和选用。</p></div></div>
+        <div class="pc-section-title"><span class="pc-index">01</span><div><h2 id="upload-heading">上传模型</h2><p>可一次选择多个 .ysm 文件。默认私有，验证通过后可下载，服务器就绪后可选用。</p></div></div>
         <div class="ysm-drop" id="ysm-drop"><label class="button button-outline" for="ysm-files">选择文件</label><input id="ysm-files" class="ysm-file-input" type="file" accept=".ysm" multiple><p>也可以将文件拖到这里</p></div>
-        <div class="ysm-upload-options"><label for="ysm-upload-visibility">新文件默认可见性</label><select id="ysm-upload-visibility"><option value="private" selected>私有 · 仅自己</option><option value="public">公开 · 所有人</option></select><p id="ysm-limits">正在读取上传限制…</p></div>
+        <div class="ysm-upload-options"><label for="ysm-upload-visibility">新文件默认选用范围</label><select id="ysm-upload-visibility"><option value="private" selected>私有 · 仅本人选用</option><option value="public">公开 · 所有人可选用</option></select><p id="ysm-limits">正在读取上传限制…</p></div>
+        <p class="ysm-note" id="ysm-private-policy">私有模型不进入公共模型列表，仅本人可选用和通过本页下载。其他玩家仍可看到你的穿戴；显示所需资源会传到他们的客户端，不能保证不可提取或复制。</p>
         <p class="ysm-note">公开需由你主动选择。支持时先检查公共模型，相同文件直接保存本人引用。新文件先等待验证和服务器同步；选择公开不表示已经发布。</p>
         <ul class="ysm-list" id="ysm-upload-list" aria-label="逐文件上传进度"></ul>
         <div class="ysm-toolbar"><button class="button button-primary" id="ysm-upload-start" type="button" disabled>上传待发送文件</button><button class="button button-outline" id="ysm-upload-clear" type="button">清除已完成记录</button></div>
@@ -39,7 +40,7 @@
         <label class="ysm-deleted-toggle"><input id="ysm-show-deleted" type="checkbox"> 显示可恢复删除的模型</label>
         <p id="ysm-my-empty" class="ysm-empty" hidden>还没有模型，先上传一个吧。</p>
         <ul class="ysm-list" id="ysm-my-list" aria-label="我的模型列表"></ul>
-        <p class="ysm-note">删除会先撤销可见和选用权限，未被永久清理的文件可以恢复为私有。最早 7 天后才允许另行批准清理，并非到期自动删除。本页不执行永久删除。</p>
+        <p class="ysm-note">删除会撤销这条引用授予的目录、下载和选用权限，并请求失去权限的穿戴回退默认外观；其他有效引用不受影响。未被永久清理的文件可以恢复为私有。最早 7 天后才允许另行批准清理，并非到期自动删除。本页不执行永久删除，也无法召回已传到客户端的资源。</p>
       </section>
     </div>
     <section class="ysm-section" aria-labelledby="public-heading">
@@ -52,6 +53,6 @@
     <div class="pc-foot"><span>BETTER MC</span><p>同一账户，自己的模型。</p></div>
   </main>
   <script src="/auth-nav.js" defer></script>
-  <script src="/ysm-models.js?v=1" defer></script>
+  <script src="/ysm-models.js?v=2" defer></script>
 </body>
 </html>

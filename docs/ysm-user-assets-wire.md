@@ -12,6 +12,23 @@ claim 固定 `{serverId, connectionId, bindingGeneration, uid}`，前三项是�
 
 ## 机器协议
 
+### 私有模型 A（用户已选择）
+
+2026-10-14 用户选择 A：私有模型仅本人可选用；其他玩家可看到本人的穿戴，显示所需资源会传到观察者客户端，不能保证不可提取、不可复制或文件保密。`references.visibility='private'` 表示选用/管理分享范围，不表示禁止所有客户端接收显示资源。
+
+| 用途 | 私有模型 A 的边界 |
+| --- | --- |
+| 可选目录、缩略图/管理 metadata | 只给 owner；观察者不因此获得私有模型的可选项或 owner 引用 |
+| Web 下载或现有 `/blob` 的 player-read 导出 | 只给当前具有本人引用权限的 UID；观察者不能拿观看资格调用这些入口 |
+| 选用/穿戴发起，包括原生命令和网络入口 | 必须核当前真实 UID 的 owner 权限、连接和 exact revision/generation；旁观、缓存或持有资源不是选用授权 |
+| 观察者显示当前穿戴 | 运行时可给当前跟踪 wearer 的存活观察者连接发送所需显示资源；wearer 必须仍拥有当前选用权限 |
+| 公开改私有 | 撤这条公开引用授予他人的目录、直接下载和选用权限；保留 owner 的合法穿戴与观察者显示；其他有效引用保留 |
+| 删除/断线/撤销选用 | 先撤相关新请求资格，再确认失去权限的穿戴回退默认及观察者画面更新；恢复引用默认为私有 A，不自动恢复已撤销的选用 |
+
+现有四个 HTTP 入口和字段不因此放宽。特别是 `/catalog`、`/blob` 仍核 actor 的当前引用权限；不得增加客户端自报 `render=true`、owner UID 或模型 hash 来绕过它。观察者资源传输须由 Core/YSM 运行时根据服务器维护的当前 wearer、真实 owner UID、合法选用、tracking observer listener 和 exact revision/generation 建立用途；发送前及每次分块重核断开、替换、撤权和穿戴变化。可沿既有连接/权限结构实现，不另发用户 token。
+
+Core owner 需区分 owner 的 `downloadPermit/select` 与观察者的显示资源用途；Core `c07917ef` 候选中的 `YsmAssetCoordinator.canReceivePrivateRenderBytes` 以观察者自身 `snapshot.permitted` 判断，尚不能证明 A 的非 owner 旁观显示。该适配归 Core/YSM owner，本批不修改其文件、不注册或激活运行时。新格式验证、原生选用绕过拦截及两 UID 实际显示/撤权回退仍须证明；文件保密和“观察者永远拿不到字节”不再是 A 的验收条件。
+
 所有入口位于 `/api/internal/game/ysm`，JSON body 不超过 16 KiB，未知字段拒绝。任何响应不共享缓存；native/opaque 解析不在 Web HTTP 进程运行。
 
 | POST 路径 | 请求 | 响应 |

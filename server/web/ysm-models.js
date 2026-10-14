@@ -212,7 +212,7 @@
   }
   function visibilitySelect(value) {
     const select = node('select');
-    [['private', '私有 · 仅自己'], ['public', '公开 · 所有人']].forEach(([key, label]) => {
+    [['private', '私有 · 仅本人选用'], ['public', '公开 · 所有人可选用']].forEach(([key, label]) => {
       const option = node('option', '', label); option.value = key; select.append(option);
     }); select.value = value; return select;
   }
@@ -239,7 +239,7 @@
       main.append(node('h3', '', file.name), node('p', 'ysm-meta', size(file.size)));
       const status = node('p', 'ysm-state'), progress = node('progress', 'ysm-progress'); progress.max = 100;
       progress.setAttribute('aria-label', file.name + ' 上传进度'); main.append(status, progress);
-      const visibility = visibilitySelect(task.visibility); visibility.setAttribute('aria-label', file.name + ' 可见性');
+      const visibility = visibilitySelect(task.visibility); visibility.setAttribute('aria-label', file.name + ' 选用范围');
       visibility.addEventListener('change', () => task.setVisibility(visibility.value));
       const cancel = button('取消', () => task.cancel());
       const retry = button('重试', () => runQueue([task]), !!error); if (error) retry.hidden = true;
@@ -281,7 +281,9 @@
     if (!authenticated || !expectedUID) return;
     const epoch = authEpoch;
     try {
-      const result = await api(BASE + '/' + encodeURIComponent(model.id) + action, options);
+      const headers = {...options.headers};
+      if (!headers['Idempotency-Key']) headers['Idempotency-Key'] = newKey();
+      const result = await api(BASE + '/' + encodeURIComponent(model.id) + action, {...options, headers});
       if (epoch !== authEpoch) return;
       if (action === '/select') notify('选用请求已确认。');
       else notify('模型设置已保存。');
@@ -312,7 +314,7 @@
   function modelRow(model, own) {
     const item = node('li', 'ysm-item'), main = node('div', 'ysm-item-main'), actions = node('div', 'ysm-item-actions');
     main.append(node('h3', '', model.name || '未命名模型'));
-    main.append(node('p', 'ysm-meta', size(model.size) + ' · ' + (model.visibility === 'public' ? '公开' : '私有') + (model.deletedAt ? ' · 已删除（可恢复）' : '')));
+    main.append(node('p', 'ysm-meta', size(model.size) + ' · ' + (model.visibility === 'public' ? '公开 · 所有人可选用' : '私有 · 仅本人选用') + (model.deletedAt ? ' · 已删除（可恢复）' : '')));
     const status = node('p', 'ysm-state', (validationLabels[model.validationStatus] || '状态待确认') + ' · ' + (syncLabels[model.syncStatus] || '同步状态待确认'));
     status.classList.toggle('is-error', model.validationStatus === 'rejected'); main.append(status);
     if (model.validationStatus === 'pending') main.append(node('p', 'ysm-note', '文件在等待验证，当前无法下载或选用。'));
@@ -321,10 +323,10 @@
       if (own) actions.append(button('恢复为私有', () => mutate(model, '/restore', {method: 'POST'}), model.canRestore === false));
     } else {
       if (own) {
-        const visibility = visibilitySelect(model.visibility); visibility.setAttribute('aria-label', model.name + ' 可见性');
+        const visibility = visibilitySelect(model.visibility); visibility.setAttribute('aria-label', model.name + ' 选用范围');
         visibility.addEventListener('change', async () => {
           const requested = visibility.value; visibility.value = model.visibility; visibility.disabled = true;
-          const text = requested === 'private' ? '改为私有后会撤销他人的选用权限；服务器收到更新后将回退已穿戴模型。已下载的副本无法召回。' : '确认公开此模型？验证通过后所有人都可以看到和下载；服务器同步完成后可以选用。';
+          const text = requested === 'private' ? '仅撤销这条公开分享授予的目录、下载和选用权限；其他有效引用不受影响。你仍可选用自己的模型，其他玩家仍可看到你的穿戴；显示资源会传到客户端，不能保证不可提取。失去选用权限的穿戴将请求回退默认外观；已下载的副本无法召回。' : '确认公开此模型？验证通过后所有人都可以在公共列表看到和下载；服务器就绪后可以选用。以后改回私有也无法召回已传到客户端的资源。';
           try {
             if (await confirmAction(requested === 'private' ? '改为私有' : '公开模型', text)) await mutate(model, '/visibility', {method: 'PATCH', body: JSON.stringify({visibility: requested})});
           } finally { visibility.disabled = false; }
@@ -333,7 +335,7 @@
       actions.append(button(model.id === selectedModelId ? '已选用' : '选用', () => mutate(model, '/select', {method: 'POST'}), !authenticated || !canUse(model) || model.id === selectedModelId));
       actions.append(button('下载', () => download(model), !authenticated || !canDownload(model)));
       if (own) actions.append(button('删除', async () => {
-        if (await confirmAction('删除模型', '删除“' + model.name + '”后会撤销可见和选用权限，保留期内可以恢复。')) await mutate(model, '', {method: 'DELETE'});
+        if (await confirmAction('删除模型', '删除“' + model.name + '”仅撤销这条引用授予的目录、下载和选用权限，并请求失去权限的穿戴回退默认外观；其他有效引用不受影响。未被永久清理时可恢复为私有；已传到客户端的资源无法召回。')) await mutate(model, '', {method: 'DELETE'});
       }));
     }
     item.append(main, actions); return item;

@@ -31,6 +31,12 @@ class Element {
 }
 function descendants(element, tag) { return element.children.flatMap(child => [child, ...descendants(child, tag)]).filter(child => !tag || child.tagName === tag); }
 async function main() {
+  const page = fs.readFileSync(path.join(__dirname, '../server/web/ysm-models.html'), 'utf8');
+  const policy = page.match(/<p[^>]*id="ysm-private-policy"[^>]*>([^<]+)<\/p>/)[1];
+  assert.ok(policy.includes('仅本人可选用'));
+  assert.ok(policy.includes('其他玩家仍可看到你的穿戴'));
+  assert.ok(policy.includes('资源会传到他们的客户端') && policy.includes('不能保证不可提取'));
+  assert.ok(!page.includes('默认仅自己可见'));
   const file = {name: '测试 & 模型.ysm', size: 1024};
   assert.equal(profileUID({user: {uid: 9007199254740993}, player: {loginName: '9007199254740993'}}), '9007199254740993');
   assert.equal(profileUID({user: {uid: '9007199254740993'}}), '9007199254740993');
@@ -147,6 +153,7 @@ async function main() {
   await wrongAccount.start(); assert.equal(wrongAccount.state, 'error'); assert.equal(accountChanges, 1);
 
   const elements = new Map(), allRequests = [], uploadXHRs = [];
+  let generatedKeys = 0;
   const get = id => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
   get('ysm-upload-visibility').value = 'private';
   let denyMine = false, profile = {user: {uid: '10000'}};
@@ -154,7 +161,7 @@ async function main() {
     {...ready, id: 'm2', name: 'Ready.ysm', size: 15, visibility: 'private', deletedAt: null},
     {...ready, id: 'm3', name: 'Deleted.ysm', size: 15, visibility: 'private', deletedAt: '2026-10-13T01:00:00Z'}];
   const context = {document: {getElementById: get, createElement: tag => new Element(tag), body: new Element('body')},
-    window: {confirm: () => true}, crypto: {randomUUID: () => 'test-uuid'}, Uint8Array, console, setTimeout,
+    window: {confirm: () => true}, crypto: {randomUUID: () => 'test-uuid-' + (++generatedKeys)}, Uint8Array, console, setTimeout,
     XMLHttpRequest: class extends XHR { constructor() { super(); uploadXHRs.push(this); } },
     fetch: async (url, options) => {
       allRequests.push({url, options});
@@ -179,9 +186,11 @@ async function main() {
   await descendants(get('ysm-my-list').children[2], 'button').find(b => b.textContent === '恢复为私有').click();
   assert.equal(mine[2].deletedAt, null);
   assert.equal(allRequests.find(request => request.url.endsWith('/restore')).options.headers['X-Muxi-Expected-UID'], '10000');
+  assert.match(allRequests.find(request => request.url.endsWith('/restore')).options.headers['Idempotency-Key'], /^[A-Za-z0-9._:-]{8,128}$/);
   const input = get('ysm-files'); input.files = [file, {name: 'bad.exe', size: 4}, {name: 'Second.ysm', size: 5}]; await input.fire('change');
   assert.equal(get('ysm-upload-list').children.length, 3);
   assert.equal(descendants(get('ysm-upload-list').children[0], 'select')[0].value, 'private');
+  assert.equal(descendants(descendants(get('ysm-upload-list').children[0], 'select')[0], 'option')[0].textContent, '私有 · 仅本人选用');
   assert.ok(descendants(get('ysm-upload-list').children[1], 'button').find(b => b.textContent === '重试').hidden);
   const queuedRun = get('ysm-upload-start').fire('click'); await tick();
   assert.equal(uploadXHRs.length, 1);
@@ -196,11 +205,20 @@ async function main() {
   assert.ok(!allRequests.some(request => request.url.endsWith('/visibility'))); // Explicit confirmation required.
   await get('ysm-confirm-ok').click(); await change; assert.equal(mine[1].visibility, 'public');
   assert.equal(allRequests.find(request => request.url.endsWith('/visibility')).options.headers['X-Muxi-Expected-UID'], '10000');
+  assert.match(allRequests.find(request => request.url.endsWith('/visibility')).options.headers['Idempotency-Key'], /^[A-Za-z0-9._:-]{8,128}$/);
+  assert.notEqual(allRequests.find(request => request.url.endsWith('/restore')).options.headers['Idempotency-Key'], allRequests.find(request => request.url.endsWith('/visibility')).options.headers['Idempotency-Key']);
   const publicOwnRow = get('ysm-my-list').children.find(row => descendants(row, 'h3')[0].textContent === 'Ready.ysm');
   const makePrivate = descendants(publicOwnRow, 'select')[0]; makePrivate.value = 'private';
   const privateChange = makePrivate.fire('change'); await tick();
   assert.ok(get('ysm-confirm-text').textContent.includes('已下载的副本无法召回'));
+  assert.ok(get('ysm-confirm-text').textContent.includes('其他玩家仍可看到你的穿戴'));
+  assert.ok(get('ysm-confirm-text').textContent.includes('不能保证不可提取'));
+  assert.ok(get('ysm-confirm-text').textContent.includes('其他有效引用不受影响'));
   await get('ysm-confirm-cancel').click(); await privateChange; assert.equal(mine[1].visibility, 'public');
+  const deletion = descendants(publicOwnRow, 'button').find(b => b.textContent === '删除').click(); await tick();
+  assert.ok(get('ysm-confirm-text').textContent.includes('这条引用授予'));
+  assert.ok(get('ysm-confirm-text').textContent.includes('资源无法召回'));
+  await get('ysm-confirm-cancel').click(); await deletion;
   input.files = [file]; await input.fire('change');
   const switchedQueue = get('ysm-upload-start').click(); await tick();
   uploadXHRs.at(-1).reply(409, {detail: 'account_changed'}); await switchedQueue;

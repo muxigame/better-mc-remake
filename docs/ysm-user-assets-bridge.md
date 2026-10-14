@@ -16,14 +16,16 @@
 
 既有 2.6.5 类审计在 compat 的忽略目录 `build/production-upload-contract-20261013`：授权集合类 `OOo0o0000Ooo0o00OO0oOOoO` 持有 model ID Set 并序列化到玩家 attachment；auth add/remove 命令属于 `oOoOOo00OOoOOoO0ooo0O0oO`；服务器管理器 `O0Ooo000O0ooO00Oooo00oOO` 及模型命令 `ooo00o00000oO0OO00oO000o` 检查该集合。它们证明存在选用授权，不证明传输字节对未授权者保密。
 
-上游 3.0 的 [model-authorization 契约](../../ysm-upstream-java/docs/product-decisions/decisions/model-authorization.md) 明确默认“无选择权仍可取得资产以呈现其他玩家”；RESTRICTED_AUTH 也保留展示信息。因此不能只调用原 auth grant/remove 来实现严格私有列表与下载。该事实限定于上游契约；当前 2.6.5 opaque native 传输的严格私有门禁仍未验证。
+上游 3.0 的 [model-authorization 契约](../../ysm-upstream-java/docs/product-decisions/decisions/model-authorization.md) 明确默认“无选择权仍可取得资产以呈现其他玩家”；RESTRICTED_AUTH 也保留展示信息。该事实限定于上游契约，不能直接作为当前 2.6.5 运行时成功证明。
+
+2026-10-14 用户已选择私有模型 A：仅本人可选用，其他玩家仍可看到穿戴。显示所需资源会传到客户端，不能保证不可提取或文件保密。原生可为显示传输资源，不意味着它可以出现在观察者的选用目录或由观察者直接下载/选用。现有 Web/catalog/blob 的 actor ACL 仍需保留；观察者显示使用独立的运行时用途检查，见 [A 接线合同](ysm-user-assets-wire.md#私有模型-a-用户已选择)。不能把原 auth grant/remove 的存在当成所有选用入口均受控的证明。
 
 私有 runtime 放行前至少验证：
 
-- 两个真实独立 UID/listener：B 无法列出 A 私有资产、查看缩略图/metadata、按 ID/hash 下载或直接请求 YSM 网络资源。
-- 服务端每次 download/use 按当前 revision 检查；已有缓存、旧请求 key、旧 listener 均不能授予新权限。
-- public→private/delete 先原子撤销新请求资格、清失效选择，再同步当前连接的默认模型回退；需实际客户端与远端玩家画面/网络回执。
-- 撤权后客户端清自身授权投影与选择缓存；不能承诺召回先前合法下载的文件或秘密副本。
+- 两个真实独立 UID/listener：B 可看到 A 合法穿戴的私有模型，但不在可选列表中得到它，不获得管理缩略图/metadata，不可按 ID/hash 调用 Web/导出下载或选用。B 接收的显示资源可能被提取，不以资源保密作为验收条件。
+- 服务端每次直接 download/use 按当前 revision 检查；显示分发核 wearer 当前选用权和观察者当前 tracking/listener。已有资源缓存、旧请求 key、旧 listener 均不能授予选用权限。
+- public→private 仅撤公开引用授予的新请求资格与失效选择，保留 owner 的合法穿戴及旁观显示；delete/断线/失去选用权则确认默认外观回退和观察者画面更新。其他有效引用不误撤；需实际两客户端画面/网络回执。
+- 撤权后客户端清自身授权投影与选择缓存，观察者更新穿戴画面；不能承诺召回先前下载或为显示而接收的资源。
 
 ## 内部存储合同
 

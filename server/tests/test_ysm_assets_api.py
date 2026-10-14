@@ -158,6 +158,8 @@ class YsmAssetHTTPTests(unittest.TestCase):
         self.promote()
         h = {'authorization':'Bearer fixture-two'}
         self.assertEqual(404, self.client.get(BASE+'/'+model_id+'/download',headers=h).status_code)
+        self.assertEqual(404, self.client.get(BASE+'/'+model_id+'/download',headers=h,
+                                             params={'render':'true','ownerUid':'10000'}).status_code)
         for method, suffix, body in (('DELETE','',{}),('POST','/restore',{}),('POST','/select',{}),
                                      ('PATCH','/visibility',{'visibility':'public'})):
             response = self.mutate(method,model_id,suffix,body,headers=h)
@@ -166,7 +168,8 @@ class YsmAssetHTTPTests(unittest.TestCase):
     def test_actor_and_permanent_cleanup_payloads_rejected(self):
         model_id = self.upload().json()['model']['id']
         for suffix, body in (('/visibility', {'visibility':'public','uid':10001}),
-                             ('/restore',{'actorUid':10001}),('/select',{'directory':'../../public'})):
+                             ('/restore',{'actorUid':10001}),('/select',{'directory':'../../public'}),
+                             ('/select',{'render':True,'ownerUid':10000})):
             method = 'PATCH' if suffix == '/visibility' else 'POST'
             self.assertEqual(400,self.mutate(method,model_id,suffix,body).status_code)
         self.assertEqual(400,self.mutate('DELETE',model_id,body={'permanent':True}).status_code)
