@@ -1,0 +1,13 @@
+--- a/src/main/java/net/muxigame/minigames/horse/HorseRooms.java
++++ b/src/main/java/net/muxigame/minigames/horse/HorseRooms.java
+@@ -188,7 +188,9 @@
+         EntryReadyNetwork.clear(r.team.session);
+         LOG.info("Race session={} closing phase={} reason={} racers={}",r.team.session,r.phase,reason,r.pilots.size());
+         trading.end(r.team.session,null,reason,false);
+-        for(UUID id:List.copyOf(r.team.members)){var p=server.getPlayerList().getPlayer(id);if(p!=null)HorseReturn.restore(p);}
++        for(UUID id:List.copyOf(r.team.members)){var p=server.getPlayerList().getPlayer(id);if(p!=null&&!reason.equals("server_failure"))HorseReturn.restore(p);}
++        // ServerStopping may run after other mods unload their dimension-change listeners.
++        // Keep the already-persisted return marker for login recovery instead of teleporting.
+         if(r.lease!=null)arenas.checkpoint(r.lease,r.pilots.stream().flatMap(v->java.util.stream.Stream.<net.minecraft.world.entity.Entity>of(v.horse,v.rider)).toList());r.pilots.forEach(HorsePilot::close);arenas.release(r.lease);if(r.course!=null)r.course.unload(server.getLevel(r.course.dimension()));runtime.memberships.close(r.team);rooms.remove(r.team.session);trading.released(r.team.session);
+     }
+     public void close(){for(Room r:List.copyOf(rooms.values()))closeRoom(r,"server_failure");arenas.shutdown();trading.close();}

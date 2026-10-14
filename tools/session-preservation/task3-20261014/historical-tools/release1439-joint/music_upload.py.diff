@@ -1,0 +1,120 @@
+--- live/app/music_upload.py
+
++++ candidate/app/music_upload.py
+
+@@ -158,7 +158,7 @@
+
+             columns = {row[1] for row in db.execute('PRAGMA table_info(music_uploads)')}
+             for name, declaration in (('burn_nonce', "TEXT NOT NULL DEFAULT ''"),
+                     ('media_ext', "TEXT NOT NULL DEFAULT 'wav'"), ('media_sha', 'TEXT'), ('media_size', 'INTEGER'),
+-                    ('failure_phase','TEXT'),('failure_code','TEXT'),('failure_kind','TEXT')):
++                    ('failure_phase','TEXT'),('failure_code','TEXT'),('failure_kind','TEXT'),('lyric_origin',"TEXT NOT NULL DEFAULT ''")):
+                 if name not in columns:
+                     db.execute(f'ALTER TABLE music_uploads ADD COLUMN {name} {declaration}')
+             db.execute('CREATE TABLE IF NOT EXISTS music_daily_intents(uid INTEGER NOT NULL,day TEXT NOT NULL,count INTEGER NOT NULL,PRIMARY KEY(uid,day))')
+@@ -192,8 +192,11 @@
+
+             raise MusicError(404, "job_not_found")
+         return row
+ 
+-    def create(self, uid, session, request_id, size, sha256, license_id, credit, title, burn_nonce=''):
++    def create(self, uid, session, request_id, size, sha256, license_id, credit, title, burn_nonce='', lyric_origin=None):
+         storage, now = self.enabled(), self.clock()
++        from .music_lyrics import encode_origin
++        try:lyric_origin=encode_origin(lyric_origin)
++        except ValueError:raise MusicError(400,'invalid_lyric_origin') from None
+         if self.receipts is not None and not burn_nonce:
+             raise MusicError(400, 'burn_context_required')
+         try:
+@@ -218,6 +221,7 @@
+
+             db.execute("UPDATE music_uploads SET state='expired' WHERE state IN ('pending','validating') AND expires<=?", (now,))
+             old = db.execute("SELECT * FROM music_uploads WHERE uid=? AND session=? AND request_id=?", (uid, session, request_id)).fetchone()
+             if old:
++                if (old["lyric_origin"] or encode_origin(None))!=lyric_origin:raise MusicError(409,"request_id_reused")
+                 if tuple(old[k] for k in ("size", "sha256", "license", "credit", "title", "burn_nonce")) != (size, sha256, license_id, credit, title, burn_nonce):
+                     raise MusicError(409, "request_id_reused")
+                 if old['state'] != 'pending':
+@@ -244,10 +248,10 @@
+
+                 except (ValueError, TypeError, AttributeError, StopIteration):
+                     raise MusicError(503, 'music_job_allocation_failed') from None
+                 db.execute("""INSERT INTO music_uploads
+-                    (id,uid,session,request_id,size,sha256,license,credit,title,created,expires,state,duration,receipt,consumed,burn_nonce)
+-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
++                    (id,uid,session,request_id,size,sha256,license,credit,title,created,expires,state,duration,receipt,consumed,burn_nonce,lyric_origin)
++                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                            (job, uid, session, request_id, size, sha256, license_id, credit, title,
+-                            now, now + JOB_SECONDS, 'pending', None, None, None, burn_nonce))
++                            now, now + JOB_SECONDS, 'pending', None, None, None, burn_nonce,lyric_origin))
+             ticket = storage.ticket(f"incoming/{uid}/{job}.wav", size, now)
+         return {"jobId": job, "upload": ticket}
+ 
+@@ -339,6 +343,25 @@
+
+         # Do not delete while a 90s POST is still valid: cleanup after expiry/lifecycle.
+         return {"cancelled": True}
+ 
++    def lyrics(self,caller_uid,session,reference):
++        # Same live caller and redeemed media rules as playback; metadata-only, zero OSS.
++        from urllib.parse import urlsplit
++        from .music_lyrics import normalize_origin
++        storage=self.enabled()
++        try:
++            if type(caller_uid) is not int or not 10000<=caller_uid<=9999999999999999 or str(uuid.UUID(session))!=session:raise ValueError()
++            url=urlsplit(reference);host=f'{storage.bucket}.oss-{storage.region}.aliyuncs.com'
++            match=re.fullmatch(r'/media/([1-9][0-9]{4,15})/([0-9a-f-]{36})\.(wav|mp3)',url.path)
++            if url.scheme!='https' or url.netloc!=host or url.query or url.fragment or not match:raise ValueError()
++            owner,job,extension=match.groups()
++            if str(uuid.UUID(job))!=job or uuid.UUID(job).version!=4:raise ValueError()
++        except (ValueError,TypeError,AttributeError):raise MusicError(400,'invalid_media_reference') from None
++        with self.lock,self.connect() as db:
++            row=db.execute('SELECT * FROM music_uploads WHERE id=? AND uid=?',(job,int(owner))).fetchone()
++            if row is None or row['state']!='ready' or row['consumed'] is None or row['media_ext']!=extension or not row['media_sha'] or not row['media_size'] or row['license'] not in LICENSES:raise MusicError(404,'verified_media_unavailable')
++            origin=normalize_origin(json.loads(row['lyric_origin']) if row['lyric_origin'] else None)
++        return {'reference':reference,'lyricOrigin':origin,'title':row['title']}
++
+     def playback(self, caller_uid, session, reference,refresh=False):
+         """Caller was authenticated/live-bound by the router; only redeemed,
+         backend-verified redistribution media can receive a transient GET URL.
+@@ -406,6 +429,7 @@
+
+         license: str
+         credit: str = Field(min_length=1, max_length=1024)
+         title: str = Field(min_length=1, max_length=120)
++        lyricOrigin: dict | None = None
+ 
+     class Consume(Session):
+         receiptId: str = Field(pattern=r"^[0-9a-f-]{36}$")
+@@ -432,7 +456,7 @@
+
+     def create(payload, request):
+         return run(launcher_identity, request, payload.gameSession,
+             lambda s, uid: s.create(uid, payload.gameSession, payload.requestId,
+-                payload.bytes, payload.sha256, payload.license, payload.credit, payload.title, payload.burnNonce))
++                payload.bytes, payload.sha256, payload.license, payload.credit, payload.title, payload.burnNonce,payload.lyricOrigin))
+ 
+     def complete(job, payload, request):
+         return run(launcher_identity, request, payload.gameSession,
+@@ -445,6 +469,9 @@
+
+     def consume(job, payload, request):
+         return run(server_identity, request, payload.gameSession,
+             lambda s, uid: s.consume(uid, payload.gameSession, job, payload.receiptId))
++
++    def lyrics(payload,request):
++        return run(launcher_identity,request,payload.gameSession,lambda s,uid:s.lyrics(uid,payload.gameSession,payload.reference))
+ 
+     def playback(payload,request):
+         return run(launcher_identity,request,payload.gameSession,
+@@ -454,7 +481,8 @@
+
+         (complete, Session, "/api/launcher/music/uploads/{job}/complete"),
+         (cancel, Session, "/api/launcher/music/uploads/{job}/cancel"),
+         (consume, Consume, "/api/internal/minecraft/music/uploads/{job}/consume"),
+-        (playback, Playback, "/api/launcher/music/playback")):
++        (playback, Playback, "/api/launcher/music/playback"),
++        (lyrics, Playback, "/api/launcher/music/lyrics")):
+         fn.__annotations__ = {"payload": model, "request": Request}
+         router.add_api_route(path, fn, methods=["POST"], include_in_schema=False)
+ 

@@ -1,0 +1,31 @@
+{
+  "production_release": "1.4.39",
+  "manifest_sha256": "afbb8f4d5b07cf2e40490c67e07f00230fda63750bf7c7b5f6c09c7d2e8baff9",
+  "incident": "private_playback_v1 sent to client lacking channel support caused NeoForge packet validation exception; server crashed 2026-10-14 13:01:03 UTC",
+  "recovery": "Owned residual process stopped with normal console CTRL_C after thread/world-lock inspection; original start.bat restarted normally. Recovered PID68440 at13:17; subsequent RCON/tick/health checks passed. No hard kill, world replacement or new backup.",
+  "pending_hotfix": {
+    "status": "PREPARED_AWAITING_USER_HOTFIX_CONFIRMATION",
+    "version": "1.4.40",
+    "sourceCommit": "4775adc9acc5978cde2e041ae968216a17fcfdd7",
+    "productSha256": "ea0e0cc6755a2e9936ea9c0cb39fab14b163bbdb5e9e6e1896aa575b218552c1",
+    "productBytes": 221009,
+    "manifestSha256": "11f8609340ee4a82326eb0945a7382d89606078503535f18d476ff549492d913",
+    "onlyDualEndMusicReplacement": true,
+    "serverMods": 350,
+    "clientFiles": 9257,
+    "unchangedManifestEntries": 9256,
+    "nativeHotfixAccepted": true,
+    "nativeFullMusicAccepted": false,
+    "backendChanged": false,
+    "productionChanged": false,
+    "publicPointerChanged": false,
+    "newBackupCreated": false
+  },
+  "deletion_authority": "Revoked by user; all deletion stopped, including earlier approvals. No new Minecraft instances until explicit space handoff.",
+  "remaining": [
+    "1.4.40 has not been deployed; narrow unsupported-channel native acceptance is not full music acceptance.",
+    "Formal SSO + distant LOD Flight visibility remains unverified.",
+    "Other owners must preserve their unique dirty/decompiled source; this commit does not include their files.",
+    "Restricted-resource development history must not be pushed wholesale; source-only archive branches preserve committed code."
+  ]
+}

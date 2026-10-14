@@ -1,0 +1,2343 @@
+[
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\accept_recovery_smoke.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\accept_recovery_smoke.py",
+    "original_sha256": "569565cca28575bef171ffac3b962f04f34c66f87381238132c8061b50dd41b5",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\accept_recovery_smoke.py",
+    "published_sha256": "69ddd168ea131b9daaef88a7355aabb3a2a230f12d8077a746c5ab5961b5b99b",
+    "bytes": 5674
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\accept_release_smoke.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\accept_release_smoke.py",
+    "original_sha256": "28a3749dac563bbaa04cbd197733f59b7e3b87eaad2326b0e41ad1a5b3fc1e6e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\accept_release_smoke.py",
+    "published_sha256": "85c8a8310cd3b07525ef685896e1f5a35e45d0e68d93b13649d7252af65fac7c",
+    "bytes": 5359
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\accept_visual_final.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\accept_visual_final.py",
+    "original_sha256": "8e27b3b8dbbb5643324f96ded82f7ac0d53d1395781c429f2fcd08be120308c0",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\accept_visual_final.py",
+    "published_sha256": "bd8e8c76dc0b5dd86bb402a55bd9c62c0b04c21f1e3670500d724da5536b885e",
+    "bytes": 6177
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\accept_visual_smoke.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\accept_visual_smoke.py",
+    "original_sha256": "d39890a5400a504c30d4d7306a7a991806c01cf02c010a4e5698c244a0fe4e21",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\accept_visual_smoke.py",
+    "published_sha256": "9643f1c1b14043d462b8a0a910d13723733f4cae69767aba91874898569320ee",
+    "bytes": 5670
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\activate_authorized.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\activate_authorized.py",
+    "original_sha256": "9343e795cec320202ba035c7bfe5e4d59c557d4879b1a723e6132bffeec44ce4",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\activate_authorized.py",
+    "published_sha256": "0ea085051f171cd0a1af919166eb1f74ceaff724d0cadc145a8bc3c7529292c5",
+    "bytes": 2221
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\align_smoke_configs.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\align_smoke_configs.py",
+    "original_sha256": "6972f3f77ce48ebd26a040b84cc0d9589a390089f73432c9ae8d21c2906b9d42",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\align_smoke_configs.py",
+    "published_sha256": "d13552d095c5b0055f06993d312033bfc0dbe114ee8a198f856beeb239207dff",
+    "bytes": 2644
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\audit_cover_public.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\audit_cover_public.py",
+    "original_sha256": "925a4bc209dc88a7de7a615803dcbb36f440f42fef00957f94a0be81d3ded48c",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\audit_cover_public.py",
+    "published_sha256": "9f85572ece13c03ee3608d5aa4f9318e5ce6bfda6e1b6786df095ae9a7c38d4a",
+    "bytes": 2996
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\audit_cover_server.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\audit_cover_server.py",
+    "original_sha256": "e27a90f527d17400081634a892137c7b2e6365434e6beba515a5cb37a57923c5",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\audit_cover_server.py",
+    "published_sha256": "8d654c336ba0c194035e40e924d41a54674f62554c32f54dd99b5aa2be726ccf",
+    "bytes": 1980
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\audit_music.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\audit_music.py",
+    "original_sha256": "3ca94ac4cb4b50b43f4f47a6a8203b253c5be54aeddcc1eb0c24c92d5dcce825",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\audit_music.py",
+    "published_sha256": "7ece595ff0a2807ce5e639551e5510f03d0fd6f603af63673c14569db47be307",
+    "bytes": 2745
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\audit_outbreak_outgoing_paths.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\audit_outbreak_outgoing_paths.py",
+    "original_sha256": "afc7fbf4e330bad7b232c78c9a8bc1f6788b0ae7b4c5e7e53f89bb9a9ee42f22",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\audit_outbreak_outgoing_paths.py",
+    "published_sha256": "00a372174d4face29efb1cf419d0daf515bfeb4afa46922182fb3ced206a1938",
+    "bytes": 1076
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\audit_runtime.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\audit_runtime.py",
+    "original_sha256": "a5342aba3e247c34d3c4cadae460f7003f958e5b96bac6481d7383e16780de89",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\audit_runtime.py",
+    "published_sha256": "8323af36b630f2d4c34e6c3bc9d6a57eb2ed2c764e90bfdacca4714f708ef293",
+    "bytes": 701
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\audit_smoke_server_config.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\audit_smoke_server_config.py",
+    "original_sha256": "1001272ebefbe418c94e5bc821290fac341073c7dcf336203f843d3a8270e63c",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\audit_smoke_server_config.py",
+    "published_sha256": "275311b24cce6c849fed6eb74b4ac9bf4624d85b70e3916262f8dfc1b3b3d745",
+    "bytes": 1254
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\audit_ysm_memory.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\audit_ysm_memory.py",
+    "original_sha256": "39f126c889640e29e672b692f47bda7b4e36de00964cef8543fd2555d8d34105",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\audit_ysm_memory.py",
+    "published_sha256": "d843a91d9c06caf9ad44f0e351bba19aa9edddd5de84c615b61cba62ab8cefcf",
+    "bytes": 2512
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\freeze_next_plan.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\freeze_next_plan.py",
+    "original_sha256": "a4cb60448fb265036eb918b2cc5acae959518758c3099bf7b279787719b476b5",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\freeze_next_plan.py",
+    "published_sha256": "1fdd64b4b8ab504b6f6dc8e7e8d24d9415ae17dd6eee3779ddc325d762476ed8",
+    "bytes": 4153
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\integrate_shop_qa4_freeze.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\integrate_shop_qa4_freeze.py",
+    "original_sha256": "23c6314e06c0901748978cb60fed99e3d6c40869e87e869f70fa0f591469c1d7",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\integrate_shop_qa4_freeze.py",
+    "published_sha256": "886fc55fa905339a31d6cbe07a866d12dbff6382d68c60208cfda0b9abced85e",
+    "bytes": 5154
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\local_mc_linked.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\local_mc_linked.py",
+    "original_sha256": "4ca76bfd9115c6687f47507dc51bc332b3f13b9576daaa3c797746b07c97fc8c",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\local_mc_linked.py",
+    "published_sha256": "c3ed7bcbe4bd142fc0e376da40b25633b588b542616ee7064f1c22b2f9c188b0",
+    "bytes": 4131
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\phase_status.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\phase_status.py",
+    "original_sha256": "cc5fe74cc199a9af701c979c16a00b9f6e8cebda5d6f1f30cb2c81b583f6e705",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\phase_status.py",
+    "published_sha256": "c3fff9b7e6d092a7729e25f40246ddd648284393844db564c5d8d88bf2882ac1",
+    "bytes": 1699
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\prepare_fullpack_smoke.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\prepare_fullpack_smoke.py",
+    "original_sha256": "f86d62765a05005d79a0ce0f5e6a47b5d80db6bdd01ba2eda387dd4ad873efa7",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\prepare_fullpack_smoke.py",
+    "published_sha256": "af494081118298e0fe38c00929a887f284d3b36d898a32374c788c5dbd92bc5a",
+    "bytes": 3659
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\prepare_next_release.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\prepare_next_release.py",
+    "original_sha256": "a3004a6d0a1ec2e779948a43bb855f8a22f8ed775a718876905cff3b2fb17e17",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\prepare_next_release.py",
+    "published_sha256": "eb9a42b4ecabb6207f92c9928aec2d9dd51495b6d79f42c4fa62f09d891f073f",
+    "bytes": 3301
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix.patch",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix.patch",
+    "original_sha256": "8ad8bffe0e567852aed314ad2be15e9d1ae27ab9d4b5772d422827af484557ef",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix.patch",
+    "published_sha256": "c0a72c82d0a4bf3256b98ff7b3d80025efd72833829279daa192c5ed7d4b0d29",
+    "bytes": 1409
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\read_health.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\read_health.py",
+    "original_sha256": "1670c487e8609fc68dddc88fdbd089c0df803842fa9c48c6450002cd3a68eadb",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\read_health.py",
+    "published_sha256": "b16a8f9a869e7f5df19f7d1c0ea917e95ca216bcb01b2343f7e851190c1e55de",
+    "bytes": 744
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\remote_read.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\remote_read.py",
+    "original_sha256": "880be9f70333ac150e4a6830b3526cbfed1bfe260ba3665159a9902a2d7cbd6a",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\remote_read.py",
+    "published_sha256": "b233bb836ab7288289b66a9feec5f3a5aa57054eb0c3b5236e52b9709205f61f",
+    "bytes": 884
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\run_recovery_smoke.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\run_recovery_smoke.py",
+    "original_sha256": "7e38fa9008cfe7f282c422d8111ffc4f1f06eff29ec315447b1babe57f0e2e4b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\run_recovery_smoke.py",
+    "published_sha256": "3df6657d7b1a62b0f59203bfe9833eedd367f0d6ec2be76417862622bf9c1805",
+    "bytes": 3700
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\run_release_smoke.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\run_release_smoke.py",
+    "original_sha256": "c58dc6e74e4e7e80b77d1ec5802fc0ece350f464c1a221df4899bef8abae8785",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\run_release_smoke.py",
+    "published_sha256": "11d63c2322951578369c87f4e3ea1f2edc16c1ae88610655d62f968782c521da",
+    "bytes": 3615
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\run_visual_final.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\run_visual_final.py",
+    "original_sha256": "bbc1cace20a39c379ef752ca3fe7c90c58b352fe47ef0d1d5e9ef00ba2656b86",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\run_visual_final.py",
+    "published_sha256": "332d8a60b2ed3e9aa54e15207d8e94ac581912f6a2cfc2c95f6016c9040f45eb",
+    "bytes": 3700
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\run_visual_smoke.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\run_visual_smoke.py",
+    "original_sha256": "25a9ea591f46d452f7ac26e3df926d8157987d018d906baa91ed81b72778ff15",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\run_visual_smoke.py",
+    "published_sha256": "d2e5bf79f8f8457f00ea87c142a54d51f6abd713bb1f409436092f4a8776cedb",
+    "bytes": 3700
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\setup_combined_qa.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\setup_combined_qa.py",
+    "original_sha256": "04f5168b9a509a8056a4dba20e6b7e98d0080bd14a6066100bbb81ba2e2ec5d7",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\setup_combined_qa.py",
+    "published_sha256": "4f82a3adc128401147987774c64a7255849592936c826b406eee3d47602b61d4",
+    "bytes": 1233
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\verify_background_patch.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\verify_background_patch.py",
+    "original_sha256": "1b862beef9967ab7937ea931980b7f8d7d36190179fc4991581f17434ad674b7",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\verify_background_patch.py",
+    "published_sha256": "471e7c8ff0e65ea92bcf0dbe09f698ecd04a2e053a9a706333491023a9527323",
+    "bytes": 2391
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\verify_live_health.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\verify_live_health.py",
+    "original_sha256": "4124e3eb841ae54ebeab86fc76b242b72e6840f0f6f0566372127d7932d02117",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\verify_live_health.py",
+    "published_sha256": "d9ed4efd474da718314a1d2fe624ed17ab7c786af6442f044986445042b30a8d",
+    "bytes": 1545
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\verify_revision_stage.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\verify_revision_stage.py",
+    "original_sha256": "4f84e3ac01d3ffb21176fe340f6ffa2324cf5d8865cb3965fa176de89c628680",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\verify_revision_stage.py",
+    "published_sha256": "966146bc2b564374a58da8c780074ef1f0fbba1d50fde04f5c83d5f29b6ee547",
+    "bytes": 1239
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\verify_staged.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\verify_staged.py",
+    "original_sha256": "df57ce8430b21e84e10d451aae197a7a3e0ae6007ee1b98b43b573c21569c57b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\verify_staged.py",
+    "published_sha256": "6cc89c9c535ba5c71b9dab4641e3e03c158c410d104f94ebed32de94bc221254",
+    "bytes": 903
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\fetch-missing28.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\fetch-missing28.py",
+    "original_sha256": "cd1fd1aae4a99649bd8369e0edbae4990db931a91a0963b511b9cef903da3cba",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\fetch-missing28.py",
+    "published_sha256": "48d4c0dec6fecc346de3c6af74fec13c65d1a2d14a238662ff8eb81b515b143a",
+    "bytes": 2299
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\preflight.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\preflight.ps1",
+    "original_sha256": "b01ee702395fe62b5a4e6bd1d7eebb6530775402f58a0728c47f6b0451320c94",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\preflight.ps1",
+    "published_sha256": "26fafaf7a6d41e55ded0af0f721ba93d0fed33d24cdc58b392d731b399ac63f9",
+    "bytes": 1965
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\preflight.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\preflight.py",
+    "original_sha256": "8d769800ab6d919d673756754176ad07c4d4343e6fc08d38ba5cbf354c9122f5",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\preflight.py",
+    "published_sha256": "395f15dbb5edc68725fdafd61bd2a9e4de7b2dab9ce3ddf4df8a5de115e113c2",
+    "bytes": 1043
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\remote.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\remote.py",
+    "original_sha256": "225b4e96f07fd81093e5072c81c995c9892e99e4c2140ce10487ff9a52f2ecf5",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\remote.py",
+    "published_sha256": "bdc2ed8334deb574970606ddbee658af8c5951e6509e3779024f4a6d08a53d3c",
+    "bytes": 562
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\terminal-assets.diff",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\terminal-assets.diff",
+    "original_sha256": "77f9db50ef5fa95cbe79ce8e7732014af233038468c2294f92222f7a8d754555",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\terminal-assets.diff",
+    "published_sha256": "c8904c22403c6a03ac904a3ad25b2ebff8f9d95276bd9264cc6ab071204f1fc8",
+    "bytes": 21238
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_audio.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_audio.py",
+    "original_sha256": "01bd14febcd003a3c7da194fec43b2c2dc7cdafc6526ed164cc0db00ea1c2985",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_audio.py",
+    "published_sha256": "83c7e644eb0c5def468e54149037b6c52327c4eaef7905de3f36e05d429ab06e",
+    "bytes": 4267
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_intent_guard.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_intent_guard.py",
+    "original_sha256": "8aeb1b683c13cfee4a7948664dbe629817d7ea286f60ef31bd513b1a46d24e76",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_intent_guard.py",
+    "published_sha256": "52d4fb7ab385ee86d0fb653a22f9b7fc0481d5e8d309a4b20080e1e2f7bc07b4",
+    "bytes": 2367
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_oss_transport.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_oss_transport.py",
+    "original_sha256": "ad8254f24b3a7119bd86baf063330913ceac9c8d30178d7f3f8c42177039fac8",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_oss_transport.py",
+    "published_sha256": "0e69469c38482a3a3170f483bb568ccd3c95b174a71502520cba6b148dff9a32",
+    "bytes": 9699
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_production.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_production.py",
+    "original_sha256": "08586ced7d090e897dd87b71224ff36ddbc63247487dfa7c3a29e7585cab920f",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_production.py",
+    "published_sha256": "e1b027ddb5ada2bcb09c7af2bfacf81e9bab6c68893b7de188ccb3539bcf1225",
+    "bytes": 3583
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_production_entry.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_production_entry.py",
+    "original_sha256": "586e99d82c7462df6b055dacfb777f99c9c84b54aae1ca843084a6f6fd5aebfc",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_production_entry.py",
+    "published_sha256": "4c8ed4dac1eef3d0ca3bc5cd552276095e3218e84e47071262e4a5f3134efefe",
+    "bytes": 395
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_production_storage.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_production_storage.py",
+    "original_sha256": "d788e78ec02c55b9470741ede5e927b75b133ab15046951b3022144e5944abf1",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_production_storage.py",
+    "published_sha256": "5d7b79984579b4f390d6447958075962b6876b0eff2a887d2c1a34fa3ec0792b",
+    "bytes": 9735
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_receipt.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_receipt.py",
+    "original_sha256": "45aeb4d4a706d6c21bdbc41531b7cbdb7715d83b15097e8e9c4d8d41baabe645",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_receipt.py",
+    "published_sha256": "3b1db303c45f4e8bb952ee284a59111eaf29024f96776babef6df569b21d4d43",
+    "bytes": 2107
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_runtime.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_runtime.py",
+    "original_sha256": "fe6b744d986fcd864a95f2f0bad44485b05a4c16045483dcb34e6bf9e7db4388",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_runtime.py",
+    "published_sha256": "1022e7f4967477880aa09cc57bfcea054832eef999634736737d5f490c39bb06",
+    "bytes": 1061
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_upload.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_upload.py",
+    "original_sha256": "261bf03582045cd1e5687a0b0bf0b968d454702807087ce4d8905a7ed29c748b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_upload.py",
+    "published_sha256": "805473bc00bb55d1fe37d3f0793243fb7ec06c2d0ad807e7654464ec3e7e45bd",
+    "bytes": 26485
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_upload_identity.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_upload_identity.py",
+    "original_sha256": "9ee7fdd7ca8753b6c75c30fd1cba9de83d81ba2024f549b1a6f0abcedebba4dc",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_upload_identity.py",
+    "published_sha256": "c34e101b088bac13e2fd2ab8c486641479d904ce7433fbf8414b4be92820c209",
+    "bytes": 2082
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_workload_identity.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_workload_identity.py",
+    "original_sha256": "50c2411da6a506d9d3acd59304539fc3b09abb71c9a148d69f1e1e7f1935c484",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\frozen\\music\\backend-delta\\app\\music_workload_identity.py",
+    "published_sha256": "ed30646583141a7ca8e1ccaa96f01f2870083a6f7a8a0aef16987d7350e11e0e",
+    "bytes": 7787
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\outbreak20-test-inputs\\verify-isolated-inputs.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\joint-release-preparation-20261013\\outbreak20-test-inputs\\verify-isolated-inputs.py",
+    "original_sha256": "1d759d2b51e70a02cf9554e794c633f4b8fddac2a70a42572984e0fa4d8eb51b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\joint-release-preparation-20261013\\outbreak20-test-inputs\\verify-isolated-inputs.py",
+    "published_sha256": "f5b3f227e9f661593f122ebb5917998d66235a1aecf7d8e64735e1400eea360b",
+    "bytes": 1284
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\joint-release-preparation-20261013\\outbreak20-test-inputs-v2-real-source\\verify-isolated-inputs.py",
+    "original_sha256": "1d759d2b51e70a02cf9554e794c633f4b8fddac2a70a42572984e0fa4d8eb51b",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_control.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_control.py",
+    "original_sha256": "053b68f670db5e631d0f801b7007579cdffbd7b26b1437b01a7a02ba8078b7a4",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_control.py",
+    "published_sha256": "db522c51784fd7042b60ec9eca34cece9544796956551bc527a024cc713fa3e3",
+    "bytes": 1144
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_cutting_and_seat.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_cutting_and_seat.py",
+    "original_sha256": "aff43d87656ac8230f6b4091fc6c86ab904ef2e2398368306450361a7e0f4483",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_cutting_and_seat.py",
+    "published_sha256": "80c3f290d9bd0949f128ba86d615c5ddb16fa90b6facf0ff63bdc0337891aaaa",
+    "bytes": 1037
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_final_counts.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_final_counts.py",
+    "original_sha256": "93d1b74f73556d3caef15078ac5a8104fbb90588332d377b9cec6df35733a488",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_final_counts.py",
+    "published_sha256": "d561fc05d7461925035f5f4ed7da40fb43e1c4c5da02929cfdbef5590e1d10b3",
+    "bytes": 255
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_followup.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_followup.py",
+    "original_sha256": "068f599e06a1eb349d189600c80684e1d7ab2368851baa0a4f649b75dac69bd1",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_followup.py",
+    "published_sha256": "7e799bf384bac5053b06e6b2abf66ed93579807ac939c3b0497b55cdcb9388e1",
+    "bytes": 816
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_hopper_bearing.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_hopper_bearing.py",
+    "original_sha256": "6dd5419a07e8437cce3b22d01c58e2b5cc17f7c2c2c8777e037e41211478a363",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_hopper_bearing.py",
+    "published_sha256": "0092d7a6a2840ad9f699bf7bd385446a9afe9578163a91b436bcb92f408c04fb",
+    "bytes": 1201
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_probe.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_probe.py",
+    "original_sha256": "7f3464aa3801340976be25fb537a7925e893f4fd210daf601ace9312bfb3632e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_probe.py",
+    "published_sha256": "6945e789253ff9f7617450d251ef31719d4f30f9d86d2fa85e13dd4afac0be59",
+    "bytes": 2458
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_processing.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_processing.py",
+    "original_sha256": "5c030a48b25ca70de096eaa9d0fdbb3bb14ce3e0d27ca86fbdf040df3d695ece",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_processing.py",
+    "published_sha256": "0f6a8e1ad215eaaf4381bed5d8479a933addb0e876eb8bd88d50b2a7a25df453",
+    "bytes": 496
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_recipe_control.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_recipe_control.py",
+    "original_sha256": "703b934ce8ab203a949ff69f9e8d70a51451049ef6f4bba3407e5d0c5cf0bf45",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_recipe_control.py",
+    "published_sha256": "93855c0785a64b8992254513abe35982946ab682ee193e4b60b183c3092f1b6f",
+    "bytes": 790
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_sable_motion.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_sable_motion.py",
+    "original_sha256": "ff5a0aa312773da182c8859191c387d2902258b3c1a47f211c522d6adb0058a8",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_sable_motion.py",
+    "published_sha256": "1bc23ec39422645976e3349c8e9352360bcf252d20706a32ab0df52608a2c7bb",
+    "bytes": 316
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_sable_smoke.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_sable_smoke.py",
+    "original_sha256": "d565ef19a46e4e4fb38afe2089dedec25edbacfcc5d06825db7cfb337673994b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_sable_smoke.py",
+    "published_sha256": "abb6a69812a56df7a94bcccfcb5774b57ee917af14028ea45e0f070b97d46f69",
+    "bytes": 676
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_smart_output.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_smart_output.py",
+    "original_sha256": "ed8a8c6ab697460d07f905978cfbdb539d5cf2547b886b6fdba4bc121ecb3c22",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_smart_output.py",
+    "published_sha256": "6301c4c27c5deeb307ded02ce208d790a231940c3eadd7444df86c643cbe18d2",
+    "bytes": 726
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_soup.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_soup.py",
+    "original_sha256": "7d813571a868a51e4a1c62ccb0aa162f1552556b48cbec8a116cb4d544147571",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_soup.py",
+    "published_sha256": "7f28d02745ea64dd12f7fe4a871aa7c6d65f0781011d7fec3aa23d2c495a9ffd",
+    "bytes": 1329
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_soup_diagnostic.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_soup_diagnostic.py",
+    "original_sha256": "bf0252cf628de0511e755925fc1dd49ec2d6aeac69e8d7147cc0d9fff5a8042e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_soup_diagnostic.py",
+    "published_sha256": "93ff3751f660845931e988897b07d379b19a148555600a58b03fa026763c4614",
+    "bytes": 572
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_soup_fueled.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_soup_fueled.py",
+    "original_sha256": "5cb72da507685628a328d16f20b5596860dc4b4f18af2c7675fa48db3741c6a7",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_soup_fueled.py",
+    "published_sha256": "b8b0a525f7cd580e48467223f0ac7edf18a0798361496520e845ccf1515be9a6",
+    "bytes": 689
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_sprinkler.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_sprinkler.py",
+    "original_sha256": "e0ba84888f61cc556c60840da4b65a567e53bb1801672d30c1cca491136e1389",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_sprinkler.py",
+    "published_sha256": "f87adf844ef969a7c3b9f076601584e87d8ab30a8db385b956b5d5486e6b3873",
+    "bytes": 1246
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\native_water_followup.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\native_water_followup.py",
+    "original_sha256": "f3607ce7b0cb33e2c434ae4d3b989458006ba9cd53d48541664d18067534fb9a",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\native_water_followup.py",
+    "published_sha256": "e7c204e16500e55ad72b1494f20109e1cddaeb3f14f30ffd9dd0919787955118",
+    "bytes": 1098
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\reload_control.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\reload_control.py",
+    "original_sha256": "87a43cd2685498c55691405d8fb29136e2016dfe64d687cbd2d59c9bf2eb6079",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\reload_control.py",
+    "published_sha256": "7a580bca587969993e1701a2f8dc10d8a6e9cc1521df9e821668a3f60c7eabeb",
+    "bytes": 1151
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\reload_probe.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\reload_probe.py",
+    "original_sha256": "179184196e67f0afbe82ff9faaee116abeedeacc80e383160e6684843f3e50e7",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\reload_probe.py",
+    "published_sha256": "b1d7b929141e028f4c65c81c3a0694da555c9c5607821397fdaf034d9836edca",
+    "bytes": 1087
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\respawn_reload.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\respawn_reload.py",
+    "original_sha256": "b10f002fe5ba0ea6bb3f4c99054604927b78623b13d72c69d606990b82a2eea3",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\respawn_reload.py",
+    "published_sha256": "2afc835f78b3aa2b3ee908e69abb9325e32b57ebb282e574c92a707c750b6afd",
+    "bytes": 598
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\run_create_native.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\run_create_native.py",
+    "original_sha256": "cd485ea1a8d2ec87c4215052e26790cdf006cbcf7715e372f3dd18479ff4394c",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\run_create_native.py",
+    "published_sha256": "3692ada637a2ae76e2dcb62c6f5071b974f67b582d6bbaba55f1b8992b5fc1a7",
+    "bytes": 7121
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\run_create_reload.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\run_create_reload.py",
+    "original_sha256": "bc0202962c2a02f4d59d5ffb96cd52779a86123fd790fe832d4202c0373b65d3",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\run_create_reload.py",
+    "published_sha256": "621b7f41e0b1c6452df9af3ef00de1fa072d007aa894f7f187dce54473652d4b",
+    "bytes": 7269
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\stop_create.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\stop_create.py",
+    "original_sha256": "1d59de4cfbf2644dd90a5abf0fd8635cd96f915378dfb715f87e72bce0b16a3c",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\stop_create.py",
+    "published_sha256": "c468c1aa768c5ecec9e8ef1c7ef32d4fbfd8d9440304ce56dfd7fccd04759b06",
+    "bytes": 484
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\stop_reload.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\stop_reload.py",
+    "original_sha256": "8953fe68bb298b8332657c0ee90c81506a8277de613263f9af89945b7ac300fc",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\stop_reload.py",
+    "published_sha256": "d66dbc8630c1cd8d3b2a87e77b85ee90966dc2c780e477fdae32578ce427e75a",
+    "bytes": 530
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\remaining-preparation\\CreateCompatObserver.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\remaining-preparation\\CreateCompatObserver.java",
+    "original_sha256": "b71dd1f38108b3157638f2a07b139451c178de5b600bfc31cae3157d915def9e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\remaining-preparation\\CreateCompatObserver.java",
+    "published_sha256": "36507e40221bb3da0a637c03006176741e0069568171e1ac831dde3ca589b482",
+    "bytes": 5696
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\create-native\\remaining-preparation\\prepare_native_pads.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\create-native\\remaining-preparation\\prepare_native_pads.py",
+    "original_sha256": "443a83849e2f8e962d50dd139dcd733dfa53cea88316dd3c9e9e7397d11098cc",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\create-native\\remaining-preparation\\prepare_native_pads.py",
+    "published_sha256": "dbf1474d334102069646a6718328aa8d3c2c450c6a2f406016598fc2824047ad",
+    "bytes": 2397
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\layout2-native\\check_layout2.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\layout2-native\\check_layout2.py",
+    "original_sha256": "fab45b4dbb9b81bf1485907fecd1fa5e4c0789d5c6fd4aa42f7d8ed3d94fdffe",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\layout2-native\\check_layout2.py",
+    "published_sha256": "b51e352f6ff8f442b75c079e6548f2bb7b0528e95844b4702896559df272a69c",
+    "bytes": 3461
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\layout2-native\\check_media.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\layout2-native\\check_media.py",
+    "original_sha256": "5d52873930981ed6446c11ddbf7a14cb575e3fcaff7cf85fa7828c041823d30f",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\layout2-native\\check_media.py",
+    "published_sha256": "d9f0d9ff7a17199eb460ce38055124479056d6b60679f0afd7206963d8c04e9c",
+    "bytes": 2441
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\layout2-native\\run_layout2.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\layout2-native\\run_layout2.py",
+    "original_sha256": "618006a4a65fb289ebf55e2e5098791e887d8a820d756f68e5de34ef1b5078ff",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\layout2-native\\run_layout2.py",
+    "published_sha256": "bbeb602dc5810e0eaa5fac6e8e2ebf0e6ccdffb1f8a9f0bc3978d2cc35c93bdb",
+    "bytes": 7107
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\layout2-native\\stop_layout2.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\layout2-native\\stop_layout2.py",
+    "original_sha256": "3a3e8ff200500505a62fd44b73506469c58257f3d1ad009243c09ee1c585228c",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\layout2-native\\stop_layout2.py",
+    "published_sha256": "c4d4a4125982a3f0736848a686fbfc2ca935ab63e0804bfda2f0c587096da57a",
+    "bytes": 508
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\outbreak21-test-inputs\\verify-isolated-inputs.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-batch-after1438\\outbreak21-test-inputs\\verify-isolated-inputs.py",
+    "original_sha256": "6652f329a7869eed60fc54db52a3878aca0af7bff02b55f70d0e973a7a9671c8",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-batch-after1438\\outbreak21-test-inputs\\verify-isolated-inputs.py",
+    "published_sha256": "0365de6a22d744eb45642155f1b71109d3a02b2e8503c81006b3b5844bb05c32",
+    "bytes": 1594
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-batch-after1438\\outbreak22-test-inputs\\verify-isolated-inputs.py",
+    "original_sha256": "6652f329a7869eed60fc54db52a3878aca0af7bff02b55f70d0e973a7a9671c8",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\prepare_tonight_plan.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\prepare_tonight_plan.py",
+    "original_sha256": "71d5f4e7b90c626dd20b913d11a9db71d0e4c2a5c42361f6aac3bd86011287c8",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\prepare_tonight_plan.py",
+    "published_sha256": "df383ad76f34f7cdb076fab66a6d50434faf51b54c6d240105ad1d9198c5ed7d",
+    "bytes": 4565
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\fullpack-smoke\\check_window_clearance.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\fullpack-smoke\\check_window_clearance.ps1",
+    "original_sha256": "82d891f0ce8553f46e094b5c0f04ada9390a3ffc55e8b7a041aa89977c93a1ba",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\fullpack-smoke\\check_window_clearance.ps1",
+    "published_sha256": "b71215b469d1a48753699104f1fece03239642e9da444159d716d0af4b4a4998",
+    "bytes": 1492
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\fullpack-smoke\\combined_acceptance.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\fullpack-smoke\\combined_acceptance.py",
+    "original_sha256": "5daa6b4caccefe55ddb99d98ed8f222b45d75d6c17650fcc286508709119525e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\fullpack-smoke\\combined_acceptance.py",
+    "published_sha256": "1474ec89003a3c3ce76714ed9ad3b5244fe47a02475310348946b31ae18c951b",
+    "bytes": 11253
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\fullpack-smoke\\default12_acceptance.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\fullpack-smoke\\default12_acceptance.py",
+    "original_sha256": "26f7b876835c6de218a8e26c07ef20232d9e2fa24ac1bb85445a49a10a6cba26",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\fullpack-smoke\\default12_acceptance.py",
+    "published_sha256": "20f69272032707abb2b3885666a3c3ba3c4308d1ecdf2eb16b469b30e7bf949b",
+    "bytes": 1686
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\fullpack-smoke\\finalize_handoff.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\fullpack-smoke\\finalize_handoff.py",
+    "original_sha256": "674415c59333a683f5f19b6a08f693f7e2091e6d53eee4b8f22ca55307edc5ee",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\fullpack-smoke\\finalize_handoff.py",
+    "published_sha256": "553ca5588856620f20aa4315af2cb511bac4279837315b66ab72055b3053fa43",
+    "bytes": 5352
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\fullpack-smoke\\run_when_window_released.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\fullpack-smoke\\run_when_window_released.py",
+    "original_sha256": "bb0ed8b2a883b2abf0a73d25e21cee56bf751fc7a1fe592368d32cc2675afb51",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\fullpack-smoke\\run_when_window_released.py",
+    "published_sha256": "87f6561f00f0e062e80a570a9660a79f779c61e382f08992828f3b5f7db85e10",
+    "bytes": 5083
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\fullpack-smoke\\sample_default12_memory.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\fullpack-smoke\\sample_default12_memory.py",
+    "original_sha256": "2c22efcfc7ad75780e0704c915c12cbd557a58b402c93a9c87a4e67aa61edb80",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\fullpack-smoke\\sample_default12_memory.py",
+    "published_sha256": "f5b7e3455327f674d9401a02e9f0c175b1a47c4ff3918175a6d6fa8d24c6e919",
+    "bytes": 1034
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\fullpack-smoke\\summarize_default12.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\fullpack-smoke\\summarize_default12.py",
+    "original_sha256": "811467a346c95bf9fcbf0b5bac4741f3311bea80540931a57d141e3ecd33cb01",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\fullpack-smoke\\summarize_default12.py",
+    "published_sha256": "e91ba0f1d242c36fbd6f067499a85c81386bbed868e346b528206000b41340ff",
+    "bytes": 2058
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\fullpack-smoke\\verify_shop_pixels.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\fullpack-smoke\\verify_shop_pixels.py",
+    "original_sha256": "5711189b29f2bb5c8fe263602e3f38becc4b6b36401d01976c830111f7d07a9f",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\fullpack-smoke\\verify_shop_pixels.py",
+    "published_sha256": "4d2d7b935fe89b1372c074554752521b176acfe4bcd48a16194c8a5154f9d77e",
+    "bytes": 1915
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\fullpack-smoke\\qa-project\\scripts\\local_mc_debug.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\fullpack-smoke\\qa-project\\scripts\\local_mc_debug.py",
+    "original_sha256": "11afa7f0b74e6226c1a765ff0f97ec13a67f7f2bd8c349fd1b0691a35ee6154b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\fullpack-smoke\\qa-project\\scripts\\local_mc_debug.py",
+    "published_sha256": "3c71ddea47defee2a2186d5e390ce6a95c6c07f48141dc4044cb9f10429c35cc",
+    "bytes": 30284
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\fullpack-smoke\\qa-project\\scripts\\local_mc_runtime.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\fullpack-smoke\\qa-project\\scripts\\local_mc_runtime.py",
+    "original_sha256": "400dbd4e249915e2558547f444db45422b3430b0744e92299553c5297cd7b105",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\fullpack-smoke\\qa-project\\scripts\\local_mc_runtime.py",
+    "published_sha256": "66014f5a086cc592680325cd98391d75357ef4187765680903493e55a4b8b1c3",
+    "bytes": 14505
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\next-release-20261012\\zombie-fifth-candidate\\run-five-module-native.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\next-release-20261012\\zombie-fifth-candidate\\run-five-module-native.py",
+    "original_sha256": "3864bfc20dec23b9befd908cc1e02effa9240a5ac057ab34e64ebdb2a4b309e3",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\next-release-20261012\\zombie-fifth-candidate\\run-five-module-native.py",
+    "published_sha256": "62b7576d24b5b11e76ad48c338edbabf9797d5c8260ce1c6b760dd5725c13a31",
+    "bytes": 21626
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\build.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\build.py",
+    "original_sha256": "d56ff1e32b9d3fc93bc262a7ed54fb209b70044f2d2b85866d4d3a42e6b12bfd",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\build.py",
+    "published_sha256": "330c40de465aaa7c2e6724b132905246acc523ae58090acc5c2da19dbd33bcf1",
+    "bytes": 4106
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\docs\\horse-points-backend-review.patch",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\docs\\horse-points-backend-review.patch",
+    "original_sha256": "7ec4ba51e2d19c044c698aab0a420788dcf4c32ca1b2230fb340b7d35521ac22",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\docs\\horse-points-backend-review.patch",
+    "published_sha256": "7625c3ebf5ade1e6a88f8f5d371a1374fad97a089fcfbc670b19e8cd80d30167",
+    "bytes": 2591
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\docs\\horse-trading-backend-mount.patch",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\docs\\horse-trading-backend-mount.patch",
+    "original_sha256": "da6f88546edb93dbd9c4c1eb3b1008287d7f35ba88c9c12af9bbc591da04ae49",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\docs\\horse-trading-backend-mount.patch",
+    "published_sha256": "3d0399a82730e10bb77cb255a66a1415605fbf895ce35bd710a5b478a14cc2fb",
+    "bytes": 771
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\horse\\MuxiHorseRacing.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\horse\\MuxiHorseRacing.java",
+    "original_sha256": "1413dca27aebd99ffca4a71c16e5d09e19b58374dda770981a75c26e958bc925",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\horse\\MuxiHorseRacing.java",
+    "published_sha256": "93ecdaf8405c453d16aacd5dc62df6849cdf59bfcf291d6f02cc9dd506367c87",
+    "bytes": 344
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\EntryReadyNetwork.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\EntryReadyNetwork.java",
+    "original_sha256": "c0b83e182edf5d7d4dd394ab185fc8c50ac558ffbfe2db8ad0cf017aae901c40",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\EntryReadyNetwork.java",
+    "published_sha256": "9d04059eec299be1f37781fabb122d588a0ae93d97b452d5a5a7a2ab5c1622a4",
+    "bytes": 3838
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseArenaPool.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseArenaPool.java",
+    "original_sha256": "bbac06a0ff2a6343e2cb451beaacd5959c81e95923fc4627e8e5edca742b1be2",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseArenaPool.java",
+    "published_sha256": "ac26c62a8091b96cfbab18a727eb4fc8c9ec0643318850968ede90582c02767b",
+    "bytes": 16173
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseAssetLease.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseAssetLease.java",
+    "original_sha256": "9f25b04d8dc6b3b50baa60df5ae39cc746f450491062fe387ce4402fecbf3b58",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseAssetLease.java",
+    "published_sha256": "378d3109b4062c642177e31ed873f3fc2f4502423ef1bb89effbc068a1985c90",
+    "bytes": 9294
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseCourse.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseCourse.java",
+    "original_sha256": "336496e3d50982d82263ce2aaac90f8cd2da0ae75fd1a620d41e27436af9f924",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseCourse.java",
+    "published_sha256": "1f74c8e3f774315057cb3561eeb14f5a0333409b1aee4adfccbd4051a2ca1c07",
+    "bytes": 8354
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseCourses.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseCourses.java",
+    "original_sha256": "725ef3c4fbbf794afc0a55886351ad4caf239751a496d1195e5c234811421ce6",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseCourses.java",
+    "published_sha256": "9b3cf916f321d84e7e3cdee8fc52274cb4ebe737aeba746c5118b0f5cb0d487d",
+    "bytes": 1584
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseGeometry.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseGeometry.java",
+    "original_sha256": "5ead8696639149c1ad9786bfadb18d3075c2bb4bfee3f029e7f13c3438a42eb7",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseGeometry.java",
+    "published_sha256": "c704d5ca8cc5f5fd3be47e8c2a3af0fb7c874c05e5b8c1580c983638a8147650",
+    "bytes": 535
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseHistory.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseHistory.java",
+    "original_sha256": "a9c2cbcce479afa372e0edd3ebeb3874f003110ed361f89fb42dbe4b61864b30",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseHistory.java",
+    "published_sha256": "237039670ecdb37b4969a65f2f70373cc9b9889a3a669166281f8091c1ef9e27",
+    "bytes": 2510
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseIdentity.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseIdentity.java",
+    "original_sha256": "d7c0ed2da0027d3dc874634b57fc5bd57c32e7a34cca940a3f9a65fea39b866f",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseIdentity.java",
+    "published_sha256": "34470f091b72ec7504075f3e83a52d622739227d89176e137e5feb05204f8560",
+    "bytes": 954
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseMarket.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseMarket.java",
+    "original_sha256": "84a077df72c19541c81bd2a34905744bb3741561902929992e61cb3262ed8e9c",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseMarket.java",
+    "published_sha256": "0c962f4f40458ace1765877e3e6c640f58546810d113a78abca3d7bc049ed3a2",
+    "bytes": 3399
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseMarketSandbox.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseMarketSandbox.java",
+    "original_sha256": "947dd51d82c0a237fc2fa087d03184052405f4c33fe56ec9da11c93c16ffb728",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseMarketSandbox.java",
+    "published_sha256": "ad4d6cf56816d65510bc5ff03ca242f3bba3e821d10b771d1a268fd562a34503",
+    "bytes": 8209
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseMoveControl.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseMoveControl.java",
+    "original_sha256": "7abd97964bc226edaec1134e797d2fb263ea1f60056fed7e65549279ac26159b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseMoveControl.java",
+    "published_sha256": "c0a4fc6bc332ea6c07e0e0058892a5a3958b195ca9186da5f32595d7cb5996a0",
+    "bytes": 632
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorsePace.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorsePace.java",
+    "original_sha256": "36f812e5a8fd932768856dc0004ca1a743ba8ee921a602c57a9e2608dfa31a29",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorsePace.java",
+    "published_sha256": "013344f2f770b720c90e02a88caf147c85710e038f384c56674974a3586f9e01",
+    "bytes": 2242
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorsePilot.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorsePilot.java",
+    "original_sha256": "28bdd62bf1014aa23de8824c053a564e7b636e69758e7856ca76b58c3d4f7772",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorsePilot.java",
+    "published_sha256": "796480ec92c084a5bc9cba8f4811bc55660bae0ca0ce69760ef86effdf8cff74",
+    "bytes": 12214
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseRaceGrid.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseRaceGrid.java",
+    "original_sha256": "6e8f2048c3f949dff4edb7223988e5b294868cdb49e369e15707e1b692808ab2",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseRaceGrid.java",
+    "published_sha256": "24d817537cf234a75c9ccb0b692badfd446a63eade75478414d40f0eae1dd412",
+    "bytes": 806
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseRacing.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseRacing.java",
+    "original_sha256": "9a8d8d35ab67371f8d32266e7f3499273ce5a7b33e209331ff7cafb28a581e81",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseRacing.java",
+    "published_sha256": "ddc2d404ca6fdd24446040243c261212fde5a72ff26ef380758587ed8baca406",
+    "bytes": 5157
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseReturn.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseReturn.java",
+    "original_sha256": "629e7e42b8962600878e61262deb14becfbee37acd34464c5b13770467f89585",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseReturn.java",
+    "published_sha256": "9501039cc0b0cddf4fd400b8849fa44227d1e69e6d2ad2fa9cf3c26a78c4a265",
+    "bytes": 3920
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseRooms.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseRooms.java",
+    "original_sha256": "7693be87b2546bb0e5aa3a7c3acd28a2173a0c9aa3962c382b1fe762d7761f7d",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseRooms.java",
+    "published_sha256": "373051a1b4b6057d12bc730226a03f0c083ac2a4fa0a23119727ae5da5f83eb9",
+    "bytes": 36680
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseScores.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseScores.java",
+    "original_sha256": "4ddde8e9ae52c440765b12a2c24692cccff84f33c8ee1fc12ff0359ee2391e34",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseScores.java",
+    "published_sha256": "bb94768d4e76f2ee80d97b95e724aee3e7efbc0ed7be47204a884caf38268666",
+    "bytes": 1733
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseStadium.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseStadium.java",
+    "original_sha256": "b2456d64373537dc2f2a3167eabdd18bcd59fcb10f0b3def82c41f0dc0f95c3f",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseStadium.java",
+    "published_sha256": "5415e9619fa1548922b99634cb0e13f7c4ffaba5ce1fc114fb11f8efb99e5626",
+    "bytes": 13786
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseTradeTransport.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseTradeTransport.java",
+    "original_sha256": "7b85836bffe25a4cf3c9d20a3806abb254c621218e050fe97f845872ec1c9eae",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseTradeTransport.java",
+    "published_sha256": "d9b788d66fd90dcd8d6a43d9f6000122c870accc7f4f2824c2b9374af75f2a45",
+    "bytes": 2673
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseTrading.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseTrading.java",
+    "original_sha256": "3ecf3870823945dcc775653dcdf245e4a2377c2d3bb830b086f39c5af57fd39e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\HorseTrading.java",
+    "published_sha256": "4b15a93aa82b5f6dc6da89b818e37f5596aa4ed4c33e25f312e13b85c96959b8",
+    "bytes": 42284
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\MaidRider.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\MaidRider.java",
+    "original_sha256": "bae84ca4f41ba412467b5618adec389dcecf8354b0ce16cd8aa490be098d403d",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\MaidRider.java",
+    "published_sha256": "44f8b1d07e31e7fc70eb5af5c884357f7e51d6639c9ecb33562d356171d54452",
+    "bytes": 1956
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\UmamusumeCatalog.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\UmamusumeCatalog.java",
+    "original_sha256": "7da649141f96e65f92e6d7d8a3923f01594d1004f38e293ead13af7a80612b71",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\UmamusumeCatalog.java",
+    "published_sha256": "d52244cf6d5d22012ac39c60c8b7a51b06dc919850d7c81696339eca87e74e80",
+    "bytes": 3975
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\UmamusumeCompanion.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\UmamusumeCompanion.java",
+    "original_sha256": "634a301557b124e98e71c6203dd611fd0d2cb96c4793b6672ca289eda93abda8",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\UmamusumeCompanion.java",
+    "published_sha256": "cc49f2df568c91a377f335af210278a2d9cc9fbae0aeda99c3ca272801cf4195",
+    "bytes": 5418
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\mixin\\HorseControlAccess.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\mixin\\HorseControlAccess.java",
+    "original_sha256": "5c4bbc1e24029affcc3005e33a419f11f668cb7f5357f089e175ca59afa6b349",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\mixin\\HorseControlAccess.java",
+    "published_sha256": "bb4edc300966c96576bd337578312470a9c6e1dbb2d8c1f64889ec2619b72c01",
+    "bytes": 443
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\mixin\\HorseDoesItTickMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\mixin\\HorseDoesItTickMixin.java",
+    "original_sha256": "67c2f29129db77f4b638bacffbda0fb64bed9f87fd5189fce7a116ace2cce7ef",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\mixin\\HorseDoesItTickMixin.java",
+    "published_sha256": "5b1f3bb6ff03457a494a7dee8d0b8321de0e54658bff7c60a2ff004cb8a95d9a",
+    "bytes": 782
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\mixin\\HorseRiderSeatMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\mixin\\HorseRiderSeatMixin.java",
+    "original_sha256": "8734613d13a959ab8034fe1fc0dbedbc58ec57a4868323cd65b7ee0a6658c98b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\src\\main\\java\\net\\muxigame\\minigames\\horse\\mixin\\HorseRiderSeatMixin.java",
+    "published_sha256": "fac62e8983618bab19d19b398f74770c806d6e90620c00b6272689692f0aee85",
+    "bytes": 1139
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-client\\run_client.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-client\\run_client.py",
+    "original_sha256": "05183d450fd6510a2a739257d09fd8cdafa33957af593d4c099913645e67bd50",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-client\\run_client.py",
+    "published_sha256": "a27f12380486307d726625ebe79de65f8c67e2108c805530b180338594a04ef4",
+    "bytes": 15099
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\HorseCefQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\HorseCefQA.java",
+    "original_sha256": "1e837a7a2e1b55fae7457c56de01ad37b148fef6d38ec66f44b894d91e6bdc38",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\HorseCefQA.java",
+    "published_sha256": "92f65ad1bbfb33d44eaf7250348916ba048b5cb88d269683981bced2802bbb75",
+    "bytes": 6464
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\HorseClientQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\HorseClientQA.java",
+    "original_sha256": "ce77ab762089a85c7c5cc928da3b660820ed82484dbacbc3d11695f852217178",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\HorseClientQA.java",
+    "published_sha256": "6ef929484de4e46fb9d806cb945dcfadae7f5d406ed0ff1552d8447d7cf3f25f",
+    "bytes": 12851
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\HorseStadiumClientQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\HorseStadiumClientQA.java",
+    "original_sha256": "b7192b01c44167f9ac12c695147cdc4138b6a9ba8d0c311d83b49e1122a53d3d",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\HorseStadiumClientQA.java",
+    "published_sha256": "9f56125fbfd3f4d6c6acf2e91f8ceb781af9061da48f49b3bf3e1096cfe2137b",
+    "bytes": 18985
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\HiddenWindowMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\HiddenWindowMixin.java",
+    "original_sha256": "4ef6eb46d79b70cb375ae39a486418cf282a4b26d37e116ca1520650de683d85",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\HiddenWindowMixin.java",
+    "published_sha256": "0c5ef9ebc122155aac385f427f00f3ee8014ce8e05ce6c01375daca8b4528f80",
+    "bytes": 1066
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\MaidRenderProbeMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\MaidRenderProbeMixin.java",
+    "original_sha256": "5aeb05d4c2570c791680d6c2edec02164058140ca9700dbda916eceba726c1c1",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\MaidRenderProbeMixin.java",
+    "published_sha256": "c6fbe195b8fabf9d6644955ae8bd6d9d49b67e073706a21337ebef1a13627b49",
+    "bytes": 1260
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\OfflineMcefMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\OfflineMcefMixin.java",
+    "original_sha256": "1eba5a35ea357a1a5b0835ad940aa35d0b2eba66d8c8d33ce7ab7056852c027f",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\OfflineMcefMixin.java",
+    "published_sha256": "dd5679b695fe65bfc2e921fdb36fb5281f2f52208e4d67874cfe6bbf0ecf82c8",
+    "bytes": 562
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\SkipGlxCpuProbeMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\SkipGlxCpuProbeMixin.java",
+    "original_sha256": "731548484095fcf87ae1e7f547bb452e906a41222491bdf6ead77179eb684479",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\SkipGlxCpuProbeMixin.java",
+    "published_sha256": "f311bdcd3f80815869c1b9444124f8556e81062e7f3b323702461771e7ffef74",
+    "bytes": 862
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\SkipHardwareProbeMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\SkipHardwareProbeMixin.java",
+    "original_sha256": "201391d3bd427744f544edeb918d0037dbd00105a9bd6093b8b022d59bb374e3",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-client\\java\\net\\muxigame\\minigames\\horseclientqa\\mixin\\SkipHardwareProbeMixin.java",
+    "published_sha256": "9add71686e78bf1f60543f5f6c6888eac3002e373017a832187c9680cbb38947",
+    "bytes": 649
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\HorseArenaReuseQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\HorseArenaReuseQA.java",
+    "original_sha256": "c511bdc633dc0ec40df88bfb3f590569d565b8aafe196afbd41ab7a1d5d7646f",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\HorseArenaReuseQA.java",
+    "published_sha256": "f6fb044bf4ac7def60865368e5c9fea443f8d050bfda15bd74501711da53a833",
+    "bytes": 15111
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\HorseAssetQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\HorseAssetQA.java",
+    "original_sha256": "d91124ba010cb8617569e702839ee8a98b1cf4d9cb63d2671a20206e16d8255f",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\HorseAssetQA.java",
+    "published_sha256": "211221ddd32a49969da798aa891cef0deaf97e8a9256c82c0e282af9bfda197b",
+    "bytes": 7899
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\HorseCourseQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\HorseCourseQA.java",
+    "original_sha256": "713286819923efcf1a9f03dd7fa750835f772f50a20a817d5c44c78fbe892840",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\HorseCourseQA.java",
+    "published_sha256": "42b751ccc23d2ce86948e1b5d95f00bfaec58a57762f604422fb6fb79ca680a6",
+    "bytes": 5863
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\HorseEntryBoundaryQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\HorseEntryBoundaryQA.java",
+    "original_sha256": "0495b116b75d81f94e938b05532da387d3ff7fc7a668d01aa389d485911403c1",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\HorseEntryBoundaryQA.java",
+    "published_sha256": "9634f8f16a377bd9f7a66b1eeae400acf39e033fe37ec2fa948d915306bb4d5a",
+    "bytes": 11024
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\HorseLifecycleQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\HorseLifecycleQA.java",
+    "original_sha256": "505143566e989e13a493f7d30de7f558d6315d337238335dd0683f82901f89fa",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\HorseLifecycleQA.java",
+    "published_sha256": "f4dcf0a4fc81fb08f2db175bd73fbccb42672bdc710a6fb72d17f932970e2214",
+    "bytes": 10720
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\HorseMarketQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\HorseMarketQA.java",
+    "original_sha256": "99e29830244f8b7e2088b67498b9d4e363ca1a2cdf68f831f0675da649835f8a",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\HorseMarketQA.java",
+    "published_sha256": "948751c71d458a02e2778dd1b2e06a5bc5cec1cd7e6422038bf4add28391eff2",
+    "bytes": 9079
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\HorseNativeQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\HorseNativeQA.java",
+    "original_sha256": "c7166d6125c787c090c1ef576cd961afbc94ce98eab336221049e3ed69d66d5e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\HorseNativeQA.java",
+    "published_sha256": "5026d82ca61bbac4474356451d82ae2405244b8013ac998729516580096e3bbc",
+    "bytes": 22646
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\HorseQaAcknowledgements.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\HorseQaAcknowledgements.java",
+    "original_sha256": "9d6d7300a6e83dec864b754f04a8fbb16f311b3cc77f9e33d0b6d495e9776135",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\HorseQaAcknowledgements.java",
+    "published_sha256": "a4fafe143c69ad18f9816509c9ab8078e284b2f7e16c9c766ffdd2439f96d7f4",
+    "bytes": 1340
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\HorseStadiumQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\HorseStadiumQA.java",
+    "original_sha256": "bd6e2130710a6be963f653ba1a1df995f0e6d4e24a661062ef507bca75f6936d",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\HorseStadiumQA.java",
+    "published_sha256": "5edcd8c53f04ceb5632a6c837e7e0e16496473fe47765f1643b56a76147edaa1",
+    "bytes": 10789
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\HorseStartQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\HorseStartQA.java",
+    "original_sha256": "25955789b14ad21be15721f121ebfcfad71f390ca0f4ad83f45e8331c05c4c1d",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\HorseStartQA.java",
+    "published_sha256": "b4b4d79e45a808ea713c61ee9ec8ebcb2ddb2dce157e34faeca47543960773fb",
+    "bytes": 12849
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\run_entry_edges.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\run_entry_edges.py",
+    "original_sha256": "fa260e747ab9be06b5cc1323f0431608f35d44c51fa3e045805e9cdf2ff80d6b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\run_entry_edges.py",
+    "published_sha256": "0fd94a6c484e140391c4bb8861eaf3f16f2e391c6a5b25bf3f5b7d42c63f2134",
+    "bytes": 11650
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\run_market.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\run_market.py",
+    "original_sha256": "777ccfb08bdfd97cf0c8b597b620fb16f7c09b313b983ff32efec7ece47835a6",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\run_market.py",
+    "published_sha256": "9291c3eeec0bfecdb043cbb0ade75c13a438ff4f65ecb5edf283fea7517c0491",
+    "bytes": 3130
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-native\\run_native.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-native\\run_native.py",
+    "original_sha256": "0094666853015d35f3b27ee6290b1382d96f7ef5dff37172839b3f5f6bbef2e0",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-native\\run_native.py",
+    "published_sha256": "2bb44c6b5ad389b950d6242dd4244fdb54bafc874a96ccb54f9bda4ae200d9b2",
+    "bytes": 11642
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-points\\HorseScoresQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-points\\HorseScoresQA.java",
+    "original_sha256": "4dafcb5c174a9569e841966d6b2cb3836706aa8b9122b26ced5fbca33847494b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-points\\HorseScoresQA.java",
+    "published_sha256": "b25b921c3e6b07b4353f3d826aaf3d8466b652e2dd0282e662f543062d4287ef",
+    "bytes": 2559
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-points\\horse_points_fixture.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-points\\horse_points_fixture.py",
+    "original_sha256": "f45caeb2d62799eb8eb0366a21af3dbd0d882fb76be16b60fda70b7a18d85253",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-points\\horse_points_fixture.py",
+    "published_sha256": "e019e4cd8d8b3f20f6c18363b1f0b85c9c07bb1ae761f342416432ef64f3e349",
+    "bytes": 5546
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-points\\test_horse_points.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-points\\test_horse_points.py",
+    "original_sha256": "3ef348d0f016291035346ab899a14e422bc9146ba6a4891388f23023c05ff3cb",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-points\\test_horse_points.py",
+    "published_sha256": "b83960d3616e1f341cb42a382fcaf7012a98c0ed959896a175695f159c571379",
+    "bytes": 3619
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\HorsePreviewCaptureQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\HorsePreviewCaptureQA.java",
+    "original_sha256": "c2984760110c565a9a2dd62bcc696df5cb2c19723f922afbc8c8848441d92b27",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\HorsePreviewCaptureQA.java",
+    "published_sha256": "2d40d483d04db4d97d03e18021a6dc1d543a7f1ad21b44317f4f508579548547",
+    "bytes": 10483
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\HorseTradeClientQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\HorseTradeClientQA.java",
+    "original_sha256": "81a0a806c04b874d2a1475093360cab74b210a6cc47a95142f3e3d89bf7f3bfa",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\HorseTradeClientQA.java",
+    "published_sha256": "aea6856f3bc2c55764b0eadbc4db45bbca743c95edb551aa6d428fd83eeaf6fc",
+    "bytes": 14886
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\HorseTradingQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\HorseTradingQA.java",
+    "original_sha256": "17272b6e45db86b89d807ba353779a7deaca59699c1a1d83af4a2c43bdf64fe2",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\HorseTradingQA.java",
+    "published_sha256": "2149f6d275736ea3bab354a37353e65152c002a24e3492502c505a4a9c04120a",
+    "bytes": 15997
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\plan_umamusume_registration.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\plan_umamusume_registration.py",
+    "original_sha256": "44053d82750ab63b2d7e1dd2893f119feea2e34723e19f14d2607b24e97c877d",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\plan_umamusume_registration.py",
+    "published_sha256": "02c74ecdf04494628545a1c8c279c2a00994be20d465e322ae9b6908435a529b",
+    "bytes": 2116
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\replay_shared_entry.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\replay_shared_entry.py",
+    "original_sha256": "f7a842b3bc8c14d7ff3ceefe572d2321a49c6b8c06f4430b15ec4a9337354c76",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\replay_shared_entry.py",
+    "published_sha256": "8a357fc370aa54f06c856d1ae23153b2d162424b2b55eda2b32bc3c4e3326a8f",
+    "bytes": 7408
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\run_client_trading.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\run_client_trading.py",
+    "original_sha256": "4884746dad0bebcad23c76ebd0a9101d91b79ca2eded7bebf2848270a2b0cdc3",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\run_client_trading.py",
+    "published_sha256": "6689c4f155a72114ed488486c55a6759adbaad56f169a407daf34232c5608544",
+    "bytes": 11443
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\run_native_trading.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\run_native_trading.py",
+    "original_sha256": "5029aaba8018f49693afe4c655129cafd34ebaa1a43e18fc4bd0b52815a94622",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\run_native_trading.py",
+    "published_sha256": "c16ceb208045a4ef73b7f2f33bfa160199c845d1c2475e894d1827ac80cf0483",
+    "bytes": 6599
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\run_preview_capture.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\run_preview_capture.py",
+    "original_sha256": "320eeee1f219ee4e18013f72a8d5ac9e49d1bc9e69aed47c680e26f34b49c1be",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\run_preview_capture.py",
+    "published_sha256": "9c91cb6c1fe0063d0afb6946630ddac6069c262b4d9262cd106046c9d515688f",
+    "bytes": 10757
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\run_umamusume_native.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\run_umamusume_native.py",
+    "original_sha256": "ef98a481921979678d0d6cdc049d4e1504c90b884489006e872dfa9e17100dcf",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\run_umamusume_native.py",
+    "published_sha256": "17fbccc0098bb9056e8b3c96a712fafa8f73e1209e48fbf9a19401c2db09a39c",
+    "bytes": 8780
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\run_umamusume_shop_client.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\run_umamusume_shop_client.py",
+    "original_sha256": "bc8482122e0135dae751510e0b98b3ca8075d9ca0135b391fbd4aa848b9684ae",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\run_umamusume_shop_client.py",
+    "published_sha256": "068ba20b431fbbd82f55d23afdd780827adbe8639104a67301124c91b557137b",
+    "bytes": 13653
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\test_registered_catalog.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\test_registered_catalog.py",
+    "original_sha256": "2026de7d6f72ad72300dcf50fa63a3a8dff9521036d1b2b11cb89bc85fb0fd42",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\test_registered_catalog.py",
+    "published_sha256": "90934c1cdf83c42591a7291898e8b4b18dcd8904af005321c6f435d701f20a2f",
+    "bytes": 2418
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\test_umamusume_store.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\test_umamusume_store.py",
+    "original_sha256": "47897cfa71515e6863bebc90b690ed62edd680aa649f6a6f9b8b5f713daec8cf",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\test_umamusume_store.py",
+    "published_sha256": "e4a8b1e52e68e232b6955d31f1709c4afab8e05d438582e958f1a2536e550ed4",
+    "bytes": 8266
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\trade_fixture.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\trade_fixture.py",
+    "original_sha256": "8be984a14f0c902bda9b119915b1866674b2c2336eded1c9bf83060e509dfac8",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\trade_fixture.py",
+    "published_sha256": "241ec526c766806eba8da5eb3ef9cfe06d4375c5258e676d819dd6f7e7b98fd0",
+    "bytes": 6664
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\UmamusumeShopClientQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\UmamusumeShopClientQA.java",
+    "original_sha256": "1856782ca135efc49d91a900e5787a53f583ca4b8339daf69b95bdb06a25b6d6",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\UmamusumeShopClientQA.java",
+    "published_sha256": "a76533b2c7fd37461f6324608dcdc87e89dcdd62ef7354344be25ca70aab4bd5",
+    "bytes": 3917
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\UmamusumeShopServerQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\UmamusumeShopServerQA.java",
+    "original_sha256": "23c794bd6f1e316dd443605f1437fbff80974ff88bc99bce3911f44ebfe6d6c1",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\UmamusumeShopServerQA.java",
+    "published_sha256": "c5327cb45175aacf2778a9be8c76d96926b9291d0ce13068b3b99825b8f6f4b9",
+    "bytes": 6217
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\UmamusumeTradingQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\UmamusumeTradingQA.java",
+    "original_sha256": "515145b909c3eb46afa35440e2bfe4e2388a30077eeb240bc60428ae8b8cde8b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\UmamusumeTradingQA.java",
+    "published_sha256": "34de50beae8314d1c48efcfb631dd297cb9e6dfa174a6fb771a7ac25a8858087",
+    "bytes": 11853
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\mixin\\ShopBrowserProbeMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\mixin\\ShopBrowserProbeMixin.java",
+    "original_sha256": "fe39d3c8e113fd5fcef56c27c9acd0485c415300a6c6dd7f76f935021730305a",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\mixin\\ShopBrowserProbeMixin.java",
+    "published_sha256": "b3b95ec4e5833d9b05bcb3354942034c700b409c420ac7f054f17a6a4ba8d4ba",
+    "bytes": 905
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\mixin\\ShopCefProfileMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\mixin\\ShopCefProfileMixin.java",
+    "original_sha256": "b833cfd4208343ccca88098f40325df0ca77a727eb096173f24939bda7d26c79",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\mixin\\ShopCefProfileMixin.java",
+    "published_sha256": "54e15f0f8cff8dc4b10abfc3b40be44bb39619851d0de6adc1ed93e80514be05",
+    "bytes": 2236
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-trading\\mixin\\ShopEntityRemovalProbeMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-trading\\mixin\\ShopEntityRemovalProbeMixin.java",
+    "original_sha256": "afe8e1cb611db5cf5822bee3c0dd5a939446fcd4a3e4c32dd20ce8f1b89658aa",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-trading\\mixin\\ShopEntityRemovalProbeMixin.java",
+    "published_sha256": "459d058edec4b2113216d276f644d5317ed3e27570a8675d67fe7e351d5b6a02",
+    "bytes": 1390
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\CefPrivatePathsMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\CefPrivatePathsMixin.java",
+    "original_sha256": "e85a5bd864614830052e4692236489b52f0f2ee229682fa69a20903ed6c035b1",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\CefPrivatePathsMixin.java",
+    "published_sha256": "e3d54df8fbe117ba378c21bafac4d98dfa8bb40c9a59cf5e1490d3f591429d48",
+    "bytes": 2408
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\HorseUnifiedClientQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\HorseUnifiedClientQA.java",
+    "original_sha256": "16831c63d4e9f5f5cdba283a0d6d485820d49d1918eee22c0616eb5729e932b6",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\HorseUnifiedClientQA.java",
+    "published_sha256": "984f2c3e1d475386b364a6749a5a380a4191c6ae4268cb2c1a7d94de06525353",
+    "bytes": 6808
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\HorseUnifiedRenderProbe.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\HorseUnifiedRenderProbe.java",
+    "original_sha256": "739364d876bf04d30589f677710809153f18647ac4ea19dbfc6e7e0d37bed1c0",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\HorseUnifiedRenderProbe.java",
+    "published_sha256": "40e46ec5127c0e89b64a39ada6fc4ecb15f3ddfa41a0aa4418fbaf3efed5fe39",
+    "bytes": 1224
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\HorseUnifiedServerQA.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\HorseUnifiedServerQA.java",
+    "original_sha256": "b2be21fd06f3f4868b09584904a8d7cd73f8e0419bef58c65a39515019dfe860",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\HorseUnifiedServerQA.java",
+    "published_sha256": "7839527177defc2c96abbf3665e2d8c391dab1482946825739cb0e5b73d65115",
+    "bytes": 11363
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\horse_unified_scenario.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\horse_unified_scenario.py",
+    "original_sha256": "9874e7514d89ecd01144d7dcce227aabd4b7d5b5b5b7153a73f7036c53affb1f",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\horse_unified_scenario.py",
+    "published_sha256": "4e6614d05f773a032b0a5133bc967c23c951ffbf0cf56fa5dc1d6b8b1f13e604",
+    "bytes": 13878
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\inspect_saved_entities.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\inspect_saved_entities.py",
+    "original_sha256": "7ff1920f0531a5771509827fa0c91bc26a687f7ebe8ec9357f862983c65d6503",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\inspect_saved_entities.py",
+    "published_sha256": "0e9b0509949a0c33bbf19e22018adeb1af2e7535cc6b139bbd9728a757bf4024",
+    "bytes": 3877
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\native_exit_observer.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\native_exit_observer.py",
+    "original_sha256": "37d93e655ed502d3eeb544e492390be88394470ac40879e46be3aacc82d45355",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\native_exit_observer.py",
+    "published_sha256": "c05613edc7894932d262722ef26ab80a73da7f8fb8d86524a980103ed310f214",
+    "bytes": 9777
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\private_points_fixture.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\private_points_fixture.py",
+    "original_sha256": "300002377fc76a9af0e34a123a7cff332b7be6bbb4069cb42a4bdc17ea237966",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\private_points_fixture.py",
+    "published_sha256": "c7e658c402e771b05898f24bf844c597d8d16ea6a7695b62ea0cca539c9fc9f3",
+    "bytes": 4403
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\run_unified.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\run_unified.py",
+    "original_sha256": "bd71781462afcac1e2fbbfa5e6a5c35a591ed1a8f03ddd9519ec03383dfc09e6",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\run_unified.py",
+    "published_sha256": "371cc22dba720e9094a5845d10a73560c89b3c969cc8c8eca844cec5e03ddf15",
+    "bytes": 15715
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\status.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\status.py",
+    "original_sha256": "5f2a196147fa8a6647e5b41271243d801635219e9921f435b921b115c6547f9c",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\status.py",
+    "published_sha256": "e8534c2ca4ad25436691f7c1d243178c559e5bafeb0a66dbea2f4222dd87f59e",
+    "bytes": 1393
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\test_native_exit_observer.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\test_native_exit_observer.py",
+    "original_sha256": "62faec3598ceaa04e1eada253e26f2c36611613f74fa83ea4eadfedb19d84573",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\test_native_exit_observer.py",
+    "published_sha256": "87aacef39ab3277ff7c059f54e365246055cd196cc1f5d6b370254b70d4dcbf6",
+    "bytes": 3321
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\horse-unified\\fixtures\\DisabledCreateTest.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\horse-unified\\fixtures\\DisabledCreateTest.java",
+    "original_sha256": "cb49c0268138abe5211540a3089df2ac9a10f407d4f556ccb6d290edb00fb136",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\horse-unified\\fixtures\\DisabledCreateTest.java",
+    "published_sha256": "ed675a51ca71f5c18b3e00e36cfea3edf731b4fb93704c4b7b85f3158c18e97a",
+    "bytes": 1296
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\race-rules\\RaceRulesTest.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\race-rules\\RaceRulesTest.java",
+    "original_sha256": "ee638988ea6f929e9aa70dbc4f17d9303623b50b413ceadfd47c4232199b1353",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\race-rules\\RaceRulesTest.java",
+    "published_sha256": "2ca62bb74f8c60fd7d66a88576662fe9c8f2bff70424732022bc74820ab59f2a",
+    "bytes": 2271
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\race-shutdown-fix\\tests\\race-rules\\run_offline.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\race-shutdown-fix\\tests\\race-rules\\run_offline.py",
+    "original_sha256": "c796c2272ef3929c289f0f367a3efafb4187d43917f544a9c6e9e992fceeb882",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\race-shutdown-fix\\tests\\race-rules\\run_offline.py",
+    "published_sha256": "df218b9b363f06831a3b1b7a5ad0653dd26a50b9d38aecc0d91648320cf030c2",
+    "bytes": 1173
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\audit-music.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\audit-music.py",
+    "original_sha256": "b59d93704be62a5f200d0fbc0721eff5845d0ec2d07c003202739eeb4aa0e034",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\audit-music.py",
+    "published_sha256": "e25e01598f8e27f283eeaaf725892a06a4a9e93aa5215c1a11f0c19746dfb141",
+    "bytes": 2444
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\build.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\build.py",
+    "original_sha256": "acf1c8c3c027c34d1fd30ed80bd7783decfd5b2868319b5d67439f932435f0af",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\build.py",
+    "published_sha256": "ca5f14779c8f4ec6893243e0208d0b48d9229b3ebb2987eddca7369e95b8dfc9",
+    "bytes": 5013
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\check-production-module.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\check-production-module.py",
+    "original_sha256": "b14e87d59ea4a42df1a28c55fcb174700d3c7ffdeb6108df9c82762282f50799",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\check-production-module.py",
+    "published_sha256": "a53910ebd5e7cd69d7ec8f586282a83482594e7097d98231852a0eca8f998d56",
+    "bytes": 1114
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\complete.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\complete.py",
+    "original_sha256": "fd0eeb72533281264ab4656089a457cce0f4980493a9a7512fba8c6593a7c7aa",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\complete.py",
+    "published_sha256": "7a0bd91265f71181c9e7aed9cef7ad6956c8df89da19e5f49492ca7e322463e1",
+    "bytes": 2457
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\controller.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\controller.py",
+    "original_sha256": "471e2672906d12c6e56e452cb13413fad05a22396d621de0a2a1bcd46c0e6202",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\controller.py",
+    "published_sha256": "463408ab545ff5a395ba73cbfd907efba2e5abb4fba8e02445e56814f8c053f4",
+    "bytes": 2406
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\preflight.ps1",
+    "original_sha256": "b01ee702395fe62b5a4e6bd1d7eebb6530775402f58a0728c47f6b0451320c94",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\preflight.py",
+    "original_sha256": "8d769800ab6d919d673756754176ad07c4d4343e6fc08d38ba5cbf354c9122f5",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\probe-version.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\probe-version.py",
+    "original_sha256": "b28b860b23c6e50352692bf94da8cbbe981d1737446883bb3fec3f304d4f0f34",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\probe-version.py",
+    "published_sha256": "bd5df59d6e7a654c75bc94846db08bc2cee2dd78a1905e073a62b584e24fd99c",
+    "bytes": 1521
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\remote-release.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\remote-release.ps1",
+    "original_sha256": "9e39bef031db8dcfe7c2ad3cc0b09c82045b9a17f9a8a0b6a64b33dbc67c6cf4",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\remote-release.ps1",
+    "published_sha256": "887ffe0deb08fa28d1f61d2ee948df025196a2b322bdfa1e990045f733fbd744",
+    "bytes": 12843
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\remote.py",
+    "original_sha256": "225b4e96f07fd81093e5072c81c995c9892e99e4c2140ce10487ff9a52f2ecf5",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\smoke.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\smoke.py",
+    "original_sha256": "c8c98813d8e9e4113c75ef8e7e31b6fac79ddbe38e32134cb7900ffc46a1b5fb",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\smoke.py",
+    "published_sha256": "12230393ee9fee946ab0b4cb54a1cdda1816e1a7c9b8b043e8e6cf6de60add29",
+    "bytes": 3641
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\verify-health.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\verify-health.py",
+    "original_sha256": "50da5bac4370c8029b3029ccb3608fa3b220d3980c3229067b764c30841c994e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\verify-health.py",
+    "published_sha256": "4fb7dad042c8e3e6b67b1344e841e2e0ea4a13915799213bfa805580b04de0bb",
+    "bytes": 1523
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\verify-public.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\verify-public.py",
+    "original_sha256": "c0d9def166908d868479046fad2443f8786164ccb77ce079ef30a1e9892c8d57",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\verify-public.py",
+    "published_sha256": "ce93f8ee5d1e4594b0c4698d22ff462080fee238ce6f2fceac03494abdd4c732",
+    "bytes": 2349
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\launcher-smoke\\Program.cs",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\launcher-smoke\\Program.cs",
+    "original_sha256": "c854bd2d627b5cfd36ca85205e97e5a6ba3c7218173c20f94cce95357a7b0c7b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\launcher-smoke\\Program.cs",
+    "published_sha256": "04e409e5cdd42f0853fa36734aa2cfeb94ccb6cd1144295d069fba517c708d63",
+    "bytes": 2588
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+    "original_sha256": "9e76499c4e5cb623ad4889eaa99b1a53d9c970efcf902d8b096e78a19ee4285d",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+    "published_sha256": "762df7b01c9fc27b68a561ede657bdcb2e6810e57038c0e137efec2a270e7029",
+    "bytes": 198
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.AssemblyInfo.cs",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.AssemblyInfo.cs",
+    "original_sha256": "0ca24d1beb4320e77fdb048fd8d93920f662904356c700ceadf3826745f8c873",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.AssemblyInfo.cs",
+    "published_sha256": "a57beaf3cd0df257eb9bed64759436008426e17337291f86ff910b5a56858193",
+    "bytes": 1100
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release-next-after1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.GlobalUsings.g.cs",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release-next-after1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.GlobalUsings.g.cs",
+    "original_sha256": "f3f134e9e825e3e7268090f58b1af2bda2de513f61a09c56f48b9b8d08612abc",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release-next-after1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.GlobalUsings.g.cs",
+    "published_sha256": "89a51a9dc4021709078399fe94136a876594d73b2e1378bdfa87db3a72391379",
+    "bytes": 295
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1434-revised\\audit-runtime.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1434-revised\\audit-runtime.ps1",
+    "original_sha256": "32223d00f05c3dda66bdc13e1beaed450b6ef81b96b5243f41d6e8e5508e82d8",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1434-revised\\audit-runtime.ps1",
+    "published_sha256": "3f8232a8db78e17851aeaf547389513d4d714fbfd85687e141cc797b5fb144a2",
+    "bytes": 8862
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1434-revised\\controller.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1434-revised\\controller.py",
+    "original_sha256": "cb26c1abe9f2b2aa9e83b8a564cbe5570ba70f7b68776316157e601775609fbc",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1434-revised\\controller.py",
+    "published_sha256": "9b68fa4b9897e6aa8d8606ed6d4a754335af7f7595d57d7a761976270f739b3e",
+    "bytes": 2794
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1434-revised\\remote-release.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1434-revised\\remote-release.ps1",
+    "original_sha256": "98e9f19b43340ee61dc5dec91c32b627292971381e5ebc93fd21cc9a027d6a8a",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1434-revised\\remote-release.ps1",
+    "published_sha256": "a9166235e4fc349e31ea8ca15694d7853e7b17796a1ca82a810dedb4af48a64b",
+    "bytes": 11280
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1434-revised\\remote-release.with-backup.reviewed.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1434-revised\\remote-release.with-backup.reviewed.ps1",
+    "original_sha256": "8d0700e6a2d798d0ce3403f324153e3d011bd92c39213ae39bbd66291982537c",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1434-revised\\remote-release.with-backup.reviewed.ps1",
+    "published_sha256": "d7b38274fc8344c9cc13f623266284fb9b1908cfbef1fff2274bab76f15dc9b4",
+    "bytes": 12392
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1434-revised\\rollback-existing.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1434-revised\\rollback-existing.ps1",
+    "original_sha256": "b2304d8dbfd0a812cdbfb39d5fe45ffdd4ea665f000cbddab7b0cfc06ed2d0f6",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1434-revised\\rollback-existing.ps1",
+    "published_sha256": "3588fc5c207b14727c272457c9f47e561cff76b1f0b64962ad4ecd89d5b917ef",
+    "bytes": 5379
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1434-revised\\verify_public.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1434-revised\\verify_public.py",
+    "original_sha256": "f24f8cd95ae6e9667dcb076017e717a9daec91b79fceee1465264c667f86ec09",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1434-revised\\verify_public.py",
+    "published_sha256": "763e72cc2428ad1e22ba530faeb3c221ca170893ef2a672512bf082483bb3609",
+    "bytes": 1747
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\controller.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1435\\controller.py",
+    "original_sha256": "3c6f1da7470a50ff1d2849450552d5c704bc84e8e5aef3beaef9915e291c2c56",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1435\\controller.py",
+    "published_sha256": "0dc23b5ca863d88ebcf9f26baf99edeb430b2159b7934c2b5c3f7c7afe853913",
+    "bytes": 2402
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\preflight.ps1",
+    "original_sha256": "b01ee702395fe62b5a4e6bd1d7eebb6530775402f58a0728c47f6b0451320c94",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\preflight.py",
+    "original_sha256": "8d769800ab6d919d673756754176ad07c4d4343e6fc08d38ba5cbf354c9122f5",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\probe-version.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1435\\probe-version.py",
+    "original_sha256": "7fb301b8f94ff1872af1c23104c0814170cb830c3747b5e0b1b19dacab8dad24",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1435\\probe-version.py",
+    "published_sha256": "fc2456a2193bbb10d7a4cd0630d4bdb20ac7af598c0602e7e90fa42101673418",
+    "bytes": 1521
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\remote-release.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1435\\remote-release.ps1",
+    "original_sha256": "a103d9d563ee807be38103c3b371b7a3a58e4f913e3c3f103e659f550d0577af",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1435\\remote-release.ps1",
+    "published_sha256": "2eb1e0d9132ba7561aaec715489b4b59639fd7ba78df0f6f115afd391718f9cd",
+    "bytes": 12740
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\remote.py",
+    "original_sha256": "225b4e96f07fd81093e5072c81c995c9892e99e4c2140ce10487ff9a52f2ecf5",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\verify-health.py",
+    "original_sha256": "50da5bac4370c8029b3029ccb3608fa3b220d3980c3229067b764c30841c994e",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\verify-public.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1435\\verify-public.py",
+    "original_sha256": "c043513fd51079ae0bfad25daafabb7b00df2338648e7bf1b4de2ec86d2f1fb8",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1435\\verify-public.py",
+    "published_sha256": "ea4a4d9af2a090fcccab5ff856cc949f42a642c5ce02cef03f6e3d820c882747",
+    "bytes": 2322
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\launcher-smoke\\Program.cs",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1435\\launcher-smoke\\Program.cs",
+    "original_sha256": "ea3a70e75600dd06b6772fa642448c9bb69256cfe465a83bb8681f156ddd876b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1435\\launcher-smoke\\Program.cs",
+    "published_sha256": "70583ebc51502f85783d6219cda535707c9467c63d0316a597cef94457bf5509",
+    "bytes": 2673
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+    "original_sha256": "9e76499c4e5cb623ad4889eaa99b1a53d9c970efcf902d8b096e78a19ee4285d",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.AssemblyInfo.cs",
+    "original_sha256": "0ca24d1beb4320e77fdb048fd8d93920f662904356c700ceadf3826745f8c873",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1435\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.GlobalUsings.g.cs",
+    "original_sha256": "f3f134e9e825e3e7268090f58b1af2bda2de513f61a09c56f48b9b8d08612abc",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\backend-host-read.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\backend-host-read.py",
+    "original_sha256": "dd7ef5ccb678e339a5301eedebf841262eb65a6135bd619c810e77d38fb45056",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\backend-host-read.py",
+    "published_sha256": "672e5f28ec783390f651585cb8a46150da5a380208be1aa5b1700691f085e4a7",
+    "bytes": 1819
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\backend-read.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\backend-read.py",
+    "original_sha256": "12f64c726b79ceee9756344a1835f0551b667bbd3b0d483bff70006d0c6df318",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\backend-read.py",
+    "published_sha256": "d6073b491fdec830cedb19782d33e58e5d4c2ea47eaf0c251d6d966103229379",
+    "bytes": 2070
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\build-backend.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\build-backend.py",
+    "original_sha256": "2ae104d1eb00986fe5d76f86017b753f4b25fec8b4b69f23852110ab0990b6c0",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\build-backend.py",
+    "published_sha256": "4e47364795053dbea93f563e1ec7ea1eba81d39a7e94795102756530193dbc7a",
+    "bytes": 3393
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\build-backend040.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\build-backend040.py",
+    "original_sha256": "a9656a03785f426a39415189151ad66877e8d7200f69114e689ea601c88459d3",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\build-backend040.py",
+    "published_sha256": "157cc2bf7d42b9cbad07155582b1fe1b77737caec7d32d3ea217010d3424fd3b",
+    "bytes": 3412
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\controller.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\controller.py",
+    "original_sha256": "1ad8ff3f88852f76bbb320e9815bce387393604784034d083299a772ea97607d",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\controller.py",
+    "published_sha256": "8e76d3f868ced049b1f907210c4f8e6a6561d2c8ea43987b216718f283501f61",
+    "bytes": 2741
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\deploy-backend-disabled.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\deploy-backend-disabled.py",
+    "original_sha256": "4b9f046880cd56c7eeea805d1e616af11bb3d0b73b83d552788a8abd9c5838cd",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\deploy-backend-disabled.py",
+    "published_sha256": "9ddf8eda1c5df33ab278878b29fbdf3f9c8b5aa072e12c3e522dd729ba937276",
+    "bytes": 3959
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\deploy-backend040-disabled.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\deploy-backend040-disabled.py",
+    "original_sha256": "5324fad07824c0b02a7dc2c359b548a2f9bc13edb05222b274a9a5d8e7dd7b9e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\deploy-backend040-disabled.py",
+    "published_sha256": "08370804e3f6682afaa92c73229cf27565fef56e0894bc0b2e2cd0557a873cab",
+    "bytes": 4093
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\enable-backend040.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\enable-backend040.py",
+    "original_sha256": "785fafcac2cfbe0606886d4dc3ad2ffff878bd1a4e61eefb565a7e2c461928b8",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\enable-backend040.py",
+    "published_sha256": "921bfeeae963ca27cb162ab094f276d1133e515505fb09dbb1e40151033c7775",
+    "bytes": 4326
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\preflight.ps1",
+    "original_sha256": "b01ee702395fe62b5a4e6bd1d7eebb6530775402f58a0728c47f6b0451320c94",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\preflight.py",
+    "original_sha256": "8d769800ab6d919d673756754176ad07c4d4343e6fc08d38ba5cbf354c9122f5",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\prepare-pack.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\prepare-pack.py",
+    "original_sha256": "63e1580317917c56be14b0feb1aaa9fff8b163a64da5dab88ca9c2b787ff6da4",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\prepare-pack.py",
+    "published_sha256": "0c752cad256056b59a68e3086e09dc89a5c6aea4a853f4c8a827f66dbae78e70",
+    "bytes": 4453
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\prepare-pack040.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\prepare-pack040.py",
+    "original_sha256": "605e4a9790f740f4a0dca915f2f4dad997a79ed7928c91af60a2043b790a3436",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\prepare-pack040.py",
+    "published_sha256": "83f8f6ab3fa285562f0bf24381ef701b5b2f1cbbbd004efc88acc3a4a9502058",
+    "bytes": 4481
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\probe-version.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\probe-version.py",
+    "original_sha256": "841b27ce53b3e6750ccc06d13fe8718067c530236d9f004028f7e069c3deba40",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\probe-version.py",
+    "published_sha256": "e70e7a8639870a9468b3f453b6943d82ff9fc7d2f45568ad1da7c15184b083f5",
+    "bytes": 1521
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\read-identity040.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\read-identity040.py",
+    "original_sha256": "8a78cc34b76aad668dc8658de5b907a5109af4f642664a0eb05a195171d2a688",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\read-identity040.py",
+    "published_sha256": "170b2f41aa90a05c6da802037f36fbbf1f9d1870fd14136caa1bae9440935202",
+    "bytes": 2296
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\remote-release.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\remote-release.ps1",
+    "original_sha256": "847f525faa05e890facb2513fc7a16ce8d9a823199b9d2e153269ba173476c68",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\remote-release.ps1",
+    "published_sha256": "007b5e08b8b91b57eae58d02f4e63f245603008b1a1172e530aa8d33075b19c7",
+    "bytes": 12834
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\remote.py",
+    "original_sha256": "225b4e96f07fd81093e5072c81c995c9892e99e4c2140ce10487ff9a52f2ecf5",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\stage-private-qa040.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\stage-private-qa040.py",
+    "original_sha256": "fc87598f3aaf0436d0445ee9d07c0f16f80de8b9d2174095023c0f3e5e52a5fc",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\stage-private-qa040.py",
+    "published_sha256": "95f46f7d82f9a7e82126d496de04d49898ead37791c3fbb71f23eec01ae3e38b",
+    "bytes": 17494
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\verify-health.py",
+    "original_sha256": "50da5bac4370c8029b3029ccb3608fa3b220d3980c3229067b764c30841c994e",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\verify-public.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\verify-public.py",
+    "original_sha256": "89b56e9f7be8312addedf9664a271f9a95e22355552c08c10b70f9846a936198",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\verify-public.py",
+    "published_sha256": "260d842b9ef2855a3cac3846f3de16ccd8313571e9c9f12c963cceefe73ce2bb",
+    "bytes": 2349
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen\\backend-delta\\app\\music_audio.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\frozen\\backend-delta\\app\\music_audio.py",
+    "original_sha256": "a912b17311616a9f37138f016fd903386300582dd360718281b7737d504b7dca",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\frozen\\backend-delta\\app\\music_audio.py",
+    "published_sha256": "6a328032c11dd18aa47632be15b516c0c4c35ca8efb9504e9478377c6ca96f6c",
+    "bytes": 4178
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen\\backend-delta\\app\\music_oss_transport.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\frozen\\backend-delta\\app\\music_oss_transport.py",
+    "original_sha256": "2afd1d59539df05929ec5c0bb25fd975eb54c4b8d4da559d57f9ee7b71f99c14",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\frozen\\backend-delta\\app\\music_oss_transport.py",
+    "published_sha256": "363e52aab170e36e2b22401c8e61b69b5e37b18ffe7245160f8697502ee6f3af",
+    "bytes": 9091
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen\\backend-delta\\app\\music_production.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\frozen\\backend-delta\\app\\music_production.py",
+    "original_sha256": "cd9a5a8316a87a7d488ed2fe18600fce9fb7779e3871de1a310af26eedbec612",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\frozen\\backend-delta\\app\\music_production.py",
+    "published_sha256": "3466f49438dc45bc32ac80db3f798633c277f474947a8e1872afd34c872e832c",
+    "bytes": 3900
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen\\backend-delta\\app\\music_production_entry.py",
+    "original_sha256": "586e99d82c7462df6b055dacfb777f99c9c84b54aae1ca843084a6f6fd5aebfc",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen\\backend-delta\\app\\music_production_storage.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\frozen\\backend-delta\\app\\music_production_storage.py",
+    "original_sha256": "6ab35c841cd782bd5c023668cf3cc6d55ec4de401d5568e841b45b703c0a517b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\frozen\\backend-delta\\app\\music_production_storage.py",
+    "published_sha256": "ee87d0518de1711ae1c7ed777c6508ed93682da73d4aa0e2dc78f7369edf3b3c",
+    "bytes": 8962
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen\\backend-delta\\app\\music_receipt.py",
+    "original_sha256": "45aeb4d4a706d6c21bdbc41531b7cbdb7715d83b15097e8e9c4d8d41baabe645",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen\\backend-delta\\app\\music_runtime.py",
+    "original_sha256": "fe6b744d986fcd864a95f2f0bad44485b05a4c16045483dcb34e6bf9e7db4388",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen\\backend-delta\\app\\music_upload.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\frozen\\backend-delta\\app\\music_upload.py",
+    "original_sha256": "5aa6e81330275ed12ae25c2617f2fb009fa8c48a67360a11f188733dc110d662",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\frozen\\backend-delta\\app\\music_upload.py",
+    "published_sha256": "52cb6e263f8dd8bed57490a1c413a5a4804aca05575670c29b092cd80353c57c",
+    "bytes": 24473
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen\\backend-delta\\app\\music_upload_identity.py",
+    "original_sha256": "9ee7fdd7ca8753b6c75c30fd1cba9de83d81ba2024f549b1a6f0abcedebba4dc",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen\\backend-delta\\app\\music_workload_identity.py",
+    "original_sha256": "50c2411da6a506d9d3acd59304539fc3b09abb71c9a148d69f1e1e7f1935c484",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\backend-delta\\app\\music_audio.py",
+    "original_sha256": "a912b17311616a9f37138f016fd903386300582dd360718281b7737d504b7dca",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\backend-delta\\app\\music_intent_guard.py",
+    "original_sha256": "8aeb1b683c13cfee4a7948664dbe629817d7ea286f60ef31bd513b1a46d24e76",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\backend-delta\\app\\music_oss_transport.py",
+    "original_sha256": "2afd1d59539df05929ec5c0bb25fd975eb54c4b8d4da559d57f9ee7b71f99c14",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\backend-delta\\app\\music_production.py",
+    "original_sha256": "08586ced7d090e897dd87b71224ff36ddbc63247487dfa7c3a29e7585cab920f",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\backend-delta\\app\\music_production_entry.py",
+    "original_sha256": "586e99d82c7462df6b055dacfb777f99c9c84b54aae1ca843084a6f6fd5aebfc",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\backend-delta\\app\\music_production_storage.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\frozen-release040\\backend-delta\\app\\music_production_storage.py",
+    "original_sha256": "d015fbf4837666c0d66ea7a917ade8cee17ce704d41ddf59492d20806b7094b5",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\frozen-release040\\backend-delta\\app\\music_production_storage.py",
+    "published_sha256": "6369ab584aebfdba68cac44e3967253ef0cd41b761cf3feaaa7a368685b8f2dd",
+    "bytes": 9337
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\backend-delta\\app\\music_receipt.py",
+    "original_sha256": "45aeb4d4a706d6c21bdbc41531b7cbdb7715d83b15097e8e9c4d8d41baabe645",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\backend-delta\\app\\music_runtime.py",
+    "original_sha256": "fe6b744d986fcd864a95f2f0bad44485b05a4c16045483dcb34e6bf9e7db4388",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\backend-delta\\app\\music_upload.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\frozen-release040\\backend-delta\\app\\music_upload.py",
+    "original_sha256": "5fa80512300eb5dfc9d1b320cea432decda008f08d80cc12acb37136ca870d0c",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\frozen-release040\\backend-delta\\app\\music_upload.py",
+    "published_sha256": "3628e60a0ddcd73f080cf46b78a5be86df79775c27f8a4705ee2bc0911cf98ca",
+    "bytes": 25752
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\backend-delta\\app\\music_upload_identity.py",
+    "original_sha256": "9ee7fdd7ca8753b6c75c30fd1cba9de83d81ba2024f549b1a6f0abcedebba4dc",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\backend-delta\\app\\music_workload_identity.py",
+    "original_sha256": "50c2411da6a506d9d3acd59304539fc3b09abb71c9a148d69f1e1e7f1935c484",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\local-test-evidence\\build_private_candidate.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\frozen-release040\\local-test-evidence\\build_private_candidate.py",
+    "original_sha256": "731220ff313ca92c4b032444e343ce431d3585601fec1ac1fbe0b12fe9622e8e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\frozen-release040\\local-test-evidence\\build_private_candidate.py",
+    "published_sha256": "f71e1211777e352f88682b9d49d78e16604ee9555d85c2fffc5ca6803d1fb2d4",
+    "bytes": 4987
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\frozen-release040\\local-test-evidence\\test_music_release_policy.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\frozen-release040\\local-test-evidence\\test_music_release_policy.py",
+    "original_sha256": "ab28369c9d483bd2af7a204483a5cd173185a89400d50a03e01ce47b52f9cdc0",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\frozen-release040\\local-test-evidence\\test_music_release_policy.py",
+    "published_sha256": "da5f20400714206cb53ef1d32bc3622b5247ece9a16b3b70ddf22cc98ca3f400",
+    "bytes": 18727
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\launcher-smoke\\Program.cs",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\launcher-smoke\\Program.cs",
+    "original_sha256": "0277ec4ff0d7dbb7aa2930f52a4295952c44d405eee23f0eaaea27a05d2412cd",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\launcher-smoke\\Program.cs",
+    "published_sha256": "86bfac3d750df65eb8eda5359a9034f6968cf195c9391203db7a5e7bed4fd91e",
+    "bytes": 2592
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\launcher-smoke\\obj\\Debug\\net9.0-windows\\.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+    "original_sha256": "9e76499c4e5cb623ad4889eaa99b1a53d9c970efcf902d8b096e78a19ee4285d",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.AssemblyInfo.cs",
+    "original_sha256": "0ca24d1beb4320e77fdb048fd8d93920f662904356c700ceadf3826745f8c873",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.GlobalUsings.g.cs",
+    "original_sha256": "f3f134e9e825e3e7268090f58b1af2bda2de513f61a09c56f48b9b8d08612abc",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\private-qa\\controlled_native_private_qa.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\private-qa\\controlled_native_private_qa.py",
+    "original_sha256": "522ca6ebd658874432e5df5cbef32bc8160198d856aa94c4a616d1a17772d6e7",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\private-qa\\controlled_native_private_qa.py",
+    "published_sha256": "b93f2399795353c03715baf403d8debcba354f2a9d26ce9e9a651566c79ff17b",
+    "bytes": 5050
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\private-qa\\EndpointTest.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\private-qa\\EndpointTest.java",
+    "original_sha256": "69a602cc2cda509e95ea9d9ac2b986e25bd22af529dfaf117a57d3c8452755c4",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\private-qa\\EndpointTest.java",
+    "published_sha256": "8ee56f503e50d274bb04ef63d52d4ace6f044fd995c7f8a3f7786e49ebc9dae1",
+    "bytes": 1531
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\private-qa\\MusicQaEndpoint.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\private-qa\\MusicQaEndpoint.java",
+    "original_sha256": "972c220eb199878b8ca1b4b1b14fbc02705c49ac1351369115934799e194743e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\private-qa\\MusicQaEndpoint.java",
+    "published_sha256": "176f6267fd0773c8087671dd22e7ceb0a9e0293938c01e23142f884a6e01d4fb",
+    "bytes": 2110
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\private-qa\\MusicQaPostMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\private-qa\\MusicQaPostMixin.java",
+    "original_sha256": "a2efa36ff788cb23f2a7d37b1a4c397c50c8d4069866a11972baa450f323d127",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\private-qa\\MusicQaPostMixin.java",
+    "published_sha256": "8d9fa7d7524a4bce1f2715f9c22ce79f05ef88985ed2036c1e3df9b0fe27aa72",
+    "bytes": 1055
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\private-qa\\MusicQaTransportMixin.java",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\private-qa\\MusicQaTransportMixin.java",
+    "original_sha256": "73185db448d7677b4f60c505b5923be0f37d7e4c3f09f46b36c8c2e8f8deb6fc",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\private-qa\\MusicQaTransportMixin.java",
+    "published_sha256": "21736bfce83b3bc0d0bd26e6097029cf7bfcb370112ee20ca197be9711d183af",
+    "bytes": 562
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\private-qa\\serve_loopback.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\private-qa\\serve_loopback.py",
+    "original_sha256": "6da19df7dcfc6ace468c0c23568ac9bea576e7a483f98738aa1d0935c49a0c88",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\private-qa\\serve_loopback.py",
+    "published_sha256": "d2a83653968d9e1078934a5a603658afacd68a1f5d0345a1dcbc0eb62e6f373b",
+    "bytes": 2802
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\private-qa\\ssh_rpc.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\private-qa\\ssh_rpc.py",
+    "original_sha256": "7af684c24270df1f04725b5a52513626b0e3402df8a830ad123c09b48a9f61e5",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\private-qa\\ssh_rpc.py",
+    "published_sha256": "a46e6535723d2e9d5c4f100016ee8d4e270bf3a7aef2d75dd3fedadafd132d7a",
+    "bytes": 4097
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\private-qa\\stdio_entry.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\private-qa\\stdio_entry.py",
+    "original_sha256": "ea66fd7a219f5fb77efd4d0384d7161907f2a075f301ddf8c03c098f39e2dacf",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\private-qa\\stdio_entry.py",
+    "published_sha256": "ed565c358c543fae1bd48aee9b220b96159cc51287e718925bd85ac514cdff2b",
+    "bytes": 2439
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\private-qa\\test_wiring.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\private-qa\\test_wiring.py",
+    "original_sha256": "8de03d3fbb7013ae13fa4681a5f437990025e0ed7d1277b800fafa08a289af45",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\private-qa\\test_wiring.py",
+    "published_sha256": "1a6e3be53bd825cee176041f80a45e88a1158592a7e6d089ac462edd007e30f4",
+    "bytes": 5727
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\private-qa\\test_wiring040.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\private-qa\\test_wiring040.py",
+    "original_sha256": "8d895102b9d4666b266320f11d1a331c83e46dfc86f4dbbf4a7c97df6dce403b",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\private-qa\\test_wiring040.py",
+    "published_sha256": "1a2f36b9302d9f00bf84b5f21ced09aa4c7327d801de210ce7dfcbdd82d10cb0",
+    "bytes": 5809
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1437-music\\private-qa\\wiring.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1437-music\\private-qa\\wiring.py",
+    "original_sha256": "4b94fe0f8020e50888db71937931de0f7d4af0bae13e10074c9b0e85613d2324",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1437-music\\private-qa\\wiring.py",
+    "published_sha256": "aadfb28f3dd855a40041b206693f7c82a1f8626e9a1f061b70d1b43bb1de762a",
+    "bytes": 4835
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\backend.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1438-joint\\backend.py",
+    "original_sha256": "fe11ce8afc19a1e09ec2ae7b7883dbd044399c0eecab5dd86b2dbcb3fa896467",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1438-joint\\backend.py",
+    "published_sha256": "2b88912e00e8184a9acd32ec7bac8fbe24ab476183d0028375b2756b4033886c",
+    "bytes": 5454
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\controller.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1438-joint\\controller.py",
+    "original_sha256": "08c54c4b7d34b35f1a03a324f26f6bc3de92998924cdbd4a0cd22a74f52c6957",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1438-joint\\controller.py",
+    "published_sha256": "713d79eb6fac64275f80c0bddef6cee190acfdcf62662c4d2ff8ac23e8694032",
+    "bytes": 2403
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\preflight.ps1",
+    "original_sha256": "b01ee702395fe62b5a4e6bd1d7eebb6530775402f58a0728c47f6b0451320c94",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\preflight.py",
+    "original_sha256": "8d769800ab6d919d673756754176ad07c4d4343e6fc08d38ba5cbf354c9122f5",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\prepare.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1438-joint\\prepare.py",
+    "original_sha256": "c147beea366b0b75ad16c5a8e984a041fafa7aedee8725da1f48530159275925",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1438-joint\\prepare.py",
+    "published_sha256": "d7c0e88cf1b66718b54e9d2cebe1dcd4be2dfaeb785291a06061c84b3163568c",
+    "bytes": 5142
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\remote-release.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1438-joint\\remote-release.ps1",
+    "original_sha256": "8d83e9114bca6fcb93ae6f8b5e1ad98c82a90d1a618782217d9c926f237b11b6",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1438-joint\\remote-release.ps1",
+    "published_sha256": "ac94ace6b6ef23972834ffe7eaf8062cc3595faefab68cfcc8626d1ebb8ae98c",
+    "bytes": 12834
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\remote.py",
+    "original_sha256": "225b4e96f07fd81093e5072c81c995c9892e99e4c2140ce10487ff9a52f2ecf5",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\verify-health.py",
+    "original_sha256": "50da5bac4370c8029b3029ccb3608fa3b220d3980c3229067b764c30841c994e",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\verify-public.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1438-joint\\verify-public.py",
+    "original_sha256": "b8c2ed798dd08771a8a1ebb98399947ed64c976fa587821a43f6f3447b1a5d14",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1438-joint\\verify-public.py",
+    "published_sha256": "8f7cc540966c813acddcc8ede4b92a91ade9cdff5816ece4c37b69f18b4252bc",
+    "bytes": 2349
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\launcher-smoke\\Program.cs",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1438-joint\\launcher-smoke\\Program.cs",
+    "original_sha256": "b4a23fcc9142891fd643b4e6cb2778f9cfab345d43c9cbf17a6b2eeb79cffe4e",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1438-joint\\launcher-smoke\\Program.cs",
+    "published_sha256": "362149e74ad57fcdb021feb2961798f50ee3cbe86718128a89fd0bd66f683a1a",
+    "bytes": 2641
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\launcher-smoke\\obj\\Debug\\net9.0-windows\\.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+    "original_sha256": "9e76499c4e5cb623ad4889eaa99b1a53d9c970efcf902d8b096e78a19ee4285d",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.AssemblyInfo.cs",
+    "original_sha256": "0ca24d1beb4320e77fdb048fd8d93920f662904356c700ceadf3826745f8c873",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1438-joint\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.GlobalUsings.g.cs",
+    "original_sha256": "f3f134e9e825e3e7268090f58b1af2bda2de513f61a09c56f48b9b8d08612abc",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\backend.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\backend.py",
+    "original_sha256": "a0112414e0742e5200cdc80ff1ccb75d0e337b6ed25d01a3445fac244ab9bf82",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\backend.py",
+    "published_sha256": "7df30fb9831ef2cf410fda15fb0ad6529f5f9e6c3339e125c2f271ea1502ef4e",
+    "bytes": 5468
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\controller.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\controller.py",
+    "original_sha256": "ceefebdc9a4312e22282de77044ee8325f20be56c42de0f77721a4d079415cc6",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\controller.py",
+    "published_sha256": "58a24fb82a41ab2079d7602a01dcacef32135020a5dd51091099feda9d836b6a",
+    "bytes": 2403
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\incident-normal-stop.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\incident-normal-stop.ps1",
+    "original_sha256": "a09e430c9aa5bf836bf97e8d25ad71aae589ca383019f08b7a708be4b1738d55",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\incident-normal-stop.ps1",
+    "published_sha256": "bae0a8181b8aa5021373eee853ea8acaa38f2834b61d12b569341caebee126ae",
+    "bytes": 2064
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\incident-restart.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\incident-restart.ps1",
+    "original_sha256": "bf30aa22218daf5807e7aadd7da1dab58547ad8e30d2b3c91e5be7feccac16ee",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\incident-restart.ps1",
+    "published_sha256": "71f8e32a36f89155ab11335fe63217347d743e6cb733f823ad1f6b94fdf88f70",
+    "bytes": 3522
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\incident-restart.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\incident-restart.py",
+    "original_sha256": "c4a6ca29581a65530c543bc79962378c588e816d3653d249c718fbfc19ba6ab2",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\incident-restart.py",
+    "published_sha256": "66a84c50ad6902437ee4838ae5d1995d907ccbca332c840a44b41f1cb8cb488d",
+    "bytes": 276
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\music_upload.py.diff",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\music_upload.py.diff",
+    "original_sha256": "58e1eb3c6044146d0e0c3acb58b9e19233f155c702e48c41ef02c9bbff38e248",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\music_upload.py.diff",
+    "published_sha256": "60b3254661510cff607e090304663d2e6339813b0a491b794855399adcaa5994",
+    "bytes": 7434
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\remote-release.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\remote-release.ps1",
+    "original_sha256": "8dc0803139c25df80d520d0be6033ad2b96d03c85a2f79623f5791751be64959",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\remote-release.ps1",
+    "published_sha256": "3672015ce6d33fef23db4e39a1a799c8523dcd99dc87a8d6f2c922c5487c5697",
+    "bytes": 12834
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\remote.py",
+    "original_sha256": "225b4e96f07fd81093e5072c81c995c9892e99e4c2140ce10487ff9a52f2ecf5",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\requirements.txt.diff",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\requirements.txt.diff",
+    "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\requirements.txt.diff",
+    "published_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\security.py.diff",
+    "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\verify-health.py",
+    "original_sha256": "50da5bac4370c8029b3029ccb3608fa3b220d3980c3229067b764c30841c994e",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\verify-public.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\verify-public.py",
+    "original_sha256": "a6f0fabec3ebc81db2359c9af0561c59f4faee5cbc2ecbef9277b0edeb43113f",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\verify-public.py",
+    "published_sha256": "f70db5a59bd65526135f87e5508262ac2ddeb5eb879a8a94445ae552312dfc63",
+    "bytes": 2349
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\backend-delta\\app\\music_lyrics.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\backend-delta\\app\\music_lyrics.py",
+    "original_sha256": "301fb78f4c6e244d9a56b538ffc7d3e8bfe072a0768a98ff4e3cd441ff2098ba",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\backend-delta\\app\\music_lyrics.py",
+    "published_sha256": "b7b71fcdec2ac42911ec92dc1ec25f094fe5fb96583abb22fbb896ce31fee83e",
+    "bytes": 1086
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\backend-delta\\app\\music_upload.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\backend-delta\\app\\music_upload.py",
+    "original_sha256": "ed640488e6072077eb51bae7f1479ecaabb763c24c32a36027693aba239e208c",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\backend-delta\\app\\music_upload.py",
+    "published_sha256": "6e892bc34b914bb8406aa4e8d11d25fb2cc9afab7d57b1cfaee80511b4588924",
+    "bytes": 29222
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\backend-original\\music_upload.py",
+    "original_sha256": "261bf03582045cd1e5687a0b0bf0b968d454702807087ce4d8905a7ed29c748b",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\backend-original\\security.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\backend-original\\security.py",
+    "original_sha256": "a900a5c33d0db094701a986b4f7666865119dffa411d3338c8518248220d362d",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\backend-original\\security.py",
+    "published_sha256": "be799a180c4569a8e461806f7ddaa73b94933b502957e84fb53c3ff25bb50bca",
+    "bytes": 2795
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\launcher-smoke\\Program.cs",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1439-joint\\launcher-smoke\\Program.cs",
+    "original_sha256": "0304cfef625084f441cbfae3f50a33d338354b20c827e885fa254f5a883bfba4",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1439-joint\\launcher-smoke\\Program.cs",
+    "published_sha256": "50bf229f5a7ada39c7db76042e46e75b687aa7745de3d457000d7972deac1b89",
+    "bytes": 2639
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\launcher-smoke\\obj\\Debug\\net9.0-windows\\.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+    "original_sha256": "9e76499c4e5cb623ad4889eaa99b1a53d9c970efcf902d8b096e78a19ee4285d",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.AssemblyInfo.cs",
+    "original_sha256": "0ca24d1beb4320e77fdb048fd8d93920f662904356c700ceadf3826745f8c873",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1439-joint\\launcher-smoke\\obj\\Debug\\net9.0-windows\\Smoke.GlobalUsings.g.cs",
+    "original_sha256": "f3f134e9e825e3e7268090f58b1af2bda2de513f61a09c56f48b9b8d08612abc",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1440-music-hotfix\\controller.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1440-music-hotfix\\controller.py",
+    "original_sha256": "68d9afbca6d108db2bb05ca604ed72a6f476a576294c7f05ef44505982887191",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1440-music-hotfix\\controller.py",
+    "published_sha256": "8b8660d68b38bfc44bbef6f64e5ddf0060bb196bbf1f0e90c36e0ae741e7f3cb",
+    "bytes": 2410
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1440-music-hotfix\\remote-release.ps1",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1440-music-hotfix\\remote-release.ps1",
+    "original_sha256": "30275a4a710bba2d9bde05befa8e8022773477a6e46ca6b12278755c2f0e7541",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1440-music-hotfix\\remote-release.ps1",
+    "published_sha256": "17cfc057b6829fc8a928de1f3073c3ffb3a6211969b6e883d769714a01f09401",
+    "bytes": 12855
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1440-music-hotfix\\remote.py",
+    "original_sha256": "225b4e96f07fd81093e5072c81c995c9892e99e4c2140ce10487ff9a52f2ecf5",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1440-music-hotfix\\verify-health.py",
+    "original_sha256": "50da5bac4370c8029b3029ccb3608fa3b220d3980c3229067b764c30841c994e",
+    "duplicate": true
+  },
+  {
+    "original": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-11\\task-3\\release1440-music-hotfix\\verify-public.py",
+    "local_original": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\.local-operations\\session-preservation\\task3-20261014\\originals\\release1440-music-hotfix\\verify-public.py",
+    "original_sha256": "f53f8e6b48c8ecf71665d28f4d078fa051178f952a9bbd9c0a86d5cea1c390bb",
+    "published": "tools\\session-preservation\\task3-20261014\\historical-tools\\release1440-music-hotfix\\verify-public.py",
+    "published_sha256": "1b04407b608d81bb77b191d65570ed61ba201a3bbac77f71f0d8ad8f8ce9c5ee",
+    "bytes": 2349
+  }
+]

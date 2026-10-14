@@ -1,0 +1,6 @@
+from native_control import *
+execute(D+'data get entity 10000 RootVehicle');execute(D+'execute as @e[type=create:controlled_contraption] run data get entity @s')
+for c in ['setblock 6 120 0 minecraft:air','setblock 6 119 0 minecraft:farmland[moisture=0]','setblock 6 120 0 minecraft:wheat[age=0]','setblock 6 121 0 sliceanddice:sprinkler[type=ceiling]','setblock 6 122 0 create:fluid_pipe','setblock 7 122 0 create:mechanical_pump[facing=west]','setblock 8 122 0 create:fluid_pipe','setblock 9 122 0 create:creative_fluid_tank{TankContent:{id:"minecraft:water",amount:8000}}','setblock 7 122 1 create:creative_motor[facing=north]{ScrollValue:64,Speed:64.0f}']:execute(D+c)
+time.sleep(15)
+for label,pos in [('waterTank','9 122 0'),('waterPump','7 122 0'),('sprinkler','6 121 0')]:execute(D+'data modify storage muxiqa:create '+label+' set from block '+pos)
+execute('data get storage muxiqa:create waterTank');execute('data get storage muxiqa:create waterPump');execute('data get storage muxiqa:create sprinkler');execute(D+'execute store success storage muxiqa:create hydrated byte 1 if block 6 119 0 minecraft:farmland[moisture=7]');execute('data get storage muxiqa:create hydrated');print('sprinkler native snapshots captured',flush=True)

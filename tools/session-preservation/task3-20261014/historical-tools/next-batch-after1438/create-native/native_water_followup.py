@@ -1,0 +1,5 @@
+from native_control import *
+execute(D+'setblock 9 122 0 minecraft:air');execute(D+'setblock 9 122 0 create:creative_fluid_tank');execute(D+'setblock 7 123 0 create:cogwheel[axis=x]');execute(D+'setblock 8 123 0 create:creative_motor[facing=west]{ScrollValue:64,Speed:64.0f}')
+execute('ride 10000 dismount');execute(D+'setblock 9 121 -1 minecraft:stone');execute('execute in muxi_game_core:overworld run tp 10000 9.5 122 -1.5 0 20');cmd('server','inventory-set',player='10000',slot=8,count=1,item='minecraft:water_bucket');cmd('host','select',slot=8);cmd('host','block-interact',x=9,y=122,z=0);time.sleep(15)
+for label,pos in [('waterTankActual','9 122 0'),('waterPumpActual','7 122 0'),('sprinklerActual','6 121 0')]:execute(D+'data modify storage muxiqa:create '+label+' set from block '+pos);execute('data get storage muxiqa:create '+label)
+execute(D+'execute store success storage muxiqa:create hydratedActual byte 1 if block 6 119 0 minecraft:farmland[moisture=7]');execute('data get storage muxiqa:create hydratedActual');print('actual bucket supply and gear drive captured',flush=True)

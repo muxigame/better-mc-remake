@@ -1,0 +1,423 @@
+"""Launch/observe/stop private real Minecraft clients and a dedicated server.
+
+The launch metadata, native callbacks, WMI workaround and orderly shutdown are
+adapted from the already verified native_pipeline_runtime / Outbreak QA runners.
+This is not a production launcher, SSO proof, visual test or OS key injector.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import time
+import uuid
+
+import local_mc_runtime as rt
+
+
+def emit(event, **data):
+    print(json.dumps({"event": event, **data}, ensure_ascii=False), flush=True)
+
+
+def marker_save(root, marker):
+    rt.write_json(root / "local-mc-owner.json", marker)
+
+
+def command(root, role, body, timeout=30):
+    root, marker = rt.owned_lab(root)
+    if not isinstance(body,dict):raise ValueError("Callback input must be a JSON object")
+    if role not in marker["roles"]: raise ValueError("Unknown owned role: " + role)
+    path = root / "coordinator" / ("command-" + role + ".json")
+    old = rt.read_json(path) or {}
+    number = max(0, int(old.get("id", 0))) + 1
+    if number >= 2_000_000_000: raise ValueError("Lab has already been asked to stop")
+    payload = {**body, "id": number, "runId": marker["runId"]}
+    if "type" not in payload: raise ValueError("Callback requires type")
+    rt.write_json(path, payload)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        result = rt.read_json(root / "coordinator" / f"result-{role}-{number}.json")
+        if result and result.get("runId") == marker["runId"]:
+            if not result.get("ok"): raise RuntimeError("Native callback failed: " + str(result.get("error")))
+            return result
+        if (root / "stop-request.json").exists(): raise RuntimeError("Owned lab stop requested")
+        time.sleep(.1)
+    raise TimeoutError("Native callback timed out for " + role + "; inspect role boot.log and status")
+
+
+def stop_files(root, marker):
+    rt.write_json(root / "stop-request.json", {"runId": marker["runId"], "requestedAt": time.time(), "normalStopOnly": True})
+    for role in marker["roles"]:
+        rt.write_json(root / "coordinator" / f"command-{role}.json", {"id": 2_000_000_000, "runId": marker["runId"], "type": "stop"})
+
+
+def value_at(data, path):
+    for part in path.split("."):
+        data = data[int(part)] if isinstance(data, list) else data[part]
+    return data
+
+
+def assert_receipt(result, expected):
+    for path, value in expected.items():
+        if value_at(result, path) != value: raise AssertionError(f"Receipt {path} does not equal {value!r}")
+
+
+def wait_condition(label, predicate, timeout, processes=None):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate(): return
+        if processes:
+            for role, process in processes.items():
+                if process.poll() is not None: raise RuntimeError(f"Owned {role} exited before {label}: {process.returncode}")
+        time.sleep(.2)
+    raise TimeoutError(label + " timed out; inspect boot.log, logs/latest.log, crash-reports and coordinator/status-*.json")
+
+
+def smoke(root, marker, processes, timeout):
+    evidence = []
+    def take(role, payload):
+        result = command(root, role, payload, timeout)
+        evidence.append(result); rt.write_json(root / "callback-receipts.json", evidence)
+        return result
+    server = take("server", {"type": "observe"})
+    assert server["status"]["players"] == len(marker["clientNames"])
+    assert all(p["network"] for p in server["status"]["playerStates"])
+    for role in marker["clientNames"]:
+        result = take(role, {"type": "observe"})
+        assert result["nativeMinecraftClient"] and result["status"]["connected"]
+        assert result["status"]["playersSeen"] == len(marker["clientNames"])
+        if marker["hidden"]:
+            assert not result["status"]["glfwVisible"] and not result["status"]["glfwFocused"]
+    host = marker["clientNames"]["host"]
+    take("server", {"type": "inventory-set", "player": host, "slot": 0, "item": "minecraft:diamond", "count": 3})
+    take("host", {"type": "select", "slot": 0})
+    take("host", {"type": "drop", "all": False})
+    row = take("server", {"type": "observe"})
+    assert row["status"]["byName"][host]["inventoryBySlot"]["0"]["count"] == 2, "Native Q did not remove exactly one"
+    take("host", {"type": "drop", "all": True})
+    row = take("server", {"type": "observe"})
+    assert "0" not in row["status"]["byName"][host]["inventoryBySlot"], "Native Ctrl+Q did not remove the remaining stack"
+    assert row["status"]["looseDiamonds"] == 3, "Native dropped stack count changed"
+    emit("smoke_passed", realClients=len(marker["clientNames"]), nativeQAndCtrlQ=True, physicalOSInput=False)
+    return {"passed": True, "receipts": len(evidence), "actualNetworkClients": len(marker["clientNames"]),
+            "syntheticServerPlayers": False, "assistedInventoryFixture": True, "nativeQAndCtrlQ": True,
+            "physicalOSInput": False, "visualAcceptance": False, "SSOAcceptance": False, "gameplayAcceptance": False}
+
+
+def scenario(root, path, timeout):
+    data = rt.read_json(path)
+    if not data or not isinstance(data.get("steps"), list): raise ValueError("Scenario requires steps[]")
+    evidence = []
+    for step in data["steps"]:
+        body = {key: value for key, value in step.items() if key not in ("role", "expect", "waitSeconds", "timeoutSeconds")}
+        wait = step.get("waitSeconds", 0)
+        if not isinstance(wait, (int, float)) or wait < 0 or wait > 60: raise ValueError("waitSeconds outside 0..60")
+        end = time.monotonic() + wait
+        while time.monotonic() < end:
+            if (root / "stop-request.json").exists(): raise RuntimeError("Owned stop requested")
+            time.sleep(.1)
+        result = command(root, step["role"], body, step.get("timeoutSeconds", timeout))
+        assert_receipt(result, step.get("expect", {}))
+        evidence.append(result); rt.write_json(root / "callback-receipts.json", evidence)
+    return {"passed": True, "scenario": path.name, "receipts": len(evidence), "physicalOSInput": False,
+            "visualAcceptance": False, "SSOAcceptance": False, "assertions": sum(len(x.get("expect", {})) for x in data["steps"])}
+
+
+def validate_shader_pack_name(name):
+    if not name or name in (".", "..") or name != name.strip() or any(c in name for c in "\\/:=\r\n\0"):
+        raise ValueError("Shader pack must be a plain copied filename/directory name")
+
+
+def install_shader_selection(lab,name):
+    validate_shader_pack_name(name)
+    packs=(lab/"shaderpacks").resolve(strict=True)
+    selected=(packs/name).resolve(strict=True)
+    if selected.parent != packs: raise ValueError("Shader pack escapes copied shaderpacks directory")
+    (lab/"config/iris.properties").write_text("enableShaders=true\nallowUnknownShaders=false\ndisableUpdateMessage=true\nmaxShadowRenderDistance=16\nshaderPack="+name+"\n",encoding="utf-8")
+
+
+def fml_config(overrides):
+    if len(overrides) > 32: raise ValueError("Too many dependency overrides")
+    grouped = {}
+    for entry in overrides:
+        if not re.fullmatch(r"[a-z][a-z0-9_]*=[+-][a-z][a-z0-9_]*", entry):
+            raise ValueError("Dependency override must be modid=+dependency or modid=-dependency")
+        target, dependency = entry.split("=", 1)
+        grouped.setdefault(target, [])
+        if dependency not in grouped[target]: grouped[target].append(dependency)
+    text = 'earlyWindowControl = false\nearlyWindowProvider = ""\nversionCheck = false\n'
+    if grouped:
+        text += "[dependencyOverrides]\n"
+        for target, dependencies in grouped.items():
+            text += target + " = " + json.dumps(dependencies) + "\n"
+    return text
+
+
+def copy_template(template, lab):
+    if template is None:return
+    # Frozen public/config inputs only. No worlds, credentials, user saves, runtime libraries or caches.
+    for name in ("config","configureddefaults","defaultconfigs","kubejs","resourcepacks","shaderpacks","tacz","tlm_custom_pack","fancymenu_data","third-party-notices"):
+        source=template/name
+        if source.is_dir():shutil.copytree(source,lab/name,dirs_exist_ok=True)
+
+def private_identity(lab):
+    path=lab/"config/muxi-game-core.json"
+    fixture=rt.read_json(path) or {"schema":1}
+    features=fixture.setdefault("features",{})
+    for key in ("identity","login"):features.setdefault(key,{})["enabled"]=False
+    rt.write_json(path,fixture)
+
+def run(args):
+    server_only = getattr(args, "server_only", False)
+    if args.clients < 0 or (args.clients == 0 and not server_only): raise ValueError("Zero clients requires explicit --server-only")
+    if server_only and (args.clients != 0 or args.mode == "smoke"): raise ValueError("--server-only requires --clients 0 and hold/scenario mode")
+    if not 1<=args.port<=65535:raise ValueError("Port outside 1..65535")
+    if args.reserve_memory_mb<0 or args.gpu_per_client_mb<1 or len(args.client_name)>args.clients:raise ValueError("Invalid resource reservation/client-name count")
+    if min(args.server_memory_mb, args.client_memory_mb) < 512: raise ValueError("MC heap reservation must be at least 512 MiB")
+    server, game, jdk = [path.resolve(strict=True) for path in (args.server_runtime, args.client_game, args.java_home)]
+    exe = "java.exe" if os.name == "nt" else "java"
+    if not (jdk / "bin" / exe).is_file(): raise ValueError("Installed Java 21 JDK required")
+    java_version = subprocess.run([str(jdk / "bin" / exe), "-version"], capture_output=True, text=True, check=True)
+    if not re.search(r'version "21[.\"]', java_version.stderr + java_version.stdout): raise ValueError("This MC 1.21.1 QA runner requires Java 21")
+    if not args.accept_eula: raise ValueError("Pass --accept-eula for this new private MC server")
+    loader_config = fml_config(args.dependency_override)
+    mods = [path.resolve(strict=True) for path in args.mod]
+    client_mods = [path.resolve(strict=True) for path in args.client_mod]
+    server_mods = [path.resolve(strict=True) for path in args.server_mod]
+    if not 2 <= args.client_render_distance <= 32 or not 2 <= args.client_simulation_distance <= 32 or not 1 <= args.client_max_fps <= 260:
+        raise ValueError("Client render/simulation/FPS settings outside allowed ranges")
+    if args.client_graphics_mode not in (0, 1, 2): raise ValueError("Graphics mode outside 0..2")
+    if args.shader_pack is not None:
+        validate_shader_pack_name(args.shader_pack)
+    data = [path.resolve(strict=True) for path in args.data_dir]
+    rt.port_free(args.port)
+    heap = args.server_memory_mb + args.clients * args.client_memory_mb
+    required = int(heap * 1.25) + args.reserve_memory_mb
+    approved = getattr(args, "approved_heap_budget_mb", None)
+    if approved is not None:
+        if approved < 512 or heap > approved:
+            raise ValueError("Requested heaps exceed explicitly approved bounded budget")
+        # Explicit operator authorization permits a bounded run without retrying a denied
+        # system-memory query. Unknown capacity stays unknown, never fabricated as measured.
+        capacity = {"availableMemoryMiB": None, "gpuAdapters": [], "gpuTelemetry": [],
+                    "minecraftProcesses": [], "minecraftProcessInspection": "operator must inspect owned processes separately",
+                    "systemResourceQuerySkipped": True, "approvedHeapBudgetMiB": approved,
+                    "resourceBasis": "explicit operator budget; not measured free RAM or VRAM"}
+    else:
+        capacity = rt.resources()
+        if capacity["availableMemoryMiB"] is None or capacity["availableMemoryMiB"] < required:
+            raise ValueError(f"Available physical memory {capacity['availableMemoryMiB']} MiB is below {required} MiB reservation; adjust heaps/client count after checking real MC workloads")
+    gpu_budget=args.gpu_budget_mb
+    if gpu_budget is None and capacity["gpuTelemetry"]:gpu_budget=max(row["freeMiB"] for row in capacity["gpuTelemetry"])
+    if gpu_budget is not None and args.clients * args.gpu_per_client_mb > gpu_budget:
+        raise ValueError("Client GPU reservation exceeds supplied available VRAM budget")
+    capacity.update({"requestedClients": args.clients, "requestedHeapMiB": heap, "reservedPhysicalMiB": required,
+                     "gpuBudgetMiB": gpu_budget, "gpuReservationPerClientMiB": args.gpu_per_client_mb,
+                     "gpuBudgetSource": "operator" if args.gpu_budget_mb is not None else "nvidia-smi measured free" if gpu_budget is not None else "unmeasured; operator must assess GPU workload",
+                     "gpuReservationIsEstimate": True, "fixedJavaCountLimit": False})
+    emit("capacity", **capacity)
+    sources = [server, game, jdk, *mods, *client_mods, *server_mods, *data]
+    if args.world: sources.append(args.world)
+    project, root = rt.new_lab(args.project_root, args.instance_root, sources)
+    coordinator = root / "coordinator"; coordinator.mkdir()
+    names = {}
+    for index in range(args.clients):
+        role = "host" if index == 0 else "guest" if index == 1 else f"client{index+1:02}"
+        name = args.client_name[index] if index < len(args.client_name) else "DebugHost" if index == 0 else "DebugGuest" if index == 1 else f"DebugClient{index+1:02}"
+        if not re.fullmatch(r"[A-Za-z0-9_]{1,16}", name) or name in names.values(): raise ValueError("Unique offline client names must be 1..16 ASCII letters/digits/underscore")
+        names[role] = name
+    marker = {"schema": 1, "runId": uuid.uuid4().hex, "projectRoot": str(project), "instanceRoot": str(root),
+              "createdAt": time.time(), "roles": ["server", *names], "clientNames": names, "hidden": not args.visible,
+              "serverPort": args.port, "productionMutation": False, "offlineLoopback": True,
+              "processes": {}, "resources": capacity, "mode": args.mode,
+              "inputArtifacts": [{"file": jar.name, "sha256": rt.sha256(jar), "scope": scope} for scope, jars in [("both",mods),("client",client_mods),("server",server_mods)] for jar in jars]}
+    marker["dependencyOverrides"] = list(args.dependency_override)
+    marker["clientSettings"]={"renderDistance":args.client_render_distance,"simulationDistance":args.client_simulation_distance,"maxFps":args.client_max_fps,"shaderPack":args.shader_pack,"graphicsMode":args.client_graphics_mode}
+    if args.client_pasterdream_ui is not None:
+        marker["clientSettings"]["pasterdreamUi"] = args.client_pasterdream_ui == "true"
+    marker["runtime"]={"serverRuntime":str(server),"clientGame":str(game),"javaHome":str(jdk),"javaVersion":(java_version.stderr+java_version.stdout).strip(),"version":args.version,"neoforge":args.neoforge}
+    marker_save(root, marker)
+    metadata = rt.client_metadata(game, args.version)
+    libraries = rt.client_libraries(game, args.version, metadata)
+    agent = rt.compile_agent(project, root, jdk, rt.javac_classpath(server, game, args.neoforge, libraries))
+    marker["qaAgentSha256"]=rt.sha256(agent);marker_save(root,marker)
+    natives = args.natives_dir.resolve(strict=True) if args.natives_dir else game / "versions" / args.version / (args.version + "-natives")
+    if not natives.is_dir(): raise ValueError("Installed natives directory missing; pass --natives-dir")
+    unix_temp = args.unix_temp.resolve() if args.unix_temp else root / "unix-temp"
+    if not unix_temp.exists(): unix_temp.mkdir(parents=True)
+    if len(str(unix_temp)) > 95:
+        emit("unix_temp_warning", message="Use a short existing --unix-temp path if WEPoll/AF_UNIX fails; no machine-wide service restart")
+    server_home = root / "server"; server_home.mkdir(); rt.copy_inputs(server_home, [*mods, *server_mods, agent], data)
+    copy_template(args.server_template,server_home)
+    if not args.server_template:(server_home / "config/fml.toml").write_text(loader_config, encoding="utf-8")
+    if args.world: shutil.copytree(args.world.resolve(strict=True), server_home / "qa-world")
+    (server_home / "eula.txt").write_text("eula=true\n")
+    props = f"server-ip=127.0.0.1\nserver-port={args.port}\nonline-mode=false\nenforce-secure-profile=false\nlevel-name=qa-world\ngamemode=survival\ndifficulty=normal\nview-distance={args.server_view_distance}\nsimulation-distance={args.server_simulation_distance}\nmax-tick-time=120000\nspawn-protection=0\nallow-flight=true\nspawn-monsters=false\nspawn-animals=true\n"
+    if not args.world: props += 'level-type=minecraft:flat\ngenerate-structures=false\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:stone","height":3}],"biome":"minecraft:plains"}\n'
+    (server_home / "server.properties").write_text(props)
+    # This explicitly isolates game membership QA from real launcher/account/SSO credentials.
+    fixture_config = {"schema": 1, "features": {"identity": {"enabled": False}, "login": {"enabled": False}}}
+    private_identity(server_home)
+    properties = getattr(args, "jvm_property", [])
+    if any(not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]*=[^\r\n\x00]*", value) or value.startswith("qa.local.") for value in properties):
+        raise ValueError("JVM properties must be name=value and cannot override qa.local ownership")
+    marker["jvmProperties"] = properties; marker_save(root, marker)
+    prefix = ["-Dqa.local.root=" + str(root), "-Dqa.local.runId=" + marker["runId"],
+              *("-D" + value for value in properties)]
+    if args.diagnostic_logs:prefix += ["-Xlog:gc*,safepoint:file=gc.log:time,uptime,level,tags"]
+    server_args = server_home / "launch.args"
+    rt.argfile(server_args, [*prefix, "-Dqa.local.role=server", *rt.server_arguments(server, args.neoforge, args.server_memory_mb, unix_temp)])
+    clients = {}
+    for role, name in names.items():
+        lab = root / role; lab.mkdir(); rt.copy_inputs(lab, [*mods, *client_mods, agent], data)
+        copy_template(args.client_template,lab)
+        private_identity(lab)
+        if not args.client_template:(lab / "config/fml.toml").write_text(loader_config, encoding="utf-8")
+        (lab / "options.txt").write_text(f"lang:zh_cn\nmaxFps:{args.client_max_fps}\nenableVsync:false\nonboardAccessibility:false\nsoundCategory_master:0.0\nfullscreen:false\npauseOnLostFocus:false\nrenderDistance:{args.client_render_distance}\nsimulationDistance:{args.client_simulation_distance}\ngraphicsMode:{args.client_graphics_mode}\n")
+        if args.client_pasterdream_ui is not None:
+            (lab / "config/PasterDream-Client.toml").write_text('[HUD]\n"enable mod ui" = ' + args.client_pasterdream_ui + "\n", encoding="utf-8")
+        if args.shader_pack is not None:
+            install_shader_selection(lab,args.shader_pack)
+        shutil.copytree(natives, lab / "natives")
+        launch = [*prefix, f"-Dqa.local.role={role}", f"-Dqa.local.port={args.port}", "-Dqa.local.hidden=" + str(not args.visible).lower(),
+                  *rt.client_arguments(game, args.version, metadata, libraries, lab, name, args.client_memory_mb, lab / "natives", unix_temp)]
+        rt.argfile(lab / "launch.args", launch); clients[role] = lab
+    processes = {}; logs = {}; report = {"runId": marker["runId"], "passed": False, "productionMutation": False,
+                                         "instanceRoot": str(root), "normalStopOnly": True, "physicalOSInput": False, "visualAcceptance": False}
+    def start(role, lab):
+        logs[role] = (lab / "boot.log").open("w", encoding="utf-8")
+        environment=dict(os.environ)
+        for key in ("MUXI_TERMINAL_GAME_CREDENTIAL","MUXI_TERMINAL_CREDENTIAL_PIPE","MUXI_TERMINAL_CREDENTIAL_BROKER","MUXI_SSO_QA_CONTROL","MUXI_LAUNCHER_QA_CONTROL","MUXI_GAME_QA_CONTROL"):
+            environment.pop(key,None)
+        process = subprocess.Popen([str(jdk / "bin" / exe), "@" + str(lab / "launch.args")], cwd=lab, env=environment,
+                                   stdin=subprocess.PIPE if role == "server" else subprocess.DEVNULL,
+                                   stdout=logs[role], stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+                                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+        processes[role] = process
+        row = {"pid": process.pid, "root": str(lab), "startedAt": time.time()}
+        try:
+            import psutil
+            row["processCreateTime"] = psutil.Process(process.pid).create_time()
+        except (ImportError, OSError): pass
+        marker["processes"][role] = row; marker_save(root, marker)
+        emit("started", role=role, pid=process.pid, instance=str(lab))
+    try:
+        start("server", server_home)
+        def ready():
+            try: return "Done (" in (server_home / "boot.log").read_text(encoding="utf-8", errors="replace") and bool(rt.read_json(coordinator / "status-server.json"))
+            except OSError: return False
+        wait_condition("server Done + actual tick callback", ready, args.boot_timeout, processes)
+        if root.name.startswith("fullpack-entry-") and root.name not in ("fullpack-entry-1", "fullpack-entry-2", "fullpack-entry-3"):
+            for fixture_command in ["execute in minecraft:overworld run forceload add -16 -16 16 16", "execute in minecraft:overworld run fill -16 3 -16 16 3 16 minecraft:stone", "execute in minecraft:overworld run fill -16 4 -16 16 8 16 minecraft:air", "gamerule doMobSpawning false"]:
+                command(root, "server", {"type":"execute", "command":fixture_command}, 60)
+        for role, lab in clients.items(): start(role, lab)
+        def connected():
+            status = rt.read_json(coordinator / "status-server.json")
+            if not status or status.get("players") != args.clients: return False
+            return all((rt.read_json(coordinator / f"status-{role}.json") or {}).get("connected") for role in names)
+        wait_condition("real native client connections", connected, args.boot_timeout, processes)
+        emit("ready", instance=str(root), actualNetworkClients=args.clients, roles=list(names))
+        if args.mode == "smoke": report["acceptance"] = smoke(root, marker, processes, args.command_timeout)
+        elif args.mode == "scenario":
+            if not args.scenario: raise ValueError("--mode scenario requires --scenario")
+            report["acceptance"] = scenario(root, args.scenario.resolve(strict=True), args.command_timeout)
+        else:
+            deadline = time.monotonic() + args.hold_seconds; last = 0
+            while time.monotonic() < deadline and not (root / "stop-request.json").exists():
+                if any(process.poll() is not None for process in processes.values()): raise RuntimeError("Owned MC exited during hold")
+                if time.monotonic() - last > 15:
+                    emit("hold", status=rt.read_json(coordinator / "status-server.json")); last = time.monotonic()
+                time.sleep(.25)
+            report["acceptance"] = {"passed": True, "scope": "connections and requested hold only", "gameplayAcceptance": False}
+        report["passed"] = True
+    except (Exception, KeyboardInterrupt) as failure:
+        report["error"] = str(failure); emit("failed", error=str(failure), evidence=str(root))
+    finally:
+        stop_files(root, marker)
+        server_process = processes.get("server")
+        if server_process and server_process.poll() is None:
+            try: server_process.stdin.write("stop\n"); server_process.stdin.flush()
+            except OSError: pass
+        deadline = time.monotonic() + args.shutdown_timeout
+        while any(process.poll() is None for process in processes.values()) and time.monotonic() < deadline: time.sleep(.2)
+        report["exitCodes"] = {role: process.poll() for role, process in processes.items()}
+        report["normalExit"] = len(processes) == len(marker["roles"]) and all(code == 0 for code in report["exitCodes"].values())
+        report["normalStopBlocked"] = [{"role": role, "pid": process.pid} for role, process in processes.items() if process.poll() is None]
+        report["clientRenderers"]={role:(rt.read_json(coordinator/f"status-{role}.json") or {}).get("glRenderer") for role in names}
+        report["passed"] = report["passed"] and report["normalExit"]
+        for handle in logs.values(): handle.close()
+        rt.write_json(root / "run-result.json", report); emit("result", **report)
+    return 0 if report["passed"] else 1
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="operation", required=True)
+    launch = sub.add_parser("run")
+    launch.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[1])
+    for name in ("instance-root", "server-runtime", "client-game", "java-home"): launch.add_argument("--" + name, type=Path, required=True)
+    launch.add_argument("--version", default="BatterMC5Remake"); launch.add_argument("--neoforge", default="21.1.250")
+    launch.add_argument("--port", type=int, required=True); launch.add_argument("--clients", type=int, default=2)
+    launch.add_argument("--server-only", action="store_true", help="Explicit dedicated-server-only hold/scenario; requires --clients 0")
+    launch.add_argument("--client-name", action="append", default=[])
+    launch.add_argument("--mod", type=Path, action="append", default=[]); launch.add_argument("--data-dir", type=Path, action="append", default=[])
+    launch.add_argument("--client-mod", type=Path, action="append", default=[])
+    launch.add_argument("--server-mod", type=Path, action="append", default=[])
+    launch.add_argument("--client-template", type=Path)
+    launch.add_argument("--server-template", type=Path)
+    launch.add_argument("--shader-pack")
+    launch.add_argument("--client-pasterdream-ui", choices=("true", "false"), help="Explicit private-profile PasterDream HUD selection; omitted keeps mod defaults")
+    launch.add_argument("--dependency-override", action="append", default=[])
+    launch.add_argument("--client-render-distance",type=int,default=3)
+    launch.add_argument("--server-view-distance",type=int,default=3,choices=range(2,33))
+    launch.add_argument("--server-simulation-distance",type=int,default=3,choices=range(2,33))
+    launch.add_argument("--client-simulation-distance",type=int,default=3)
+    launch.add_argument("--client-max-fps",type=int,default=30)
+    launch.add_argument("--client-graphics-mode",type=int,default=0)
+    launch.add_argument("--world", type=Path); launch.add_argument("--natives-dir", type=Path); launch.add_argument("--unix-temp", type=Path)
+    launch.add_argument("--accept-eula", action="store_true"); launch.add_argument("--visible", action="store_true")
+    launch.add_argument("--mode", choices=("smoke", "hold", "scenario"), default="smoke"); launch.add_argument("--scenario", type=Path)
+    launch.add_argument("--server-memory-mb", type=int, default=2048); launch.add_argument("--client-memory-mb", type=int, default=2304)
+    launch.add_argument("--reserve-memory-mb", type=int, default=2048)
+    launch.add_argument("--approved-heap-budget-mb", type=int, help="Explicit operator-authorized total heap cap; skip system resource queries and report capacity unknown")
+    launch.add_argument("--jvm-property", action="append", default=[], help="Explicit private-test JVM name=value; qa.local ownership keys are reserved")
+    launch.add_argument("--gpu-budget-mb", type=int); launch.add_argument("--gpu-per-client-mb", type=int, default=512)
+    launch.add_argument("--diagnostic-logs", action="store_true", help="Private per-instance GC and safepoint logs")
+    launch.add_argument("--boot-timeout", type=int, default=180); launch.add_argument("--command-timeout", type=int, default=30)
+    launch.add_argument("--shutdown-timeout", type=int, default=120); launch.add_argument("--hold-seconds", type=int, default=600)
+    for operation in ("status", "stop", "command"):
+        action = sub.add_parser(operation); action.add_argument("--instance-root", type=Path, required=True)
+        if operation == "stop": action.add_argument("--wait-seconds", type=int, default=30)
+        if operation == "command":
+            action.add_argument("--role", required=True); action.add_argument("--json-file", type=Path, required=True)
+            action.add_argument("--timeout", type=int, default=30)
+    args = parser.parse_args(argv)
+    try:
+        if args.operation == "run": return run(args)
+        root, marker = rt.owned_lab(args.instance_root)
+        if args.operation == "status":
+            emit("status", owner=marker, roles={role: rt.read_json(root / "coordinator" / f"status-{role}.json") for role in marker["roles"]}, result=rt.read_json(root / "run-result.json")); return 0
+        if args.operation == "command":
+            if marker["mode"] != "hold": raise ValueError("External commands require --mode hold; do not race an automatic scenario controller")
+            emit("callback", receipt=command(root, args.role, rt.read_json(args.json_file), args.timeout)); return 0
+        stop_files(root, marker)
+        deadline = time.monotonic() + args.wait_seconds
+        while time.monotonic() < deadline:
+            report = rt.read_json(root / "run-result.json")
+            if report and report.get("runId") == marker["runId"]:
+                emit("stop_result", result=report); return 0 if report.get("normalExit") else 1
+            time.sleep(.2)
+        emit("stop_requested", normalExitVerified=False, message="Normal stop requested only for marked lab; original runner must collect exit codes. Inspect the listed owned instances if blocked.")
+        return 1
+    except (Exception, KeyboardInterrupt) as error:
+        emit("error", error=str(error)); return 1
+
+
+if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    raise SystemExit(main())

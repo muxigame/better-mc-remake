@@ -1,0 +1,3 @@
+from native_control import *
+execute(D+'setblock 0 119 0 minecraft:air');execute(D+'setblock 0 118 0 minecraft:air');execute(D+'execute positioned 0 119 0 run kill @e[type=minecraft:item,distance=..4]');execute(D+'setblock 0 118 0 minecraft:chest');execute(D+'setblock 0 119 0 create:smart_chute');execute(D+'data merge block 0 119 0 {Filter:{id:"minecraft:melon_slice",count:1},FilterAmount:1,UpTo:1b}');execute(D+'data merge block 0 120 0 {InputItems:{Size:9,Items:[{Slot:0,id:"minecraft:melon",count:10}]},OutputItems:{Size:9,Items:[]}}');time.sleep(40)
+execute(D+'data get block 0 118 0');execute(D+'data get block 0 119 0');execute(D+'data get block 0 120 0');print('native filtered output batch captured',flush=True)

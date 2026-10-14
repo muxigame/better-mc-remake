@@ -1,0 +1,31 @@
+package net.muxigame.minigames.horseqa;
+import com.google.gson.*;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import net.minecraft.server.*;import net.minecraft.server.level.*;import net.minecraft.core.BlockPos;import net.minecraft.world.entity.*;import net.minecraft.world.entity.animal.horse.Horse;import net.minecraft.world.level.GameType;import net.minecraft.world.level.block.Blocks;import net.minecraft.network.chat.Component;
+import net.muxigame.minigames.*;import net.muxigame.minigames.horse.*;
+import net.neoforged.fml.common.EventBusSubscriber;import net.neoforged.bus.api.*;import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import java.nio.file.*;import java.util.*;
+/** Test-only: real connected offline player, generated assets and private backend. */
+@EventBusSubscriber(modid="muxi_horse_racing")
+public final class UmamusumeShopServerQA {
+ static ServerLevel fixtureLevel;static ServerPlayer player;static HorseRooms rooms;static Horse original;static int ticks,readyDelay;static boolean failed;static final JsonArray fixtures=new JsonArray();
+ static Path root(){return Path.of(System.getProperty("qa.local.root"));}
+ @SubscribeEvent(priority=EventPriority.LOWEST) @SuppressWarnings("unchecked") public static void tick(ServerTickEvent.Post event){
+  if(failed||!Boolean.getBoolean("muxi.horse.shopClientQa")||!"server".equals(System.getProperty("qa.local.role")))return;
+  var server=event.getServer();try{
+   if(rooms==null){if(player==null)player=server.getPlayerList().getPlayers().stream().filter(p->p.getGameProfile().getName().equals("10000")).findFirst().orElse(null);if(player==null)return;var active=server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,net.minecraft.resources.ResourceLocation.parse("muxi_game_core:overworld")));if(active!=null&&player.serverLevel()!=active){readyDelay=0;return;}if(++readyDelay<100)return;fixtureLevel=player.serverLevel();
+    if(!Files.exists(root().resolve("local-mc-owner.json")))throw new IllegalStateException("Missing isolated owner");
+    var field=HorseRacing.class.getDeclaredField("ACTIVE");field.setAccessible(true);rooms=((Map<MinecraftServer,HorseRooms>)field.get(null)).get(server);TrustedAccounts.admit(player);
+    for(int cx=-1;cx<=0;cx++)for(int cz=-1;cz<=0;cz++)fixtureLevel.setChunkForced(cx,cz,true);
+    for(int x=-12;x<16;x++)for(int z=-12;z<14;z++){fixtureLevel.setBlockAndUpdate(new BlockPos(x,64,z),Blocks.SMOOTH_QUARTZ.defaultBlockState());for(int y=65;y<70;y++)fixtureLevel.setBlockAndUpdate(new BlockPos(x,y,z),Blocks.AIR.defaultBlockState());}
+    for(int x=-9;x<=12;x+=3)fixtureLevel.setBlockAndUpdate(new BlockPos(x,68,3),Blocks.GLOWSTONE.defaultBlockState());player.setGameMode(GameType.CREATIVE);player.teleportTo(fixtureLevel,0,65,-5,0,8);fixtureLevel.setDayTime(6000);
+    int n=0;for(var item:UmamusumeCatalog.offers()){var b=item.getAsJsonObject();var maid=UmamusumeCompanion.create(fixtureLevel,UUID.nameUUIDFromBytes(("isolated-display:"+b.get("sku")).getBytes(java.nio.charset.StandardCharsets.UTF_8)),player.getUUID(),b,-7.5+n*3,65,3);maid.setPos(-7.5+n*3,65,3);maid.setYRot(180);maid.setNoAi(true);maid.setInvulnerable(true);maid.setPersistenceRequired();fixtureLevel.addFreshEntity(maid);UmamusumeCompanion.verify(maid,player.getUUID(),b);var entry=b.deepCopy();entry.addProperty("uuid",maid.getUUID().toString());fixtures.add(entry);n++;}
+    original=EntityType.HORSE.create(fixtureLevel);original.setPos(11,65,3);original.setTamed(true);original.setOwnerUUID(player.getUUID());original.setCustomName(Component.literal("玩家原名 Alpha"));original.setHealth(original.getMaxHealth());original.setNoAi(true);original.setInvulnerable(true);original.setNoGravity(true);fixtureLevel.addFreshEntity(original);
+   }
+   ticks++;if(ticks%20!=0)return;GameRuntime.get(server).platform.refresh(player);rooms.trading().refresh(player);
+   var report=new JsonObject();report.addProperty("realNetworkPlayer",true);report.addProperty("serverAllowsAnimalEntities",server.isSpawningAnimals());report.addProperty("fixtureDimension",fixtureLevel.dimension().location().toString());report.addProperty("playerDimension",player.serverLevel().dimension().location().toString());report.addProperty("uid",10000);report.add("fixtures",fixtures);report.addProperty("customHorseNamePreserved",original.isAlive()&&original.getCustomName().getString().equals("玩家原名 Alpha"));report.addProperty("originalHorseUuid",original.getUUID().toString());report.addProperty("originalRemoved",original.isRemoved());report.addProperty("originalRemovalReason",String.valueOf(original.getRemovalReason()));report.addProperty("originalHealth",original.getHealth());report.addProperty("playerX",player.getX());report.addProperty("playerZ",player.getZ());report.addProperty("actualCustomHorseName",original.getCustomName().getString());report.add("trade",rooms.trading().snapshot(player));report.add("nativeJournal",rooms.trading().evidence());
+   var purchased=new JsonArray();for(var world:server.getAllLevels())for(var entity:world.getAllEntities())if(entity instanceof EntityMaid maid&&fixtures.asList().stream().noneMatch(f->f.getAsJsonObject().get("uuid").getAsString().equals(maid.getUUID().toString()))&&player.getUUID().equals(maid.getOwnerUUID())){var b=UmamusumeCatalog.offers().asList().stream().map(v->v.getAsJsonObject()).filter(v->v.get("sku").getAsString().equals("uma_special_week")).findFirst().orElseThrow();UmamusumeCompanion.verify(maid,player.getUUID(),b);var p=new JsonObject();p.addProperty("uuid",maid.getUUID().toString());p.addProperty("name",maid.getName().getString());p.addProperty("modelId",maid.getYsmModelId());p.addProperty("unlocked",!HorseTrading.locked(maid));p.addProperty("actualMaidOwnerChampionVerified",true);purchased.add(p);}report.add("purchased",purchased);
+   Files.writeString(root().resolve("shop-server-evidence.json"),new GsonBuilder().setPrettyPrinting().create().toJson(report));
+  }catch(Throwable failure){failed=true;failure.printStackTrace();try{Files.writeString(root().resolve("shop-server-error.txt"),failure.toString());}catch(Exception ignored){} }
+ }
+}

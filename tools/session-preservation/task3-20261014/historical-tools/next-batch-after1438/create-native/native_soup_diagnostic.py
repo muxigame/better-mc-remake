@@ -1,0 +1,2 @@
+from native_control import *
+execute(D+'data get block 20 122 0');execute(D+'execute store success storage muxiqa:create burnerHot byte 1 if block 20 119 0 create:blaze_burner[blaze=kindled]');execute('data get storage muxiqa:create burnerHot');execute(D+'data merge block 21 123 0 {ScrollValue:128,Speed:-128.0f}');execute(D+'setblock 21 122 0 minecraft:air');execute(D+'setblock 21 122 0 create:cogwheel[axis=y]');time.sleep(12);execute(D+'data get block 20 122 0');execute(D+'data get block 20 120 0');print('mixer recipe prerequisite diagnosis captured',flush=True)

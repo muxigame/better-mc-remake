@@ -1,0 +1,6 @@
+from native_control import *
+execute(D+'setblock 0 118 0 minecraft:chest');execute(D+'setblock 0 119 0 minecraft:hopper[facing=down]')
+time.sleep(35)
+execute(D+'data modify storage muxiqa:create hopperBasin set from block 0 120 0');execute(D+'data modify storage muxiqa:create hopperChest set from block 0 118 0');execute('data get storage muxiqa:create hopperBasin');execute('data get storage muxiqa:create hopperChest')
+execute(D+'fill 9 119 -2 13 119 3 minecraft:stone');execute(D+'setblock 10 119 0 create:creative_motor[facing=up]{ScrollValue:32,Speed:32.0f}');execute(D+'setblock 10 120 0 create:mechanical_bearing[facing=up]');execute(D+'setblock 10 121 0 create:linear_chassis[axis=y,sticky_top=true]');execute(D+'setblock 10 122 0 interiors:red_chair[facing=north]');execute('execute in muxi_game_core:overworld run tp 10000 10.5 120 -1.5 0 -15');cmd('host','block-interact',x=10,y=122,z=0);time.sleep(1);execute(D+'data get entity 10000 RootVehicle');cmd('host','block-interact',x=10,y=120,z=0);time.sleep(5)
+execute(D+'data get block 10 120 0');execute(D+'execute as @e[type=create:contraption] run data get entity @s');print('hopper and bearing native evidence captured',flush=True)

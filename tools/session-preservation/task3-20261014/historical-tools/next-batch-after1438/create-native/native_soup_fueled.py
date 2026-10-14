@@ -1,0 +1,3 @@
+from native_control import *
+execute(D+'setblock 21 122 0 minecraft:air');execute(D+'setblock 21 123 0 minecraft:air');execute(D+'setblock 21 123 0 create:creative_motor[facing=down]{ScrollValue:64,Speed:64.0f}');execute(D+'setblock 21 122 0 create:cogwheel[axis=y]');execute('execute in muxi_game_core:overworld run tp 10000 20.5 120 -1.5 0 15');cmd('server','inventory-set',player='10000',slot=8,count=1,item='minecraft:coal');cmd('host','select',slot=8);cmd('host','block-interact',x=20,y=119,z=0);time.sleep(20)
+execute(D+'data get block 20 119 0');execute(D+'data get block 20 122 0');execute(D+'data get block 20 120 0');print('native coal fuel and cooking rechecked',flush=True)
