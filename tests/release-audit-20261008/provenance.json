@@ -1,0 +1,48 @@
+{
+  "release": "2026-10-08 launcher 1.2.8 / pack 1.4.32",
+  "migration": "Code only; byte-identical originals. No instances, payloads, worlds, caches, credentials or raw results.",
+  "files": [
+    {
+      "file": "verify_launcher128.py",
+      "original": ".local-operations/release-20261008-takeover/verify_launcher128.py",
+      "sha256": "af0780f4f4506fba6b59dcd120e1cce530693a303528677e407329852be7eb0c",
+      "bytes": 1668
+    },
+    {
+      "file": "verify_final_r2.py",
+      "original": ".local-operations/release-20261008-takeover/verify_final_r2.py",
+      "sha256": "00d9d1399baeb4224abafa729f5dba8357dc56ee4e56583be6f49607ea0da14a",
+      "bytes": 3112
+    },
+    {
+      "file": "check_public_status.py",
+      "original": ".local-operations/release-20261008-takeover/production-r2/check_public_status.py",
+      "sha256": "626c317d4a6680905e14eb30287c9005e19de038ab1f8d2b4e7dda8555e2c61c",
+      "bytes": 1294
+    },
+    {
+      "file": "verify_server_final.py",
+      "original": ".local-operations/release-20261008-takeover/production-r2/verify_server_final.py",
+      "sha256": "cb780a87725534466f7ecd3629b906d613a4de9cc0c118a43b6fff118b2605bb",
+      "bytes": 2836
+    },
+    {
+      "file": "review_startup.py",
+      "original": ".local-operations/release-20261008-takeover/production-r2/review_startup.py",
+      "sha256": "15b5f8772de98972752bf30d017ea7da3ac62f215414f7021e1cd26837c1bc09",
+      "bytes": 1822
+    },
+    {
+      "file": "reverify_existing_backup.py",
+      "original": ".local-operations/release-20261008-takeover/production-r2/reverify_existing_backup.py",
+      "sha256": "6705913f03d47f195b995595977a1970454e26a7c1cf236ab6d065ced837002c",
+      "bytes": 2488
+    },
+    {
+      "file": "test-official-sidecar.py",
+      "original": ".local-operations/release-20261008-takeover/production-r2/test-official-sidecar.py",
+      "sha256": "081a2d21a4f26390aa79ed7e8d1c62306d5c6e6a7169df439f866e6ca66302e5",
+      "bytes": 1733
+    }
+  ]
+}
