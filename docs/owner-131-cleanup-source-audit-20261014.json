@@ -1,0 +1,378 @@
+{
+  "owner": "131 accounts/Web/SSO/YSM",
+  "observedUtc": "2026-10-14T16:42:40.082267+00:00",
+  "coordinationRecipients": [
+    "01a11687-8264-7029-9fe0-3501270f9006",
+    "01a11735-2ae7-7446-8ba3-7c3d3bc62036",
+    "01a13ad1-468a-7354-904e-dda1eb5f000e"
+  ],
+  "status": "inventory completed; awaiting coordinated claim before deletions",
+  "deletedPaths": [],
+  "actualFreedBytes": 0,
+  "newBackupsCreated": false,
+  "newCopiesOrLargeWritesPaused": true,
+  "processEvidence": {
+    "selfJavaOrDotnetRunning": false,
+    "ownedOldEdgePid24832Alive": false,
+    "ownedLoopbackPort49696Listening": false,
+    "noOtherOwnerProcessesTerminated": true
+  },
+  "sourceMigration": {
+    "examinedLegacyCodeFiles": 986,
+    "alreadyPreservedInCanonicalSourceOrGitHistory": 969,
+    "uniqueLegacySourceFilesMigrated": 17,
+    "browserProbeMigratedToTrackedTest": true,
+    "sourceBytesMigrated": 144435,
+    "sourceMigrationCommit": "e1138502188e4962bb219f4c3af1deb892c978ad",
+    "exactHashesVerified": true,
+    "testsExecuted": false,
+    "originalsNotYetDeleted": true
+  },
+  "reclaimableHistoricalSso": [
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-161916-133853-aeff68d7",
+      "logicalBytes": 288322001,
+      "files": 106,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-162010-599594-7bce5de2",
+      "logicalBytes": 292204682,
+      "files": 117,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-162054-798068-4701fe0e",
+      "logicalBytes": 298967039,
+      "files": 170,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-162630-594987-86ea0173",
+      "logicalBytes": 298965665,
+      "files": 169,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-163055-147371-f9929862",
+      "logicalBytes": 298981578,
+      "files": 170,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-164415-926373-574f0123",
+      "logicalBytes": 298984423,
+      "files": 170,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-164721-025994-5a30ca6b",
+      "logicalBytes": 309932150,
+      "files": 216,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-165124-573353-cf455557",
+      "logicalBytes": 309863993,
+      "files": 223,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-170432-830553-1f4251ac",
+      "logicalBytes": 308186033,
+      "files": 228,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-170948-760454-5e78ad4a",
+      "logicalBytes": 307904527,
+      "files": 223,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-171741-116522-c3476811",
+      "logicalBytes": 320384390,
+      "files": 251,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-172612-204682-d0138a9a",
+      "logicalBytes": 308824334,
+      "files": 228,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-173933-613422-0153f7f7",
+      "logicalBytes": 311361025,
+      "files": 232,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-174407-388698-b3c9f331",
+      "logicalBytes": 308787715,
+      "files": 229,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-174554-749256-cf7d4b78",
+      "logicalBytes": 317090148,
+      "files": 235,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-174816-901694-fbffbed0",
+      "logicalBytes": 328786012,
+      "files": 255,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-175351-782027-7a2b0342",
+      "logicalBytes": 292163443,
+      "files": 118,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-181058-875192-f65d510c",
+      "logicalBytes": 295277796,
+      "files": 134,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-182340-297317-adb204a0",
+      "logicalBytes": 299543236,
+      "files": 190,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-182808-661510-55f55713",
+      "logicalBytes": 315059906,
+      "files": 260,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-184416-694676-2e501868",
+      "logicalBytes": 295359626,
+      "files": 135,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-184733-544582-e68a4da3",
+      "logicalBytes": 295360467,
+      "files": 135,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-185323-079563-5758c01e",
+      "logicalBytes": 315456939,
+      "files": 265,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-185909-178592-3c485ded",
+      "logicalBytes": 317685410,
+      "files": 270,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-190301-202248-24f18e7a",
+      "logicalBytes": 317971824,
+      "files": 269,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261002-194425-465213-e3ca058b",
+      "logicalBytes": 930392516,
+      "files": 644,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261003-132428-968794-a412495b",
+      "logicalBytes": 299774144,
+      "files": 201,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261003-132707-314951-b22e8877",
+      "logicalBytes": 315305178,
+      "files": 261,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261003-133222-916052-1b2a515a",
+      "logicalBytes": 312046536,
+      "files": 259,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261003-133739-563605-4b57c2da",
+      "logicalBytes": 319621324,
+      "files": 269,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261003-134427-978334-17f8d3ea",
+      "logicalBytes": 933844726,
+      "files": 653,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\sso-mcef-20261003-135126-571643-5b442a3f",
+      "logicalBytes": 937035385,
+      "files": 663,
+      "reparseSkipped": 0
+    }
+  ],
+  "historicalSsoLogicalBytes": 11699444171,
+  "reclaimableRecentCandidates": [
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-tools",
+      "logicalBytes": 548897337,
+      "files": 491,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-ysm-browser-smoke",
+      "logicalBytes": 26712321,
+      "files": 471,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-private-a-20261014",
+      "logicalBytes": 263737,
+      "files": 7,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-ysm-tests",
+      "logicalBytes": 410520,
+      "files": 4,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-ysm-wire",
+      "logicalBytes": 242584,
+      "files": 3,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-ysm-assets",
+      "logicalBytes": 16668,
+      "files": 1,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-ysm-assets-races",
+      "logicalBytes": 2984,
+      "files": 1,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-ysm-game-store",
+      "logicalBytes": 7731,
+      "files": 2,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-ysm-bridge-tests",
+      "logicalBytes": 5018,
+      "files": 3,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-ysm-bridge-wiring",
+      "logicalBytes": 2643,
+      "files": 4,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-ysm-wire-candidate-20261013",
+      "logicalBytes": 5830,
+      "files": 2,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-ysm-candidate-20261013",
+      "logicalBytes": 3575,
+      "files": 1,
+      "reparseSkipped": 0
+    }
+  ],
+  "syntheticTrustFixtureCandidates": [
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\bmc5server\\.artifacts\\owner-131-trust-2dd0f4fa22a64707a954fedcc4bfb6eb",
+      "logicalBytes": 4856,
+      "files": 12,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\bmc5server\\.artifacts\\owner-131-trust-4fa03b2d749d49469f185512d2cce107",
+      "logicalBytes": 4850,
+      "files": 12,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\bmc5server\\.artifacts\\owner-131-trust-befd6534cf4c413eac4874f2839c852a",
+      "logicalBytes": 5080,
+      "files": 13,
+      "reparseSkipped": 0
+    },
+    {
+      "path": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\bmc5server\\.artifacts\\owner-131-trust-f763533228954ad4a5b31e7a92515d5c",
+      "logicalBytes": 465,
+      "files": 2,
+      "reparseSkipped": 0
+    }
+  ],
+  "keepMinimal": [
+    "tracked native/SSO/YSM source and tests in canonical repositories",
+    "docs/terminal-sso-final-acceptance-20261002.json and docs/terminal-account-access-final-20261003.json with their experience documents",
+    "build/owner-131-ysm-browser-smoke/receipt.json (probe code migrated into tests)",
+    "build/owner-131-ysm-bridge-tests/receipt.json",
+    "build/owner-131-ysm-bridge-wiring/receipt.json, actual-core-inputs.json, actual-core-runtime.txt",
+    "build/owner-131-ysm-candidate-20261013/receipt.json",
+    "build/owner-131-ysm-wire-candidate-20261013/receipt.json",
+    "build/owner-131-private-a-20261014/receipt.json",
+    "bmc5server/.artifacts/owner-131-production-sso-20261013/receipt.json",
+    "build/owner-131-git-push/known_hosts (public GitHub host pin only, 93 bytes)"
+  ],
+  "heldUntilDependencyOrRollbackReview": [
+    {
+      "path": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\tools",
+      "logicalBytes": 1399355700,
+      "reason": "recreatable old SDK/tool cache; coordinator must verify cross-owner dependencies before removal"
+    },
+    {
+      "path": "C:\\Users\\ranzh\\Documents\\Codex\\terminal-sso-dedicated-task4-20261002\\python",
+      "logicalBytes": 83908267,
+      "reason": "borrowed shared Python runtime used by multiple test owners; no unilateral removal"
+    },
+    {
+      "path": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\production-release-1.4.29",
+      "logicalBytes": 8726282,
+      "reason": "original release material; release owner determines whether still a required rollback"
+    },
+    {
+      "path": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\migration-pause-131-backup",
+      "logicalBytes": 3626541,
+      "reason": "pre-existing dirty-source patches and Git refs bundle; preserve until unique code/history check by relevant owners"
+    },
+    {
+      "path": "C:\\Users\\ranzh\\Documents\\Codex\\terminal-sso-dedicated-task4-20261002\\repos",
+      "logicalBytes": 1623338,
+      "reason": "source-only exports, not Git clones; examined code preserved, but non-code/config origin still needs exact deletion batch review"
+    }
+  ],
+  "neverTouch": [
+    "canonical real project worktrees and unique dirty/staged code",
+    "shared _client_test or other-owner directories",
+    "user game instances and production hosts/state",
+    "necessary rollback originals"
+  ],
+  "allocationNote": "Directory sizes are logical file lengths. Hardlink/shared allocation and concurrent cleanup may reduce actual reclaimed space; no Recycle Bin or physical deletion has happened.",
+  "jdkRecoveryMetadata": {
+    "version": "Temurin 21.0.12.1+1",
+    "archiveBytes": 205073461,
+    "verifiedArchiveSha256": "f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e",
+    "download": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_windows_hotspot_21.0.12.1_1.zip"
+  }
+}
