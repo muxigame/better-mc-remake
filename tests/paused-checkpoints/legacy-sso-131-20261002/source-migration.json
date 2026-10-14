@@ -1,0 +1,118 @@
+{
+  "legacyFilesExamined": 986,
+  "alreadyPreserved": 969,
+  "migratedFiles": [
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\broker-tests\\BrokerQa.java",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\broker-tests\\BrokerQa.java",
+      "bytes": 562,
+      "sha256": "85ce1dd92a71f0dc949b374a2c01ff483727a40d541c42f1b8a44734a450b5a9"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\broker-tests\\Program.cs",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\broker-tests\\Program.cs",
+      "bytes": 3381,
+      "sha256": "6e50507eec4fb266553779183fe4854d352768122934a67f7a631d3703bbeab9"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\DirectTerminalPassportNavigation.java",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\DirectTerminalPassportNavigation.java",
+      "bytes": 11489,
+      "sha256": "3026c8e6671d6e1196ff63a5fa224f4d4371e99777ca92388ae2cb94cbb84bbb"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\LauncherRenewalProgram.cs",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\LauncherRenewalProgram.cs",
+      "bytes": 6051,
+      "sha256": "a6adc23599ae0f1560e6ae9de0853d9028a0c7dda0a5d06cf1386a6938f9c092"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\NavigationAdapterTest.java",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\NavigationAdapterTest.java",
+      "bytes": 8769,
+      "sha256": "2b3618365e92f9c72dc861f6846f9d3f7400f862c72af519e39fe612ba98ba9a"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\run_backend_tests_isolated.py",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\run_backend_tests_isolated.py",
+      "bytes": 1995,
+      "sha256": "a0a14d484fb17d26927b6649fed3bb2b48866b47ca61195a2b3bc02df352fa07"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\run_direct_auth_tests.py",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\run_direct_auth_tests.py",
+      "bytes": 601,
+      "sha256": "9c8a02fbfff834b0165a0c4d692c179e29a40d03e65f970d19beadff91aecd0a"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\run_direct_friends_policy.py",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\run_direct_friends_policy.py",
+      "bytes": 1430,
+      "sha256": "6ff46158d94f39c2cbb756a3646e0205ab7e234105f5c5fedbca8f774e46dfd2"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\run_terminal_mcef.py",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\run_terminal_mcef.py",
+      "bytes": 11940,
+      "sha256": "f76c40815ec459f84a0b5506a299d754eb4cdf887f0f60a2bc72445c6cd4b02a"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\run_terminal_sso_chain.py",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\run_terminal_sso_chain.py",
+      "bytes": 17717,
+      "sha256": "0a5dfbf1b2194c01c3a5dc7390a6f69823a7497b16de3ff9cdb1117716169fde"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\TerminalCredentialBrokerClient.java",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\TerminalCredentialBrokerClient.java",
+      "bytes": 1742,
+      "sha256": "15ab99b5020790be4e42400f73df11d34efed9e5e47f456172a5c33a67303283"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\TerminalPassportApi.java",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\TerminalPassportApi.java",
+      "bytes": 9081,
+      "sha256": "f1c7aa003051afad935a67cc49b28fa20df3033f3637aee2c0d62b3358bd2beb"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\TerminalPassportNavigation.java",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\TerminalPassportNavigation.java",
+      "bytes": 9540,
+      "sha256": "006c9e9b3fad069dc6fd4316f124bc2a78b7297c7cbf406794b84d7969387611"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\test_terminal_access.py",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\test_terminal_access.py",
+      "bytes": 8033,
+      "sha256": "622bc356521e5aad97d4ea9e36a3605ea15dc91004e6e5dbe220cb75aa5c1a7c"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\2026-10-02\\task-3\\ThreeRoundLifecycleTest.java",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\task-3\\ThreeRoundLifecycleTest.java",
+      "bytes": 7759,
+      "sha256": "f0e3cacde8e04bcd841aef4a21cdb95cc7a48bcceb13a1bac8a54d1b097e2d76"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\terminal-sso-dedicated-task4-20261002\\repos\\muxi-auth-dedicated-sso\\app\\external_oauth.py",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\dedicated-fixture\\auth-external-oauth.py",
+      "bytes": 8275,
+      "sha256": "c1ec8b3dc14a6785b363b591db2d52c704902cb09779cac420d95d771a0c7c46"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\Documents\\Codex\\terminal-sso-dedicated-task4-20261002\\tests\\run_dedicated_sso_chain.py",
+      "target": "better-mc-remake\\tests\\paused-checkpoints\\legacy-sso-131-20261002\\dedicated-fixture\\run_dedicated_sso_chain.py",
+      "bytes": 19148,
+      "sha256": "62088bb8a04e1304a4de29d6f8eda407c56529958638fad9e1c8d48193b307e6"
+    },
+    {
+      "origin": "C:\\Users\\ranzh\\workspace\\dev\\muxigame\\better-mc-remake\\build\\owner-131-ysm-browser-smoke\\probe.py",
+      "target": "better-mc-remake\\tests\\ysm-models-browser-smoke\\probe.py",
+      "bytes": 16922,
+      "sha256": "f6c2c81b0cd8865ed670b290f240ec9bc4ab3d653dc55a0b9b417fc08338ff89",
+      "adaptation": "Output remains in Web/build; no browser/fixture execution"
+    }
+  ],
+  "bytesCopied": 144435,
+  "testsExecuted": false,
+  "originalsDeleted": false
+}
